@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Nitei{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'nitei/css/nitei.css' %}">
+{% endblock %}
+
+{% block content %}
+<div id="toolbar">
+  <span id="status">読み込み中...</span>
+</div>
+<div id="container"></div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'nitei/js/nitei.js' %}"></script>
+{% endblock %}

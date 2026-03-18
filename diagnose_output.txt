@@ -1,0 +1,477 @@
+=== 書類: 外注費連絡表（メディア）栗原・GⅠ第69回近畿地区選手権競走期間(2/4_2/9)式典 ===
+=== kind: 外注費連絡表 ===
+=== cdb-part-in-detail の総数: 62 ===
+
+--- div[0] ---
+  .text (repr): '2026年2月24日(火)'
+  .text (raw):
+    | 2026年2月24日(火)
+  .outerHTML (先頭300文字):
+    <div class="cdb-part cdb-part-in-detail cdb-part-label-none" style="left:545px;top:5px;z-index:3;" data-id="53" data-kind="date" data-readonly="true"><label>日付_1</label><div class="cdb-part-item cdb-part-balloon-target" data-field-id="118" data-type="date" data-readonly="true"><div class="app-user-d
+
+--- div[1] ---
+  .text (repr): '外注費連絡表'
+  .text (raw):
+    | 外注費連絡表
+  .outerHTML (先頭300文字):
+    <div class="cdb-part cdb-part-in-detail cdb-part-label-none" style="left:200px;top:20px;z-index:62;" data-id="210" data-kind="select" data-readonly="true"><label>プルダウン_2_1</label><div class="cdb-part-item cdb-part-balloon-target" data-field-id="218" data-type="select" data-readonly="true"><div class
+
+--- div[2] ---
+  .text (repr): 'メディア事業部'
+  .text (raw):
+    | メディア事業部
+  .outerHTML (先頭300文字):
+    <div class="cdb-part cdb-part-in-detail cdb-part-label-none" style="left:545px;top:30px;z-index:54;" data-id="201" data-kind="select" data-readonly="true"><label>プルダウン_3</label><div class="cdb-part-item cdb-part-balloon-target" data-field-id="213" data-type="select" data-readonly="true"><div class="
+
+--- div[3] ---
+  .text (repr): '松山\u3000秀夫'
+  .text (raw):
+    | 松山　秀夫
+  .outerHTML (先頭300文字):
+    <div class="cdb-part cdb-part-in-detail cdb-part-label-none" style="left:565px;top:55px;z-index:21;" data-id="149" data-kind="textbox" data-readonly="true"><label>申請者</label><div class="cdb-part-item cdb-part-balloon-target" data-field-id="53" data-type="textbox" data-readonly="true" data-cdb-conver
+
+--- div[4] ---
+  .text (repr): 'ｾｷｭﾘﾃｨ部長1\n承認\n02/24\n壁屋\u3000繁樹\n所属部長2\n承認\n02/25\n河野/奥田/小林\n副社長3\n承認\n02/26\n田中\u3000征男\n社長4\n決裁\n02/26\n䕃山\u3000良幸\n承認5\n承認\n02/26\n経理部'
+  .text (raw):
+    | ｾｷｭﾘﾃｨ部長1
+    | 承認
+    | 02/24
+    | 壁屋　繁樹
+    | 所属部長2
+    | 承認
+    | 02/25
+    | 河野/奥田/小林
+    | 副社長3
+    | 承認
+    | 02/26
+    | 田中　征男
+    | 社長4
+    | 決裁
+    | 02/26
+    | 䕃山　良幸
+    | 承認5
+    | 承認
+    | 02/26
+    | 経理部
+  .outerHTML (先頭300文字):
+    <div class="cdb-part cdb-part-in-detail cdb-part-label-none" style="left:20px;top:85px;z-index:2;" data-id="5" data-kind="flow_stamp" data-readonly="true"><div class="cdb-part-plugin cdb-part-plugin-flow_stamp jcdb-style-target" data-plugin="flow_stamp" style="width:695px;height:120px;border-color:#
+
+--- div[5] ---
+  .text (repr): '●新\u3000規'
+  .text (raw):
+    | ●新　規
+  .outerHTML (先頭300文字):
+    <div class="cdb-part cdb-part-in-detail cdb-part-label-none" style="left:15px;top:210px;z-index:4;" data-id="106" data-kind="select" data-readonly="true"><label>プルダウン_1</label><div class="cdb-part-item cdb-part-balloon-target" data-field-id="162" data-type="select" data-readonly="true"><div class="c
+
+--- div[6] ---
+  .text (repr): '●企\u3000\u3000画'
+  .text (raw):
+    | ●企　　画
+  .outerHTML (先頭300文字):
+    <div class="cdb-part cdb-part-in-detail cdb-part-label-none" style="left:165px;top:210px;z-index:29;" data-id="172" data-kind="select" data-readonly="true"><label>プルダウン_2</label><div class="cdb-part-item cdb-part-balloon-target" data-field-id="204" data-type="select" data-readonly="true"><div class=
+
+--- div[7] ---
+  .text (repr): '担当区域'
+  .text (raw):
+    | 担当区域
+  .outerHTML (先頭300文字):
+    <div class="cdb-part cdb-part-in-detail" style="left:325px;top:215px;z-index:55;" data-id="202" data-kind="text" data-readonly="true"><div class="co-mceview cdb-part-label-text jcdb-style-target jcdb-text-value-target" style="width:65px;"><p><span style="font-size:14px">担当区域</span></p></div></div>
+
+--- div[8] ---
+  .text (repr): '大阪\n中部'
+  .text (raw):
+    | 大阪
+    | 中部
+  .outerHTML (先頭300文字):
+    <div class="cdb-part cdb-part-in-detail cdb-part-label-none cdb-part-auto-width" style="left:395px;top:215px;z-index:56;" data-id="203" data-kind="radio" data-readonly="true"><label>ラジオボタン_2</label><div class="cdb-part-item" data-field-id="214" data-type="radio" data-readonly="true" data-show-all="o
+
+--- div[9] ---
+  .text (repr): ''
+  .text (raw):
+    | 
+  .outerHTML (先頭300文字):
+    <div class="cdb-part cdb-part-in-detail" style="left:0px;top:240px;z-index:1;" data-id="113" data-kind="rectangle" data-readonly="true"><div class="cdb-part-figure cdb-part-figure-rectangle jcdb-style-target" style="border-color:#000000;background-color:#ffffff;width:715px;height:320px;"></div></div
+
+--- div[10] ---
+  .text (repr): ''
+  .text (raw):
+    | 
+  .outerHTML (先頭300文字):
+    <div class="cdb-part cdb-part-in-detail" style="left:75px;top:240px;z-index:16;" data-id="109" data-kind="vertical_line" data-readonly="true"><div class="cdb-part-figure cdb-part-figure-vertical-line jcdb-style-target" style="border-color:#000000;height:320px;"></div></div>
+
+--- div[11] ---
+  .text (repr): ''
+  .text (raw):
+    | 
+  .outerHTML (先頭300文字):
+    <div class="cdb-part cdb-part-in-detail" style="left:455px;top:240px;z-index:14;" data-id="114" data-kind="vertical_line" data-readonly="true"><div class="cdb-part-figure cdb-part-figure-vertical-line jcdb-style-target" style="border-color:#000000;height:85px;"></div></div>
+
+--- div[12] ---
+  .text (repr): ''
+  .text (raw):
+    | 
+  .outerHTML (先頭300文字):
+    <div class="cdb-part cdb-part-in-detail" style="left:540px;top:240px;z-index:6;" data-id="115" data-kind="vertical_line" data-readonly="true"><div class="cdb-part-figure cdb-part-figure-vertical-line jcdb-style-target" style="border-color:#000000;height:85px;"></div></div>
+
+--- div[13] ---
+  .text (repr): '契約担当'
+  .text (raw):
+    | 契約担当
+  .outerHTML (先頭300文字):
+    <div class="cdb-part cdb-part-in-detail" style="left:470px;top:243px;z-index:36;" data-id="184" data-kind="text" data-readonly="true"><div class="co-mceview cdb-part-label-text jcdb-style-target jcdb-text-value-target" style="width:60px;height:20px;"><p><span style="font-size:14px">契約担当</span></p></
+
+--- div[14] ---
+  .text (repr): '外注先名'
+  .text (raw):
+    | 外注先名
+  .outerHTML (先頭300文字):
+    <div class="cdb-part cdb-part-in-detail" style="left:10px;top:245px;z-index:31;" data-id="179" data-kind="text" data-readonly="true"><div class="co-mceview cdb-part-label-text jcdb-style-target jcdb-text-value-target"><p><span style="font-size:14px">外注先名</span></p></div></div>
+
+--- div[15] ---
+  .text (repr): 'ケイプランニング'
+  .text (raw):
+    | ケイプランニング
+  .outerHTML (先頭300文字):
+    <div class="cdb-part cdb-part-in-detail cdb-part-label-none" style="left:80px;top:245px;z-index:9;" data-id="122" data-kind="textbox" data-readonly="true"><label>文字(一行)_1</label><div class="cdb-part-item cdb-part-balloon-target" data-field-id="171" data-type="textbox" data-readonly="true" data-cdb-c
+
+--- div[16] ---
+  .text (repr): '栗原\u3000圭'
+  .text (raw):
+    | 栗原　圭
+  .outerHTML (先頭300文字):
+    <div class="cdb-part cdb-part-in-detail cdb-part-label-none" style="left:545px;top:245px;z-index:10;" data-id="126" data-kind="textbox" data-readonly="true"><label>文字(一行)_4</label><div class="cdb-part-item cdb-part-balloon-target" data-field-id="175" data-type="textbox" data-readonly="true" data-cdb
+
+--- div[17] ---
+  .text (repr): ''
+  .text (raw):
+    | 
+  .outerHTML (先頭300文字):
+    <div class="cdb-part cdb-part-in-detail" style="left:0px;top:270px;z-index:7;" data-id="116" data-kind="horizontal_line" data-readonly="true"><div class="cdb-part-figure cdb-part-figure-horizontal-line jcdb-style-target" style="border-color:#000000;width:455px;"></div></div>
+
+--- div[18] ---
+  .text (repr): ''
+  .text (raw):
+    | 
+  .outerHTML (先頭300文字):
+    <div class="cdb-part cdb-part-in-detail cdb-part-label-none" style="left:545px;top:270px;z-index:11;" data-id="127" data-kind="textbox" data-readonly="true"><label>文字(一行)_5</label><div class="cdb-part-item cdb-part-balloon-target" data-field-id="176" data-type="textbox" data-readonly="true" data-cdb
+
+--- div[19] ---
+  .text (repr): 'GⅠ第69回 近畿地区選手権競走期間 式典一式\n音響照明一式・制作費'
+  .text (raw):
+    | GⅠ第69回 近畿地区選手権競走期間 式典一式
+    | 音響照明一式・制作費
+  .outerHTML (先頭300文字):
+    <div class="cdb-part cdb-part-in-detail cdb-part-print-slide cdb-part-label-none" style="left:79px;top:272px;z-index:51;" data-id="198" data-kind="textarea" data-readonly="true"><label>文字(複数行)_1</label><div class="cdb-part-item" data-field-id="211" data-type="textarea" data-readonly="true" data-cdb-
+
+--- div[20] ---
+  .text (repr): '業務担当'
+  .text (raw):
+    | 業務担当
+  .outerHTML (先頭300文字):
+    <div class="cdb-part cdb-part-in-detail" style="left:470px;top:272px;z-index:37;" data-id="185" data-kind="text" data-readonly="true"><div class="co-mceview cdb-part-label-text jcdb-style-target jcdb-text-value-target" style="width:60px;height:20px;"><p><span style="font-size:14px">業務担当</span></p></
+
+--- div[21] ---
+  .text (repr): '業務対象'
+  .text (raw):
+    | 業務対象
+  .outerHTML (先頭300文字):
+    <div class="cdb-part cdb-part-in-detail" style="left:10px;top:285px;z-index:32;" data-id="180" data-kind="text" data-readonly="true"><div class="co-mceview cdb-part-label-text jcdb-style-target jcdb-text-value-target"><p><span style="font-size:14px">業務対象</span></p></div></div>
+
+--- div[22] ---
+  .text (repr): ''
+  .text (raw):
+    | 
+  .outerHTML (先頭300文字):
+    <div class="cdb-part cdb-part-in-detail" style="left:455px;top:295px;z-index:52;" data-id="199" data-kind="horizontal_line" data-readonly="true"><div class="cdb-part-figure cdb-part-figure-horizontal-line jcdb-style-target" style="border-color:#000000;width:260px;"></div></div>
+
+--- div[23] ---
+  .text (repr): 'Ｔ Ｅ Ｌ'
+  .text (raw):
+    | Ｔ Ｅ Ｌ
+  .outerHTML (先頭300文字):
+    <div class="cdb-part cdb-part-in-detail" style="left:470px;top:300px;z-index:38;" data-id="186" data-kind="text" data-readonly="true"><div class="co-mceview cdb-part-label-text jcdb-style-target jcdb-text-value-target" style="width:60px;height:20px;"><p><span style="font-size:14px">Ｔ Ｅ Ｌ</span></p><
+
+--- div[24] ---
+  .text (repr): '072-265-1446'
+  .text (raw):
+    | 072-265-1446
+  .outerHTML (先頭300文字):
+    <div class="cdb-part cdb-part-in-detail cdb-part-label-none" style="left:545px;top:300px;z-index:12;" data-id="128" data-kind="textbox" data-readonly="true"><label>文字(一行)_6</label><div class="cdb-part-item cdb-part-balloon-target" data-field-id="177" data-type="textbox" data-readonly="true" data-cdb
+
+--- div[25] ---
+  .text (repr): ''
+  .text (raw):
+    | 
+  .outerHTML (先頭300文字):
+    <div class="cdb-part cdb-part-in-detail" style="left:0px;top:325px;z-index:5;" data-id="110" data-kind="horizontal_line" data-readonly="true"><div class="cdb-part-figure cdb-part-figure-horizontal-line jcdb-style-target" style="border-color:#000000;width:715px;"></div></div>
+
+--- div[26] ---
+  .text (repr): '所 在 地'
+  .text (raw):
+    | 所 在 地
+  .outerHTML (先頭300文字):
+    <div class="cdb-part cdb-part-in-detail" style="left:10px;top:330px;z-index:33;" data-id="181" data-kind="text" data-readonly="true"><div class="co-mceview cdb-part-label-text jcdb-style-target jcdb-text-value-target" style="width:55px;height:20px;"><p><span style="font-size:14px">所 在 地</span></p></
+
+--- div[27] ---
+  .text (repr): '高石市西取石7-8-17-305'
+  .text (raw):
+    | 高石市西取石7-8-17-305
+  .outerHTML (先頭300文字):
+    <div class="cdb-part cdb-part-in-detail cdb-part-label-none" style="left:80px;top:330px;z-index:53;" data-id="200" data-kind="textbox" data-readonly="true"><label>文字(一行)_2</label><div class="cdb-part-item cdb-part-balloon-target" data-field-id="212" data-type="textbox" data-readonly="true" data-cdb-
+
+--- div[28] ---
+  .text (repr): ''
+  .text (raw):
+    | 
+  .outerHTML (先頭300文字):
+    <div class="cdb-part cdb-part-in-detail" style="left:0px;top:355px;z-index:8;" data-id="119" data-kind="horizontal_line" data-readonly="true"><div class="cdb-part-figure cdb-part-figure-horizontal-line jcdb-style-target" style="border-color:#000000;width:715px;"></div></div>
+
+--- div[29] ---
+  .text (repr): '業 務 日'
+  .text (raw):
+    | 業 務 日
+  .outerHTML (先頭300文字):
+    <div class="cdb-part cdb-part-in-detail" style="left:10px;top:360px;z-index:34;" data-id="182" data-kind="text" data-readonly="true"><div class="co-mceview cdb-part-label-text jcdb-style-target jcdb-text-value-target" style="width:55px;height:20px;"><p><span style="font-size:14px">業 務 日</span></p></
+
+--- div[30] ---
+  .text (repr): '2026/2/3~2026/2/9'
+  .text (raw):
+    | 2026/2/3~2026/2/9
+  .outerHTML (先頭300文字):
+    <div class="cdb-part cdb-part-in-detail cdb-part-label-none" style="left:80px;top:360px;z-index:17;" data-id="133" data-kind="textbox" data-readonly="true"><label>文字(一行)_7</label><div class="cdb-part-item cdb-part-balloon-target" data-field-id="180" data-type="textbox" data-readonly="true" data-cdb-
+
+--- div[31] ---
+  .text (repr): ''
+  .text (raw):
+    | 
+  .outerHTML (先頭300文字):
+    <div class="cdb-part cdb-part-in-detail" style="left:0px;top:385px;z-index:13;" data-id="130" data-kind="horizontal_line" data-readonly="true"><div class="cdb-part-figure cdb-part-figure-horizontal-line jcdb-style-target" style="border-color:#000000;width:715px;"></div></div>
+
+--- div[32] ---
+  .text (repr): '業務内容'
+  .text (raw):
+    | 業務内容
+  .outerHTML (先頭300文字):
+    <div class="cdb-part cdb-part-in-detail" style="left:10px;top:390px;z-index:35;" data-id="183" data-kind="text" data-readonly="true"><div class="co-mceview cdb-part-label-text jcdb-style-target jcdb-text-value-target" style="width:60px;height:20px;"><p><span style="font-size:14px">業務内容</span></p></d
+
+--- div[33] ---
+  .text (repr): '式典における音響照明の手配（ベースオントップ等）及びスタッフ応援一式'
+  .text (raw):
+    | 式典における音響照明の手配（ベースオントップ等）及びスタッフ応援一式
+  .outerHTML (先頭300文字):
+    <div class="cdb-part cdb-part-in-detail cdb-part-label-none" style="left:80px;top:390px;z-index:18;" data-id="134" data-kind="textbox" data-readonly="true"><label>文字(一行)_8</label><div class="cdb-part-item cdb-part-balloon-target" data-field-id="181" data-type="textbox" data-readonly="true" data-cdb-
+
+--- div[34] ---
+  .text (repr): ''
+  .text (raw):
+    | 
+  .outerHTML (先頭300文字):
+    <div class="cdb-part cdb-part-in-detail" style="left:0px;top:415px;z-index:15;" data-id="131" data-kind="horizontal_line" data-readonly="true"><div class="cdb-part-figure cdb-part-figure-horizontal-line jcdb-style-target" style="border-color:#000000;width:715px;"></div></div>
+
+--- div[35] ---
+  .text (repr): '2/3   9:00 ~ 17:00 前検日における設営リハーサル\n2/4 11:00 ~ 17:00 オープニングセレモニー及びドリーム戦インタービュー\n2/5,  2/6,  2/7,  2/8 各日 13:00 ~ 19:00（追加イベント）\n2/9 13:00 ~ 22:30  優出インタビュー及び表彰式'
+  .text (raw):
+    | 2/3   9:00 ~ 17:00 前検日における設営リハーサル
+    | 2/4 11:00 ~ 17:00 オープニングセレモニー及びドリーム戦インタービュー
+    | 2/5,  2/6,  2/7,  2/8 各日 13:00 ~ 19:00（追加イベント）
+    | 2/9 13:00 ~ 22:30  優出インタビュー及び表彰式
+  .outerHTML (先頭300文字):
+    <div class="cdb-part cdb-part-in-detail cdb-part-print-slide cdb-part-label-none" style="left:80px;top:420px;z-index:39;" data-id="135" data-kind="textarea" data-readonly="true"><label>文字(複数行)_2</label><div class="cdb-part-item" data-field-id="182" data-type="textarea" data-readonly="true" data-cdb-
+
+--- div[36] ---
+  .text (repr): '担当時間'
+  .text (raw):
+    | 担当時間
+  .outerHTML (先頭300文字):
+    <div class="cdb-part cdb-part-in-detail" style="left:10px;top:470px;z-index:41;" data-id="189" data-kind="text" data-readonly="true"><div class="co-mceview cdb-part-label-text jcdb-style-target jcdb-text-value-target" style="width:65px;height:20px;"><p><span style="font-size:14px">担当時間</span></p></d
+
+--- div[37] ---
+  .text (repr): '■料\u3000\u3000金'
+  .text (raw):
+    | ■料　　金
+  .outerHTML (先頭300文字):
+    <div class="cdb-part cdb-part-in-detail" style="left:0px;top:560px;z-index:40;" data-id="188" data-kind="text" data-readonly="true"><div class="co-mceview cdb-part-label-text jcdb-style-target jcdb-text-value-target" style="height:32px;"><p><span style="font-size:18px">■料　　金</span></p></div></div>
+
+--- div[38] ---
+  .text (repr): ''
+  .text (raw):
+    | 
+  .outerHTML (先頭300文字):
+    <div class="cdb-part cdb-part-in-detail" style="left:0px;top:590px;z-index:19;" data-id="143" data-kind="rectangle" data-readonly="true"><div class="cdb-part-figure cdb-part-figure-rectangle jcdb-style-target" style="border-color:#000000;background-color:#ffffff;width:715px;height:455px;"></div></di
+
+--- div[39] ---
+  .text (repr): '支払内訳／項目・単価・人員等'
+  .text (raw):
+    | 支払内訳／項目・単価・人員等
+  .outerHTML (先頭300文字):
+    <div class="cdb-part cdb-part-in-detail" style="left:5px;top:595px;z-index:43;" data-id="190" data-kind="text" data-readonly="true"><div class="co-mceview cdb-part-label-text jcdb-style-target jcdb-text-value-target" style="width:205px;height:20px;"><p><span style="font-size:14px">支払内訳／項目・単価・人員等</sp
+
+--- div[40] ---
+  .text (repr): '内税\n外税'
+  .text (raw):
+    | 内税
+    | 外税
+  .outerHTML (先頭300文字):
+    <div class="cdb-part cdb-part-in-detail cdb-part-label-none cdb-part-auto-width" style="left:305px;top:595px;z-index:30;" data-id="177" data-kind="radio" data-readonly="true"><label>ラジオボタン</label><div class="cdb-part-item" data-field-id="209" data-type="radio" data-readonly="true" data-show-all="on"
+
+--- div[41] ---
+  .text (repr): ''
+  .text (raw):
+    | 
+  .outerHTML (先頭300文字):
+    <div class="cdb-part cdb-part-in-detail" style="left:0px;top:620px;z-index:20;" data-id="144" data-kind="horizontal_line" data-readonly="true"><div class="cdb-part-figure cdb-part-figure-horizontal-line jcdb-style-target" style="border-color:#000000;width:715px;"></div></div>
+
+--- div[42] ---
+  .text (repr): ''
+  .text (raw):
+    | 
+  .outerHTML (先頭300文字):
+    <div class="cdb-part cdb-part-in-detail" style="left:75px;top:620px;z-index:42;" data-id="152" data-kind="vertical_line" data-readonly="true"><div class="cdb-part-figure cdb-part-figure-vertical-line jcdb-style-target" style="border-color:#000000;height:425px;"></div></div>
+
+--- div[43] ---
+  .text (repr): '2,100,000(税抜)'
+  .text (raw):
+    | 2,100,000(税抜)
+  .outerHTML (先頭300文字):
+    <div class="cdb-part cdb-part-in-detail cdb-part-label-none" style="left:90px;top:625px;z-index:50;" data-id="171" data-kind="textbox" data-readonly="true"><label>文字(一行)_13</label><div class="cdb-part-item cdb-part-balloon-target" data-field-id="203" data-type="textbox" data-readonly="true" data-cdb
+
+--- div[44] ---
+  .text (repr): '\\    210,000(消費税)\n\\ 2,310,000(総額)'
+  .text (raw):
+    | \    210,000(消費税)
+    | \ 2,310,000(総額)
+  .outerHTML (先頭300文字):
+    <div class="cdb-part cdb-part-in-detail cdb-part-print-slide cdb-part-label-none" style="left:80px;top:650px;z-index:28;" data-id="166" data-kind="textarea" data-readonly="true"><label>文字(複数行)_3</label><div class="cdb-part-item" data-field-id="198" data-type="textarea" data-readonly="true" data-cdb-
+
+--- div[45] ---
+  .text (repr): '金\u3000\u3000額'
+  .text (raw):
+    | 金　　額
+  .outerHTML (先頭300文字):
+    <div class="cdb-part cdb-part-in-detail" style="left:10px;top:710px;z-index:44;" data-id="191" data-kind="text" data-readonly="true"><div class="co-mceview cdb-part-label-text jcdb-style-target jcdb-text-value-target" style="width:60px;height:20px;"><p><span style="font-size:14px">金　　額</span></p></d
+
+--- div[46] ---
+  .text (repr): ''
+  .text (raw):
+    | 
+  .outerHTML (先頭300文字):
+    <div class="cdb-part cdb-part-in-detail" style="left:0px;top:830px;z-index:59;" data-id="206" data-kind="horizontal_line" data-readonly="true"><div class="cdb-part-figure cdb-part-figure-horizontal-line jcdb-style-target" style="border-color:#000000;width:715px;"></div></div>
+
+--- div[47] ---
+  .text (repr): '支払方法'
+  .text (raw):
+    | 支払方法
+  .outerHTML (先頭300文字):
+    <div class="cdb-part cdb-part-in-detail" style="left:10px;top:835px;z-index:61;" data-id="209" data-kind="text" data-readonly="true"><div class="co-mceview cdb-part-label-text jcdb-style-target jcdb-text-value-target" style="width:60px;height:20px;"><p><span style="font-size:14px">支払方法</span></p></d
+
+--- div[48] ---
+  .text (repr): ''
+  .text (raw):
+    | 
+  .outerHTML (先頭300文字):
+    <div class="cdb-part cdb-part-in-detail cdb-part-label-none" style="left:80px;top:835px;z-index:60;" data-id="207" data-kind="textbox" data-readonly="true"><label>文字(一行)_9_2</label><div class="cdb-part-item cdb-part-balloon-target" data-field-id="216" data-type="textbox" data-readonly="true" data-cd
+
+--- div[49] ---
+  .text (repr): ''
+  .text (raw):
+    | 
+  .outerHTML (先頭300文字):
+    <div class="cdb-part cdb-part-in-detail" style="left:0px;top:860px;z-index:23;" data-id="153" data-kind="horizontal_line" data-readonly="true"><div class="cdb-part-figure cdb-part-figure-horizontal-line jcdb-style-target" style="border-color:#000000;width:715px;"></div></div>
+
+--- div[50] ---
+  .text (repr): '振 込 先'
+  .text (raw):
+    | 振 込 先
+  .outerHTML (先頭300文字):
+    <div class="cdb-part cdb-part-in-detail" style="left:10px;top:865px;z-index:45;" data-id="192" data-kind="text" data-readonly="true"><div class="co-mceview cdb-part-label-text jcdb-style-target jcdb-text-value-target" style="width:60px;height:20px;"><p><span style="font-size:14px">振 込 先</span></p></
+
+--- div[51] ---
+  .text (repr): '銀 行 名 ：'
+  .text (raw):
+    | 銀 行 名 ：
+  .outerHTML (先頭300文字):
+    <div class="cdb-part cdb-part-in-detail" style="left:80px;top:865px;z-index:46;" data-id="193" data-kind="text" data-readonly="true"><div class="co-mceview cdb-part-label-text jcdb-style-target jcdb-text-value-target" style="width:75px;height:20px;"><p><span style="font-size:14px">銀 行 名 ：</span></p>
+
+--- div[52] ---
+  .text (repr): '三井住友銀行'
+  .text (raw):
+    | 三井住友銀行
+  .outerHTML (先頭300文字):
+    <div class="cdb-part cdb-part-in-detail cdb-part-label-none" style="left:160px;top:865px;z-index:24;" data-id="160" data-kind="textbox" data-readonly="true"><label>文字(一行)_9</label><div class="cdb-part-item cdb-part-balloon-target" data-field-id="192" data-type="textbox" data-readonly="true" data-cdb
+
+--- div[53] ---
+  .text (repr): '支 店 名 ：'
+  .text (raw):
+    | 支 店 名 ：
+  .outerHTML (先頭300文字):
+    <div class="cdb-part cdb-part-in-detail" style="left:80px;top:895px;z-index:47;" data-id="194" data-kind="text" data-readonly="true"><div class="co-mceview cdb-part-label-text jcdb-style-target jcdb-text-value-target" style="width:75px;height:20px;"><p><span style="font-size:14px">支 店 名 ：</span></p>
+
+--- div[54] ---
+  .text (repr): '鳳支店'
+  .text (raw):
+    | 鳳支店
+  .outerHTML (先頭300文字):
+    <div class="cdb-part cdb-part-in-detail cdb-part-label-none" style="left:160px;top:895px;z-index:25;" data-id="161" data-kind="textbox" data-readonly="true"><label>文字(一行)_10</label><div class="cdb-part-item cdb-part-balloon-target" data-field-id="193" data-type="textbox" data-readonly="true" data-cd
+
+--- div[55] ---
+  .text (repr): '口座番号 ：'
+  .text (raw):
+    | 口座番号 ：
+  .outerHTML (先頭300文字):
+    <div class="cdb-part cdb-part-in-detail" style="left:80px;top:925px;z-index:48;" data-id="195" data-kind="text" data-readonly="true"><div class="co-mceview cdb-part-label-text jcdb-style-target jcdb-text-value-target" style="width:75px;height:20px;"><p><span style="font-size:14px">口座番号 ：</span></p><
+
+--- div[56] ---
+  .text (repr): '普通\u3000１７１１１３７'
+  .text (raw):
+    | 普通　１７１１１３７
+  .outerHTML (先頭300文字):
+    <div class="cdb-part cdb-part-in-detail cdb-part-label-none" style="left:160px;top:925px;z-index:26;" data-id="162" data-kind="textbox" data-readonly="true"><label>文字(一行)_11</label><div class="cdb-part-item cdb-part-balloon-target" data-field-id="194" data-type="textbox" data-readonly="true" data-cd
+
+--- div[57] ---
+  .text (repr): '口座名義 ：'
+  .text (raw):
+    | 口座名義 ：
+  .outerHTML (先頭300文字):
+    <div class="cdb-part cdb-part-in-detail" style="left:80px;top:955px;z-index:58;" data-id="205" data-kind="text" data-readonly="true"><div class="co-mceview cdb-part-label-text jcdb-style-target jcdb-text-value-target" style="width:75px;height:20px;"><p><span style="font-size:14px">口座名義 ：</span></p><
+
+--- div[58] ---
+  .text (repr): 'ケイ\u3000プランニング\u3000栗原\u3000圭'
+  .text (raw):
+    | ケイ　プランニング　栗原　圭
+  .outerHTML (先頭300文字):
+    <div class="cdb-part cdb-part-in-detail cdb-part-label-none" style="left:160px;top:955px;z-index:57;" data-id="204" data-kind="textbox" data-readonly="true"><label>文字(一行)_9_1</label><div class="cdb-part-item cdb-part-balloon-target" data-field-id="215" data-type="textbox" data-readonly="true" data-c
+
+--- div[59] ---
+  .text (repr): ''
+  .text (raw):
+    | 
+  .outerHTML (先頭300文字):
+    <div class="cdb-part cdb-part-in-detail" style="left:0px;top:985px;z-index:22;" data-id="150" data-kind="horizontal_line" data-readonly="true"><div class="cdb-part-figure cdb-part-figure-horizontal-line jcdb-style-target" style="border-color:#000000;width:715px;"></div></div>
+
+--- div[60] ---
+  .text (repr): ''
+  .text (raw):
+    | 
+  .outerHTML (先頭300文字):
+    <div class="cdb-part cdb-part-in-detail cdb-part-print-slide cdb-part-label-none" style="left:80px;top:990px;z-index:27;" data-id="165" data-kind="textarea" data-readonly="true"><label>文字(複数行)_4</label><div class="cdb-part-item" data-field-id="197" data-type="textarea" data-readonly="true" data-cdb-
+
+--- div[61] ---
+  .text (repr): 'そ の 他'
+  .text (raw):
+    | そ の 他
+  .outerHTML (先頭300文字):
+    <div class="cdb-part cdb-part-in-detail" style="left:10px;top:1005px;z-index:49;" data-id="196" data-kind="text" data-readonly="true"><div class="co-mceview cdb-part-label-text jcdb-style-target jcdb-text-value-target" style="width:60px;height:20px;"><p><span style="font-size:14px">そ の 他</span></p><
+
+=== 参考: cdb-part-label クラス ===
+  件数: 46
+  text='2026年2月24日(火)'  class=cdb-part cdb-part-in-detail cdb-part-label-none
+  text='外注費連絡表'  class=cdb-part cdb-part-in-detail cdb-part-label-none
+  text='メディア事業部'  class=cdb-part cdb-part-in-detail cdb-part-label-none
+  text='松山\u3000秀夫'  class=cdb-part cdb-part-in-detail cdb-part-label-none
+  text='ｾｷｭﾘﾃｨ部長1\n承認\n02/24\n壁屋\u3000繁樹\n所属部長2\n承認\n02/25\n河野/奥田/小林\n副'  class=cdb-part cdb-part-in-detail cdb-part-label-none
+
+=== 参考: cdb-text-view (値セル候補) ===
+  件数: 3
+  text='2026年2月24日(火)\n外注費連絡表\nメディア事業部\n松山\u3000秀夫\nｾｷｭﾘﾃｨ部長1\n承認\n02'  class=cdb-view-main cdb-browse-main
+  text='2026年2月24日(火)\n外注費連絡表\nメディア事業部\n松山\u3000秀夫\nｾｷｭﾘﾃｨ部長1\n承認\n02'  class=cdb-view-body
+  text='2026年2月24日(火)\n外注費連絡表\nメディア事業部\n松山\u3000秀夫\nｾｷｭﾘﾃｨ部長1\n承認\n02'  class=cdb-part-container cdb-view

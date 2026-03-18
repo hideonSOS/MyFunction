@@ -1,0 +1,127 @@
+/* nitei は #page-wrapper 内に入るので body スタイルは最小限 */
+#page-wrapper {
+  overflow-y: auto;
+  padding: 20px;
+  font-family: 'Courier New', monospace;
+  color: #00e5ff;
+}
+
+table {
+  border-collapse: collapse;
+  margin-bottom: 5px;
+}
+
+td {
+  border: 1px solid #555;
+  width: 60px;
+  height: 40px;
+  text-align: center;
+  font-size: 13px;
+  cursor: pointer;
+  background: #0d1526;
+  color: #00e5ff;
+  transition: background 0.15s;
+}
+
+td:hover { background: #112244; }
+
+.label {
+  width: 80px;
+  background: #071020;
+  cursor: default;
+  color: #7fffd4;
+  border-color: #555;
+  text-shadow: 0 0 6px #7fffd4;
+}
+
+.day  { background: #081428; color: #ffffff; cursor: default; font-size: 17px; }
+.sat  { background: #082030; color: #40c8ff; }
+.sun  { background: #200810; color: #ff6060; }
+
+.green {
+  background: #1a7a30;
+  color: #ffffff;
+  box-shadow: inset 0 0 10px rgba(57, 255, 20, 0.35);
+}
+
+.blue {
+  background: #1040a0;
+  color: #ffffff;
+  box-shadow: inset 0 0 10px rgba(0, 170, 255, 0.35);
+}
+
+.sumRow td {
+  background: #071020;
+  font-weight: bold;
+  cursor: default;
+  color: #ffe066;
+  border-color: #555;
+  text-shadow: 0 0 6px #ffe066;
+}
+
+.sumRow td.sumValue { font-size: 17px; }
+
+.sheet {
+  margin-bottom: 40px;
+  border: 1px solid #00e5ff33;
+  padding: 12px;
+  border-radius: 4px;
+  box-shadow: 0 0 12px rgba(0, 229, 255, 0.1);
+}
+
+h2 {
+  color: #00e5ff;
+  text-shadow: 0 0 10px #00e5ff;
+  letter-spacing: 2px;
+  font-size: 15px;
+  margin: 0 0 8px 0;
+}
+
+button {
+  background: #071020;
+  color: #00e5ff;
+  border: 1px solid #00e5ff;
+  border-radius: 3px;
+  padding: 4px 12px;
+  font-size: 12px;
+  cursor: pointer;
+  font-family: 'Courier New', monospace;
+  transition: background 0.15s;
+}
+
+button:hover {
+  background: #112244;
+  box-shadow: 0 0 8px rgba(0, 229, 255, 0.4);
+}
+
+#toolbar {
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+#status { font-size: 12px; color: #7fffd4; }
+
+@media print {
+  #toolbar, button { display: none; }
+
+  @page { size: A4 portrait; margin: 15mm; }
+
+  body  { margin: 0; padding: 0; }
+  #container { width: 100%; }
+
+  .sheet {
+    height: 88mm;
+    overflow: hidden;
+    page-break-inside: avoid;
+    margin-bottom: 3mm;
+  }
+
+  .sheet:nth-child(3n) { page-break-after: always; }
+
+  table { width: 100%; }
+  h2    { margin: 2mm 0; font-size: 14px; }
+  td    { width: 35px; height: 18px; font-size: 10px; }
+  .label { width: 50px; }
+}

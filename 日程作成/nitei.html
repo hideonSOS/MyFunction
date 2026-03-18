@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>勤務表</title>
+
+<style>
+
+body{
+font-family:'Courier New',monospace;
+padding:20px;
+background:#0a0e1a;
+color:#00e5ff;
+}
+
+/* 表 */
+
+table{
+border-collapse:collapse;
+margin-bottom:5px;
+}
+
+td{
+border:1px solid #555;
+width:60px;
+height:40px;
+text-align:center;
+font-size:13px;
+cursor:pointer;
+background:#0d1526;
+color:#00e5ff;
+transition:background 0.15s;
+}
+
+td:hover{
+background:#112244;
+}
+
+.label{
+width:80px;
+background:#071020;
+cursor:default;
+color:#7fffd4;
+border-color:#555;
+text-shadow:0 0 6px #7fffd4;
+}
+
+.day{
+background:#081428;
+color:#ffffff;
+cursor:default;
+font-size:17px;
+}
+
+.sat{
+background:#082030;
+color:#40c8ff;
+}
+
+.sun{
+background:#200810;
+color:#ff6060;
+}
+
+.green{
+background:#1a7a30;
+color:#ffffff;
+box-shadow:inset 0 0 10px rgba(57,255,20,0.35);
+}
+
+.blue{
+background:#1040a0;
+color:#ffffff;
+box-shadow:inset 0 0 10px rgba(0,170,255,0.35);
+}
+
+.sumRow td{
+background:#071020;
+font-weight:bold;
+cursor:default;
+color:#ffe066;
+border-color:#555;
+text-shadow:0 0 6px #ffe066;
+}
+
+.sumRow td.sumValue{
+font-size:17px;
+}
+
+/* 勤務表ブロック */
+
+.sheet{
+margin-bottom:40px;
+border:1px solid #00e5ff33;
+padding:12px;
+border-radius:4px;
+box-shadow:0 0 12px rgba(0,229,255,0.1);
+}
+
+h2{
+color:#00e5ff;
+text-shadow:0 0 10px #00e5ff;
+letter-spacing:2px;
+font-size:15px;
+margin:0 0 8px 0;
+}
+
+button{
+background:#071020;
+color:#00e5ff;
+border:1px solid #00e5ff;
+border-radius:3px;
+padding:4px 12px;
+font-size:12px;
+cursor:pointer;
+font-family:'Courier New',monospace;
+transition:background 0.15s;
+}
+
+button:hover{
+background:#112244;
+box-shadow:0 0 8px rgba(0,229,255,0.4);
+}
+
+/* ---------- 印刷レイアウト ---------- */
+
+@media print {
+#toolbar,button{ display:none; }
+
+
+@page{
+size:A4 portrait;
+margin:15mm;
+}
+
+body{
+margin:0;
+padding:0;
+}
+
+#container{
+width:100%;
+}
+
+.sheet{
+height:88mm;
+overflow:hidden;
+page-break-inside:avoid;
+margin-bottom:3mm;
+}
+
+.sheet:nth-child(3n){
+page-break-after:always;
+}
+
+table{
+width:100%;
+}
+
+h2{
+margin:2mm 0;
+font-size:14px;
+}
+
+td{
+width:35px;
+height:18px;
+font-size:10px;
+}
+
+.label{
+width:50px;
+}
+
+}
+
+</style>
+
+</head>
+<body>
+
+<div id="toolbar" style="margin-bottom:16px;">
+<button id="btnSetFile" onclick="selectSaveFile()">📁 保存先を設定</button>
+<span id="fileStatus" style="margin-left:12px;font-size:12px;color:#7fffd4;"></span>
+</div>
+<div id="container"></div>
+
+<script src="titles.js"></script>
+<script>
+
+/* ----- TITLESから日付→色を引くヘルパー ----- */
+
+function getEventColor(date){
+for(let t of TITLES){
+let from=new Date(t.date_from.replace(/\//g,"-"))
+let to=new Date(t.date_to.replace(/\//g,"-"))
+from.setHours(0,0,0,0)
+to.setHours(0,0,0,0)
+let d=new Date(date)
+d.setHours(0,0,0,0)
+if(d>=from && d<=to){
+return t.venue==="箕面" ? "green" : "blue"
+}
+}
+return ""
+}
+
+const startDate = new Date(2026,3,15)
+const scheduleCount = 15
+const container=document.getElementById("container")
+const STORAGE_KEY="kinmuhyo_data"
+
+/* ----- 保存・読み込み ----- */
+
+function loadData(){
+try{
+return JSON.parse(localStorage.getItem(STORAGE_KEY))||{}
+}catch(e){
+return {}
+}
+}
+
+/* ----- File System Access API ----- */
+
+let fileHandle=null
+
+function openDB(){
+return new Promise((resolve,reject)=>{
+let req=indexedDB.open("kinmuhyo_fs",1)
+req.onupgradeneeded=e=>e.target.result.createObjectStore("handles")
+req.onsuccess=e=>resolve(e.target.result)
+req.onerror=()=>reject()
+})
+}
+
+async function getStoredHandle(){
+try{
+let db=await openDB()
+return new Promise(resolve=>{
+let tx=db.transaction("handles","readonly")
+let req=tx.objectStore("handles").get("file")
+req.onsuccess=()=>resolve(req.result||null)
+req.onerror=()=>resolve(null)
+})
+}catch(e){ return null }
+}
+
+async function storeHandle(handle){
+try{
+let db=await openDB()
+return new Promise(resolve=>{
+let tx=db.transaction("handles","readwrite")
+tx.objectStore("handles").put(handle,"file")
+tx.oncomplete=resolve
+})
+}catch(e){}
+}
+
+async function selectSaveFile(){
+try{
+let handle=await window.showSaveFilePicker({
+suggestedName:"kinmuhyo.json",
+startIn:"documents",
+types:[{description:"JSON",accept:{"application/json":[".json"]}}]
+})
+fileHandle=handle
+await storeHandle(handle)
+await writeFile()
+setStatus("📄 "+handle.name)
+}catch(e){}
+}
+
+async function writeFile(){
+if(!fileHandle) return
+try{
+let data=loadData()
+let json=JSON.stringify(data,null,2)
+let writable=await fileHandle.createWritable()
+await writable.write(json)
+await writable.close()
+}catch(e){ console.warn("書き込み失敗:",e) }
+}
+
+async function readFile(handle){
+try{
+let file=await handle.getFile()
+let text=await file.text()
+return JSON.parse(text)
+}catch(e){ return null }
+}
+
+function setStatus(text){
+document.getElementById("fileStatus").textContent=text
+}
+
+/* ----- 起動時の自動読み込み ----- */
+
+async function initFile(){
+if(!window.showSaveFilePicker){
+setStatus("※ このブラウザは非対応（Chrome/Edge推奨）")
+return
+}
+let handle=await getStoredHandle()
+if(!handle){ setStatus("保存先未設定"); return }
+try{
+let perm=await handle.queryPermission({mode:"readwrite"})
+if(perm!=="granted"){
+perm=await handle.requestPermission({mode:"readwrite"})
+}
+if(perm==="granted"){
+let data=await readFile(handle)
+if(data){
+localStorage.setItem(STORAGE_KEY,JSON.stringify(data))
+}
+fileHandle=handle
+setStatus("📄 "+handle.name)
+}else{
+setStatus("⚠ アクセス許可が必要です")
+}
+}catch(e){ setStatus("⚠ ファイルにアクセスできません") }
+}
+
+function saveCell(key,value){
+let data=loadData()
+data[key]=value
+localStorage.setItem(STORAGE_KEY,JSON.stringify(data))
+writeFile()
+}
+
+function clearSheet(sheetIndex,workCells,sumCell,updateSum){
+if(!confirm("勤務表"+(sheetIndex===0?"":"　"+(sheetIndex+1))+"の入力をリセットしますか？")) return
+let data=loadData()
+Object.keys(data).forEach(k=>{
+if(k.startsWith("w_"+sheetIndex+"_")) delete data[k]
+})
+localStorage.setItem(STORAGE_KEY,JSON.stringify(data))
+workCells.forEach(c=>{ c.textContent=""; c.style.color="" })
+updateSum()
+}
+
+function applyWorkColor(cell){
+if(cell.textContent==="公休"||cell.textContent==="公出勤"||cell.textContent==="有給"){
+cell.style.color="#ff9900"
+}else if(cell.textContent==="公開FM"||cell.textContent==="本社"){
+cell.style.color="#ffffff"
+}else{
+cell.style.color=""
+}
+}
+
+/* ----- 日付生成 ----- */
+
+function generateDays(start){
+
+let days=[]
+let d=new Date(start)
+
+for(let i=0;i<28;i++){
+days.push(new Date(d))
+d.setDate(d.getDate()+1)
+}
+
+return days
+
+}
+
+/* ----- テーブル生成 ----- */
+
+function createSection(dateList,workCells,eventCells,updateSum,sheetIndex,sectionIndex){
+
+let savedData=loadData()
+let table=document.createElement("table")
+
+let tr1=document.createElement("tr")
+let tr2=document.createElement("tr")
+let tr3=document.createElement("tr")
+
+let l1=document.createElement("td")
+l1.textContent="日付"
+l1.className="label"
+
+let l2=document.createElement("td")
+l2.textContent="開催"
+l2.className="label"
+
+let l3=document.createElement("td")
+l3.textContent="出勤"
+l3.className="label"
+
+tr1.appendChild(l1)
+tr2.appendChild(l2)
+tr3.appendChild(l3)
+
+dateList.forEach((date,dayIndex)=>{
+
+let m=date.getMonth()+1
+let d=date.getDate()
+
+let tdDay=document.createElement("td")
+tdDay.textContent=m+"/"+d
+let dow=date.getDay()
+if(dow===6) tdDay.className="day sat"
+else if(dow===0) tdDay.className="day sun"
+else tdDay.className="day"
+tr1.appendChild(tdDay)
+
+let tdEvent=document.createElement("td")
+tdEvent.style.cursor="default"
+
+/* TITLESデータから自動着色 */
+let color=getEventColor(date)
+if(color) tdEvent.classList.add(color)
+
+tr2.appendChild(tdEvent)
+eventCells.push(tdEvent)
+
+let workKey="w_"+sheetIndex+"_"+sectionIndex+"_"+dayIndex
+let tdWork=document.createElement("td")
+
+/* 保存済みの出勤状態を復元。未保存かつ開催あり日は公開FMをデフォルト設定 */
+if(savedData[workKey]!==undefined){
+tdWork.textContent=savedData[workKey]
+}else if(color){
+tdWork.textContent="公開FM"
+saveCell(workKey,"公開FM")
+}
+applyWorkColor(tdWork)
+
+tdWork.onclick=function(){
+
+if(tdWork.textContent===""){
+tdWork.textContent="公開FM"
+}
+else if(tdWork.textContent==="公開FM"){
+tdWork.textContent="有給"
+}
+else if(tdWork.textContent==="有給"){
+tdWork.textContent="公休"
+}
+else if(tdWork.textContent==="公休"){
+tdWork.textContent="本社"
+}
+else if(tdWork.textContent==="本社"){
+tdWork.textContent="公出勤"
+}
+else{
+tdWork.textContent=""
+}
+
+saveCell(workKey,tdWork.textContent)
+applyWorkColor(tdWork)
+updateSum()
+
+}
+
+tr3.appendChild(tdWork)
+workCells.push(tdWork)
+
+})
+
+table.appendChild(tr1)
+table.appendChild(tr2)
+table.appendChild(tr3)
+
+return table
+
+}
+
+/* ----- シート生成 ----- */
+
+function buildSheets(){
+
+let currentStart=new Date(startDate)
+
+for(let i=0;i<scheduleCount;i++){
+
+let sheet=document.createElement("div")
+sheet.className="sheet"
+
+let title=document.createElement("h2")
+
+if(i===0){
+title.textContent="勤務表"
+}else{
+title.textContent="勤務表"+(i+1)
+}
+
+sheet.appendChild(title)
+
+let workCells=[]
+let eventCells=[]
+let days=generateDays(currentStart)
+
+/* 合計行 */
+
+let sumTable=document.createElement("table")
+let sumRow=document.createElement("tr")
+sumRow.className="sumRow"
+
+let label=document.createElement("td")
+label.textContent="合計"
+label.className="label"
+
+let sumCell=document.createElement("td")
+sumCell.colSpan=14
+sumCell.textContent="0"
+sumCell.className="sumValue"
+
+sumRow.appendChild(label)
+sumRow.appendChild(sumCell)
+
+sumTable.appendChild(sumRow)
+
+function makeUpdateSum(cells,cell){
+return function(){
+let count=0
+cells.forEach(c=>{
+if(c.textContent==="公休" || c.textContent==="公出勤") count++
+})
+cell.textContent=count
+}
+}
+
+let updateSum=makeUpdateSum(workCells,sumCell)
+
+sheet.appendChild(createSection(days.slice(0,14),workCells,eventCells,updateSum,i,0))
+sheet.appendChild(createSection(days.slice(14,28),workCells,eventCells,updateSum,i,1))
+sheet.appendChild(sumTable)
+
+let resetBtn=document.createElement("button")
+resetBtn.textContent="リセット"
+resetBtn.style.cssText="margin-top:4px;padding:4px 12px;font-size:12px;cursor:pointer;"
+;(function(si,wc,sc,us){ resetBtn.onclick=function(){ clearSheet(si,wc,sc,us) } })(i,workCells,sumCell,updateSum)
+sheet.appendChild(resetBtn)
+
+/* 復元後に合計を再計算 */
+updateSum()
+
+container.appendChild(sheet)
+
+currentStart.setDate(currentStart.getDate()+28)
+
+}
+
+} /* buildSheets end */
+
+initFile().then(()=>buildSheets())
+
+</script>
+
+</body>
+</html>

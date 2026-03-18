@@ -1,0 +1,497 @@
+{% extends "base.html" %}
+
+{% block title %}Ringi{% endblock %}
+
+{% block extra_head %}
+<style>
+/* ── ringi 固有スタイル ── */
+.layout { display: flex; height: 100vh; flex-direction: column; overflow: hidden; }
+
+.r-header {
+  background: var(--bg2);
+  border-bottom: 1px solid var(--cyan-dim);
+  padding: 0 24px;
+  display: flex; align-items: center; gap: 20px;
+  height: 56px; flex-shrink: 0; position: relative; overflow: hidden;
+}
+.r-header::before {
+  content: ''; position: absolute; left: 0; bottom: 0;
+  width: 100%; height: 1px;
+  background: linear-gradient(90deg, transparent, var(--cyan), transparent);
+  animation: scan 4s linear infinite;
+}
+@keyframes scan { 0% { transform: translateX(-100%); } 100% { transform: translateX(100%); } }
+
+.header-logo { font-family: 'Orbitron', monospace; font-size: 1em; font-weight: 900; color: var(--cyan); text-shadow: var(--glow-c); letter-spacing: .12em; }
+.header-logo span { color: var(--green); text-shadow: var(--glow-g); }
+.header-sub { font-size: .7em; color: var(--text-dim); letter-spacing: .08em; }
+.header-status { margin-left: auto; font-size: .7em; color: var(--green); text-shadow: var(--glow-g); }
+
+.body-cols { display: flex; flex: 1; overflow: hidden; }
+
+.col-list {
+  width: 50%; flex-shrink: 0;
+  display: flex; flex-direction: column;
+  border-right: 1px solid var(--border);
+  overflow: hidden;
+}
+.col-detail { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+
+.panel { background: var(--bg2); border-bottom: 1px solid var(--border); position: relative; }
+.panel::before {
+  content: ''; position: absolute; top: 0; left: 0;
+  width: 3px; height: 100%;
+  background: linear-gradient(180deg, var(--cyan), transparent);
+}
+.panel-title {
+  font-family: 'Orbitron', monospace; font-size: .68em;
+  color: var(--cyan); letter-spacing: .15em;
+  padding: 8px 14px 7px 20px;
+  border-bottom: 1px solid var(--border);
+  text-transform: uppercase;
+}
+
+.toolbar { padding: 10px 14px 10px 20px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.toolbar select, .toolbar input[type=text] {
+  background: var(--bg3); color: var(--cyan);
+  border: 1px solid var(--cyan-dim); border-radius: 3px;
+  padding: 5px 9px; font-family: 'Share Tech Mono', monospace;
+  font-size: .82em; outline: none;
+  transition: border-color .2s, box-shadow .2s;
+}
+.toolbar select:focus, .toolbar input[type=text]:focus { border-color: var(--cyan); box-shadow: var(--glow-c); }
+.toolbar input[type=text] { width: 180px; }
+.toolbar input[type=text]::placeholder { color: var(--text-dim); }
+
+.btn {
+  font-family: 'Orbitron', monospace; font-size: .68em; font-weight: 700;
+  letter-spacing: .1em; padding: 6px 14px;
+  border: 1px solid; border-radius: 3px; cursor: pointer;
+  text-transform: uppercase; transition: all .2s; background: transparent;
+}
+.btn-cyan  { color: var(--cyan);  border-color: var(--cyan-dim); }
+.btn-cyan:hover:not(:disabled)  { background: #00f5ff18; box-shadow: var(--glow-c); border-color: var(--cyan); }
+.btn-green { color: var(--green); border-color: #00804480; }
+.btn-green:hover:not(:disabled) { background: #00ff8818; box-shadow: var(--glow-g); border-color: var(--green); }
+.btn:disabled { opacity: .3; cursor: default; }
+
+.btn-kind { font-family: 'Share Tech Mono', monospace; font-size: .72em; padding: 4px 11px; letter-spacing: .04em; text-transform: none; }
+.btn-kind-cyan   { color: var(--cyan);   border-color: #00f5ff44; }
+.btn-kind-green  { color: var(--green);  border-color: #00ff8844; }
+.btn-kind-orange { color: var(--orange); border-color: #ff990044; }
+.btn-kind-cyan.active   { background: #00f5ff22; border-color: var(--cyan);   box-shadow: 0 0 10px #00f5ffaa, 0 0 24px #00f5ff44; }
+.btn-kind-green.active  { background: #00ff8822; border-color: var(--green);  box-shadow: 0 0 10px #00ff88aa, 0 0 24px #00ff8844; }
+.btn-kind-orange.active { background: #ff990022; border-color: var(--orange); box-shadow: 0 0 10px #ff9900aa, 0 0 24px #ff990044; }
+
+.count-badge { margin-left: auto; font-size: .75em; color: var(--text-dim); border: 1px solid var(--border); padding: 3px 10px; border-radius: 10px; }
+.count-badge b { color: var(--cyan); }
+
+.table-scroll { overflow-y: auto; flex: 1; }
+table { width: 100%; border-collapse: collapse; }
+th {
+  font-family: 'Orbitron', monospace; font-size: .63em; letter-spacing: .1em;
+  color: var(--cyan-dim); padding: 7px 10px;
+  text-align: left; border-bottom: 1px solid var(--border);
+  text-transform: uppercase; white-space: nowrap;
+  position: sticky; top: 0; background: var(--bg2); z-index: 1;
+}
+td { padding: 7px 10px; border-bottom: 1px solid #0d1e30; font-size: .8em; vertical-align: middle; color: var(--text); transition: background .15s; cursor: pointer; }
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: #0a1e30; }
+tr.selected td { background: #002a44; }
+tr.selected td:first-child { border-left: 2px solid var(--cyan); padding-left: 8px; }
+
+.tag { font-family: 'Orbitron', monospace; font-size: .72em; letter-spacing: .06em; padding: 2px 7px; border-radius: 2px; white-space: nowrap; font-weight: 700; }
+.tag-契約連絡表  { color: var(--cyan);   border: 1px solid var(--cyan-dim); background: #00f5ff10; }
+.tag-外注費連絡表 { color: var(--green);  border: 1px solid #00804480;       background: #00ff8810; }
+.tag-稟議書      { color: var(--orange); border: 1px solid #804d0080;        background: #ff990010; }
+
+.no-data { text-align: center; padding: 40px; color: var(--text-dim); font-size: .82em; }
+
+.detail-empty { flex: 1; display: flex; align-items: center; justify-content: center; color: var(--text-dim); font-size: .8em; letter-spacing: .12em; }
+.detail-content { flex: 1; overflow-y: auto; padding: 0; }
+
+.field-list { padding: 14px 20px; }
+.field-section-label { font-family: 'Orbitron', monospace; font-size: .6em; letter-spacing: .15em; color: var(--cyan-dim); text-transform: uppercase; padding: 10px 0 6px 0; border-bottom: 1px solid var(--border); margin-bottom: 2px; }
+.field-section-label:first-child { padding-top: 0; }
+.field-row { display: flex; align-items: baseline; padding: 5px 0; border-bottom: 1px solid #0a1422; gap: 12px; }
+.field-row:last-child { border-bottom: none; }
+.fk { font-size: .72em; color: var(--text-dim); letter-spacing: .08em; white-space: nowrap; min-width: 90px; flex-shrink: 0; }
+.fv { font-size: .84em; color: var(--text); word-break: break-all; line-height: 1.5; }
+.fv.cyan   { color: var(--cyan);   text-shadow: 0 0 6px #00f5ff44; }
+.fv.green  { color: var(--green);  text-shadow: 0 0 6px #00ff8844; }
+.fv.yellow { color: var(--yellow); }
+.fv.dim    { color: var(--text-dim); font-size: .76em; }
+.items-block { line-height: 2; }
+.item-line { display: block; }
+.item-line::before { content: '▸ '; color: var(--cyan-dim); }
+
+.edit-form { padding: 14px 20px; }
+.form-section-label { font-family: 'Orbitron', monospace; font-size: .6em; letter-spacing: .15em; color: var(--cyan-dim); text-transform: uppercase; padding: 10px 0 5px 0; border-bottom: 1px solid var(--border); margin-bottom: 6px; }
+.form-section-label:first-child { padding-top: 0; }
+.form-row { display: flex; align-items: flex-start; padding: 4px 0; gap: 10px; }
+.form-row label { font-size: .72em; color: var(--text-dim); letter-spacing: .06em; white-space: nowrap; min-width: 96px; flex-shrink: 0; padding-top: 6px; }
+.form-row input[type=text], .form-row textarea {
+  flex: 1; background: var(--bg3); color: var(--text);
+  border: 1px solid var(--cyan-dim); border-radius: 3px;
+  padding: 5px 8px; font-family: 'Share Tech Mono', monospace;
+  font-size: .82em; outline: none; resize: vertical;
+  transition: border-color .2s, box-shadow .2s;
+}
+.form-row input[type=text]:focus, .form-row textarea:focus { border-color: var(--cyan); box-shadow: var(--glow-c); }
+.form-row textarea { min-height: 60px; line-height: 1.5; }
+.form-row textarea.tall { min-height: 80px; }
+.form-row textarea.tall-6x { min-height: 432px; }
+
+.detail-actions { padding: 12px 20px; border-top: 1px solid var(--border); display: flex; gap: 12px; align-items: center; flex-shrink: 0; }
+#run-status { font-size: .8em; }
+.status-ok  { color: var(--green); text-shadow: var(--glow-g); }
+.status-err { color: var(--pink);  text-shadow: var(--glow-p); }
+.status-run { color: var(--yellow); }
+
+.log-section { padding: 0 20px 14px; display: none; flex-shrink: 0; }
+.log-label { font-size: .62em; color: var(--text-dim); letter-spacing: .12em; text-transform: uppercase; margin-bottom: 5px; }
+.log-box {
+  background: #010508; border: 1px solid var(--border); border-radius: 3px;
+  padding: 10px; font-family: 'Share Tech Mono', monospace; font-size: .75em;
+  color: #4ec94e; white-space: pre-wrap; max-height: 200px; overflow-y: auto; line-height: 1.6;
+}
+.log-box::-webkit-scrollbar { width: 4px; }
+.log-box::-webkit-scrollbar-track { background: var(--bg); }
+.log-box::-webkit-scrollbar-thumb { background: var(--cyan-dim); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="layout">
+
+  <div class="r-header">
+    <div>
+      <div class="header-logo">DESKNET<span>//</span>WORKFLOW</div>
+      <div class="header-sub">DOCUMENT VIEWER &amp; DRAFT OPERATOR</div>
+    </div>
+    <div class="header-status">● ONLINE <span class="blink">_</span></div>
+  </div>
+
+  <div class="body-cols">
+
+    <!-- LEFT: DOCUMENT LIST -->
+    <div class="col-list">
+
+      <div class="panel">
+        <div class="panel-title">▸ Filter</div>
+        <div class="toolbar">
+          <button class="btn btn-kind btn-kind-cyan   {% if kind_filter == '契約連絡表' %}active{% endif %}" id="kbtn-keiyaku"  onclick="setKindFilter('契約連絡表')">契約連絡表</button>
+          <button class="btn btn-kind btn-kind-green  {% if kind_filter == '外注費連絡表' %}active{% endif %}" id="kbtn-gaichuu" onclick="setKindFilter('外注費連絡表')">外注費連絡表</button>
+          <button class="btn btn-kind btn-kind-orange {% if kind_filter == '稟議書' %}active{% endif %}" id="kbtn-ringi"   onclick="setKindFilter('稟議書')">稟議書</button>
+          <input type="text" id="query-input" placeholder="SEARCH..." value="{{ query }}" oninput="applyFilter()">
+          <button class="btn btn-cyan" onclick="fetchDocs('update')" id="fetch-btn">⟳ SYNC</button>
+          <span class="count-badge"><b id="count-num">{{ docs|length }}</b> / {{ total }}</span>
+        </div>
+        <div class="toolbar" style="padding-top:0; gap:6px; flex-wrap:wrap;">
+          <span style="font-size:.65em; color:var(--text-dim); letter-spacing:.1em;">QUICK:</span>
+          <button class="btn btn-cyan" style="font-family:'Share Tech Mono',monospace; font-size:.72em; padding:3px 10px;" onclick="quickFilter('')">ALL</button>
+          <button class="btn btn-cyan" style="font-family:'Share Tech Mono',monospace; font-size:.72em; padding:3px 10px;" onclick="quickFilter('栗原')">栗原</button>
+          <button class="btn btn-cyan" style="font-family:'Share Tech Mono',monospace; font-size:.72em; padding:3px 10px;" onclick="quickFilter('芳松')">芳松</button>
+          <button class="btn btn-cyan" style="font-family:'Share Tech Mono',monospace; font-size:.72em; padding:3px 10px;" onclick="quickFilter('関西広告')">関西広告</button>
+          <button class="btn btn-cyan" style="font-family:'Share Tech Mono',monospace; font-size:.72em; padding:3px 10px;" onclick="quickFilter('山田達也')">山田達也</button>
+          <button class="btn btn-cyan" style="font-family:'Share Tech Mono',monospace; font-size:.72em; padding:3px 10px;" onclick="quickFilter('アクアライブ')">アクアライブ</button>
+          <button class="btn btn-cyan" style="font-family:'Share Tech Mono',monospace; font-size:.72em; padding:3px 10px;" onclick="quickFilter('都市')">都市</button>
+          <button class="btn btn-cyan" style="font-family:'Share Tech Mono',monospace; font-size:.72em; padding:3px 10px;" onclick="quickFilter('箕面')">箕面</button>
+        </div>
+      </div>
+
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th style="width:100px;">TYPE</th>
+              <th>タイトル / 内容</th>
+            </tr>
+          </thead>
+          <tbody id="doc-tbody">
+            {% for d in docs %}
+            <tr onclick="selectDoc(this)"
+                data-title="{{ d.title|escapejs }}"
+                data-kind="{{ d.kind }}"
+                data-docid="{{ d.doc_id }}"
+                data-date="{{ d.date }}"
+                data-fields="{{ d.fields_json|escape }}">
+              <td><span class="tag tag-{{ d.kind }}">{{ d.kind }}</span></td>
+              <td class="col-ttl" style="max-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"></td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="2" class="no-data">// NO RECORDS //</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- RIGHT: DETAIL -->
+    <div class="col-detail">
+
+      <div class="panel">
+        <div class="panel-title">▸ Document Detail</div>
+      </div>
+
+      <div id="detail-empty" class="detail-empty">// SELECT A DOCUMENT //</div>
+
+      <div id="detail-content" class="detail-content" style="display:none;">
+        <div class="field-list" id="field-list"></div>
+        <div class="edit-form" id="edit-form"></div>
+      </div>
+
+      <div id="detail-actions" class="detail-actions" style="display:none;">
+        <button class="btn btn-green" id="exec-btn" onclick="runCopy()">▶ COPY + SAVE DRAFT</button>
+        <span id="run-status"></span>
+      </div>
+
+      <div class="log-section" id="log-section">
+        <div class="log-label">// OPERATION LOG</div>
+        <div class="log-box" id="log-box"></div>
+      </div>
+
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+var selectedDocId = '';
+var selectedTitle = '';
+var kaisaiData = {};
+
+fetch('/kaisai_data/')
+  .then(r => r.json())
+  .then(d => { kaisaiData = d; renderTableCells(); })
+  .catch(() => { renderTableCells(); });
+
+function parseTitle(title, kind) {
+  var t = title.replace(/\u00a0/g, ' ').trim();
+  if (kind === '契約連絡表') {
+    var m = t.match(/契約連絡表（経営・企画）(\d+)\s+(\S+)\s+(\S+[~～]\S+)\s+(.*)/);
+    if (m) return { type: 'keiyaku', id: m[1], shusai: m[2], kikan: m[3].replace('~','～'), rest: m[4] };
+  } else if (kind === '外注費連絡表') {
+    var rest = t.replace('外注費連絡表（メディア）', '').trim();
+    var dot = rest.indexOf('・');
+    if (dot > 0) return { type: 'gaichuu', tanto: rest.substring(0, dot), content: rest.substring(dot + 1) };
+    return { type: 'gaichuu', tanto: '', content: rest };
+  }
+  return { type: 'other', raw: t };
+}
+
+function renderTableCells() {
+  document.querySelectorAll('#doc-tbody tr[data-title]').forEach(function(tr) {
+    var p = parseTitle(tr.dataset.title, tr.dataset.kind);
+    var cell = tr.querySelector('.col-ttl');
+    if (p.type === 'keiyaku')      cell.textContent = p.rest;
+    else if (p.type === 'gaichuu') cell.textContent = p.content;
+    else                           cell.textContent = p.raw || tr.dataset.title;
+  });
+}
+
+function fmt(n) { return (n == null || n === '') ? '—' : '¥' + Number(n).toLocaleString('ja-JP'); }
+function row(key, val, cls) {
+  return '<div class="field-row"><span class="fk">' + key + '</span><span class="fv ' + (cls||'') + '">' + val + '</span></div>';
+}
+function section(label) { return '<div class="field-section-label">' + label + '</div>'; }
+
+var KEIYAKU_FORM = [
+  { sec: '件名',   fields: [{ key: '__title__',  label: '件名',             type: 'text',     wide: true }]},
+  { sec: '契約先', fields: [{ key: '契約先名',    label: '契約先名',          type: 'text' }, { key: '契約担当', label: '契約担当', type: 'text' }]},
+  { sec: '業務',   fields: [{ key: '業務対象',    label: '業務対象',          type: 'textarea', tall: true }, { key: '業務日', label: '業務日', type: 'text' }, { key: '業務内容', label: '業務内容', type: 'textarea' }]},
+  { sec: '金額',   fields: [{ key: '合計_税抜き', label: '税抜き合計（円）',   type: 'text' }, { key: '合計_消費税', label: '消費税（円）', type: 'text' }, { key: '合計_税込み', label: '税込み合計（円）', type: 'text' }]},
+];
+var GAICHUU_FORM = [
+  { sec: '件名',   fields: [{ key: '__title__',  label: '件名',             type: 'text',     wide: true }]},
+  { sec: '外注先', fields: [{ key: '外注先名', label: '外注先名', type: 'text' }, { key: '契約担当', label: '契約担当', type: 'text' }, { key: '業務担当', label: '業務担当', type: 'text' }]},
+  { sec: '業務',   fields: [{ key: '業務対象', label: '業務対象', type: 'textarea', tall: true }, { key: '業務日', label: '業務日', type: 'text' }, { key: '業務内容', label: '業務内容', type: 'text' }, { key: '担当時間', label: '担当時間', type: 'textarea' }]},
+  { sec: '金額',   fields: [{ key: '合計_税抜き', label: '税抜き合計（円）', type: 'text' }, { key: '合計_消費税', label: '消費税（円）', type: 'text' }, { key: '合計_税込み', label: '税込み合計（円）', type: 'text' }]},
+  { sec: '口座情報', fields: [{ key: '支払方法', label: '支払方法', type: 'text' }, { key: '銀行名：', label: '銀行名', type: 'text' }, { key: '支店名：', label: '支店名', type: 'text' }, { key: '口座番号：', label: '口座番号', type: 'text' }, { key: '口座名義：', label: '口座名義', type: 'text' }]},
+];
+
+var selectedKind = '';
+function fieldHtml(key, label, type, val, opts) {
+  opts = opts || {};
+  var safe = String(val == null ? '' : val).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  var id = 'ef-' + key.replace(/[^\w]/g, '_');
+  var h = '<div class="form-row"><label for="' + id + '">' + label.replace(/</g,'&lt;') + '</label>';
+  if (type === 'textarea') {
+    h += '<textarea id="' + id + '" data-field="' + key.replace(/"/g,'&quot;') + '"' + (opts.tall ? ' class="tall"' : '') + '>' + safe + '</textarea>';
+  } else {
+    h += '<input type="text" id="' + id + '" data-field="' + key.replace(/"/g,'&quot;') + '" value="' + safe + '"' + (opts.wide ? ' style="max-width:100%"' : '') + '>';
+  }
+  return h + '</div>';
+}
+
+function buildEditForm(kind, prefill) {
+  var schema = kind === '契約連絡表' ? KEIYAKU_FORM : kind === '外注費連絡表' ? GAICHUU_FORM : null;
+  var html = ''; var coveredKeys = new Set();
+  if (schema) {
+    schema.forEach(function(sec) {
+      html += '<div class="form-section-label">' + sec.sec + '</div>';
+      sec.fields.forEach(function(f) { html += fieldHtml(f.key, f.label, f.type, prefill[f.key], { tall: f.tall, wide: f.wide }); coveredKeys.add(f.key); });
+    });
+  }
+  var excludeKeys = (kind === '契約連絡表') ? new Set(['無題1','無題2','無題3','無題4','無題8','税別','総額','所在地','社名：','NT1','請求内容／項目・単価・人員等']) :
+                   (kind === '外注費連絡表') ? new Set(['NT2','NT3','税別','総額','無題1','無題2','無題3','無題4','無題5','無題6','担当区域','ＴＥＬ','所在地','支払内訳／項目・単価・人員等']) :
+                   (kind === '稟議書')    ? new Set(['起案日','所属','起案者','無題1','無題2','無題4']) : new Set();
+  var extraKeys = (kind === '契約連絡表') ? [] : Object.keys(prefill).filter(k => !coveredKeys.has(k) && !excludeKeys.has(k));
+  if (extraKeys.length > 0) {
+    html += '<div class="form-section-label">その他</div>';
+    extraKeys.forEach(function(k) {
+      var val = prefill[k]; var isMultiLine = typeof val === 'string' && val.indexOf('\n') >= 0;
+      var isTall6x = (kind === '稟議書' && k === '内容');
+      var h = fieldHtml(k, k, isMultiLine || isTall6x ? 'textarea' : 'text', val);
+      if (isTall6x) h = h.replace('<textarea ', '<textarea class="tall-6x" ');
+      html += h;
+    });
+  }
+  return html;
+}
+
+function selectDoc(tr) {
+  document.querySelectorAll('#doc-tbody tr').forEach(r => r.classList.remove('selected'));
+  tr.classList.add('selected');
+  selectedTitle = tr.dataset.title; selectedDocId = tr.dataset.docid; selectedKind = tr.dataset.kind;
+  var p = parseTitle(selectedTitle, selectedKind);
+  var infoHtml = section('基本情報');
+  infoHtml += row('種別', '<span class="tag tag-' + selectedKind + '">' + selectedKind + '</span>');
+  infoHtml += row('件名', selectedTitle.replace(/\u00a0/g, ' '), 'cyan');
+  var fields = {};
+  try { fields = JSON.parse(tr.dataset.fields || '{}'); } catch(e) {}
+  if (!fields['__title__']) fields['__title__'] = selectedTitle.replace(/\u00a0/g, ' ');
+  if (selectedKind === '契約連絡表' || selectedKind === '外注費連絡表') {
+    var zeibetsu = fields['税別'] || ''; var sogaku = fields['総額'] || '';
+    if (zeibetsu.indexOf('\n') >= 0 && !sogaku) { sogaku = zeibetsu; zeibetsu = ''; }
+    fields['合計_税抜き'] = zeibetsu;
+    var lines7 = sogaku.split('\n');
+    fields['合計_消費税'] = (lines7[0] || '').trim(); fields['合計_税込み'] = (lines7[1] || '').trim();
+  }
+  var formHtml = '<div class="form-section-label" style="margin-top:14px; color:var(--green);">▸ EDIT BEFORE SAVE</div>';
+  formHtml += buildEditForm(selectedKind, fields);
+  document.getElementById('field-list').innerHTML = infoHtml;
+  document.getElementById('edit-form').innerHTML  = formHtml;
+  document.getElementById('detail-empty').style.display   = 'none';
+  document.getElementById('detail-content').style.display = 'block';
+  document.getElementById('detail-actions').style.display = 'flex';
+  document.getElementById('log-section').style.display    = 'none';
+  document.getElementById('log-box').textContent = '';
+  document.getElementById('run-status').innerHTML = '';
+  document.getElementById('exec-btn').disabled = false;
+}
+
+function runCopy() {
+  if (!selectedTitle) { alert('書類を選択してください'); return; }
+  var fields = {};
+  document.querySelectorAll('#edit-form [data-field]').forEach(function(el) {
+    var v = el.value.trim(); if (v) fields[el.dataset.field] = v;
+  });
+  if (selectedKind === '契約連絡表' || selectedKind === '外注費連絡表') {
+    var zeibetsu = (fields['合計_税抜き'] || '').trim();
+    var shouhizei = (fields['合計_消費税'] || '').trim(); var zeikomi = (fields['合計_税込み'] || '').trim();
+    if (zeibetsu) fields['税別'] = zeibetsu;
+    if (shouhizei || zeikomi) fields['総額'] = [shouhizei, zeikomi].filter(Boolean).join('\n');
+    delete fields['合計_税抜き']; delete fields['合計_消費税']; delete fields['合計_税込み'];
+  }
+  if (!confirm('下書き保存します。\n件名: ' + (fields['__title__'] || fields['件名'] || selectedTitle).substring(0, 60))) return;
+  document.getElementById('exec-btn').disabled = true;
+  document.getElementById('run-status').innerHTML = '<span class="status-run">⏳ EXECUTING...</span>';
+  document.getElementById('log-section').style.display = 'block';
+  document.getElementById('log-box').textContent = '';
+  var body = 'csrfmiddlewaretoken={{ csrf_token }}'
+    + '&doc_id='  + encodeURIComponent(selectedDocId)
+    + '&title='   + encodeURIComponent(selectedTitle)
+    + '&kind='    + encodeURIComponent(selectedKind)
+    + '&fields='  + encodeURIComponent(JSON.stringify(fields));
+  fetch('/run/', { method: 'POST', headers: {'Content-Type': 'application/x-www-form-urlencoded'}, body: body })
+  .then(r => r.json()).then(data => {
+    if (data.error) {
+      document.getElementById('run-status').innerHTML = '<span class="status-err">✖ ' + data.error + '</span>';
+      document.getElementById('exec-btn').disabled = false; return;
+    }
+    pollLog(data.job_id);
+  }).catch(() => {
+    document.getElementById('run-status').innerHTML = '<span class="status-err">✖ COMM ERROR</span>';
+    document.getElementById('exec-btn').disabled = false;
+  });
+}
+
+function quickFilter(kw) { document.getElementById('query-input').value = kw; applyFilter(); }
+
+function fetchDocs(mode) {
+  var btn = document.getElementById('fetch-btn');
+  btn.disabled = true; btn.textContent = '⟳...';
+  fetch('/fetch/', { method: 'POST', headers: {'Content-Type': 'application/x-www-form-urlencoded'}, body: 'csrfmiddlewaretoken={{ csrf_token }}&mode=' + mode })
+  .then(r => r.json()).then(data => {
+    document.getElementById('detail-empty').style.display   = 'none';
+    document.getElementById('detail-content').style.display = 'none';
+    document.getElementById('detail-actions').style.display = 'none';
+    document.getElementById('log-section').style.display    = 'block';
+    document.getElementById('log-box').textContent = '';
+    document.getElementById('run-status').innerHTML = '<span class="status-run">⏳ SYNCING DESKNET...</span>';
+    document.getElementById('field-list').innerHTML = '';
+    pollLogRaw(data.job_id, function(rc) {
+      btn.disabled = false; btn.textContent = '⟳ SYNC';
+      if (rc === 0) {
+        document.getElementById('run-status').innerHTML = '<span class="status-ok">✔ SYNC COMPLETE — RELOADING...</span>';
+        setTimeout(() => location.reload(), 1200);
+      } else {
+        document.getElementById('run-status').innerHTML = '<span class="status-err">✖ SYNC FAILED</span>';
+        document.getElementById('detail-empty').style.display = 'flex';
+      }
+    });
+  }).catch(() => { btn.disabled = false; btn.textContent = '⟳ SYNC'; });
+}
+
+function pollLog(jobId) {
+  var box = document.getElementById('log-box');
+  var timer = setInterval(function() {
+    fetch('/log/?job_id=' + jobId).then(r => r.json()).then(data => {
+      if (data.log) { box.textContent = data.log; box.scrollTop = box.scrollHeight; }
+      if (data.done) {
+        clearInterval(timer);
+        var el = document.getElementById('run-status');
+        el.innerHTML = data.rc === 0 ? '<span class="status-ok">✔ DRAFT SAVED</span>' : '<span class="status-err">✖ ERROR (rc=' + data.rc + ')</span>';
+        document.getElementById('exec-btn').disabled = false;
+      }
+    }).catch(() => {});
+  }, 2000);
+}
+
+function pollLogRaw(jobId, onDone) {
+  var box = document.getElementById('log-box');
+  var timer = setInterval(function() {
+    fetch('/log/?job_id=' + jobId).then(r => r.json()).then(data => {
+      if (data.log) { box.textContent = data.log; box.scrollTop = box.scrollHeight; }
+      if (data.done) { clearInterval(timer); if (onDone) onDone(data.rc); }
+    }).catch(() => {});
+  }, 2000);
+}
+
+var currentKind = '{{ kind_filter }}';
+function setKindFilter(kind) {
+  currentKind = (currentKind === kind) ? '' : kind;
+  document.getElementById('kbtn-keiyaku').classList.toggle('active', currentKind === '契約連絡表');
+  document.getElementById('kbtn-gaichuu').classList.toggle('active', currentKind === '外注費連絡表');
+  document.getElementById('kbtn-ringi').classList.toggle('active',   currentKind === '稟議書');
+  applyFilter();
+}
+
+function applyFilter() {
+  var query = document.getElementById('query-input').value; var count = 0;
+  document.querySelectorAll('#doc-tbody tr[data-title]').forEach(function(tr) {
+    var show = (!currentKind || tr.dataset.kind === currentKind) && (!query || tr.dataset.title.includes(query));
+    tr.style.display = show ? '' : 'none';
+    if (show) count++;
+  });
+  document.getElementById('count-num').textContent = count;
+}
+
+window.addEventListener('load', function() {
+  var b = document.getElementById('fetch-btn'); if (b) b.disabled = false;
+});
+</script>
+{% endblock %}

@@ -1,0 +1,60 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}MyFunction{% endblock %} // MYFUNC SYS</title>
+  <link rel="stylesheet" href="{% static 'css/base.css' %}">
+  {% block extra_head %}{% endblock %}
+</head>
+<body>
+
+<!-- ═══ SIDEBAR ═══════════════════════════════ -->
+<nav id="sidebar">
+
+  <div class="sb-logo">
+    <div class="sb-logo-main">MY<span>//</span>FUNC</div>
+    <div class="sb-logo-sub">INTEGRATED WORKFLOW SYS</div>
+  </div>
+
+  <div class="sb-nav">
+
+    <div class="sb-section-label">Navigation</div>
+
+    <a class="sb-item" href="/" data-path="/" id="nav-ringi">
+      <span class="sb-icon">⊡</span>
+      <div class="sb-label-wrap">
+        <span class="sb-label-main">Ringi</span>
+        <span class="sb-label-sub">Desknet Workflow</span>
+      </div>
+    </a>
+
+    <a class="sb-item" href="/nitei/" data-path="/nitei/" id="nav-nitei">
+      <span class="sb-icon">⊞</span>
+      <div class="sb-label-wrap">
+        <span class="sb-label-main">Nitei</span>
+        <span class="sb-label-sub">Schedule Manager</span>
+      </div>
+    </a>
+
+    {% block sidebar_extra %}{% endblock %}
+
+  </div>
+
+  <div class="sb-footer">
+    <div class="sb-status">● ONLINE <span class="blink">_</span></div>
+    <div class="sb-clock" id="sb-clock"></div>
+  </div>
+
+</nav>
+
+<!-- ═══ PAGE WRAPPER ══════════════════════════ -->
+<div id="page-wrapper">
+  {% block content %}{% endblock %}
+</div>
+
+<script src="{% static 'js/base.js' %}"></script>
+{% block extra_js %}{% endblock %}
+</body>
+</html>
