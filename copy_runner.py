@@ -156,9 +156,13 @@ def main():
 
     log(f"[START] doc_id={doc_id}  title={title[:60]}")
 
+    os.environ.setdefault('SE_CACHE_PATH', '/tmp/selenium_cache')
+
     options = Options()
     options.add_argument('--headless')
     options.add_argument('--disable-gpu')
+    options.add_argument('--no-sandbox')
+    options.add_argument('--disable-dev-shm-usage')
     options.add_argument('--window-size=1920,1080')
     driver = webdriver.Chrome(options=options)
 
