@@ -171,9 +171,8 @@ def log_view(request):
             log_path = LOG_DIR / f'job_{job_id}.log'
             if log_path.exists():
                 content = log_path.read_text(encoding='utf-8')
-                # ファイルがあれば完了扱い（プロセスは消えているが内容は残る）
-                done = True
-                rc   = 0 if '[DONE]' in content else 1
+                done = '[DONE]' in content or '[ERROR]' in content
+                rc   = 0 if '[DONE]' in content else (1 if '[ERROR]' in content else None)
             else:
                 content = '（サーバーが再起動したためジョブ情報が失われました。再度実行してください。）'
                 done = True
