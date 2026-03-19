@@ -1,6 +1,7 @@
 import json
 import os
 import subprocess
+import sys
 import uuid
 from pathlib import Path
 from django.shortcuts import render
@@ -13,7 +14,7 @@ DOCS_CACHE   = BASE_DIR / 'docs_cache.json'
 LOG_DIR      = BASE_DIR / 'logs'
 FETCHER      = BASE_DIR / 'docs_fetcher.py'
 RUNNER       = BASE_DIR / 'copy_runner.py'
-PYTHON       = BASE_DIR / 'venv' / 'bin' / 'python'
+PYTHON       = sys.executable
 
 LOG_DIR.mkdir(exist_ok=True)
 
