@@ -157,7 +157,6 @@ def main():
     log(f"[START] doc_id={doc_id}  title={title[:60]}")
 
     options = Options()
-    options.add_argument('--headless')
     options.add_argument('--disable-gpu')
     options.add_argument('--window-size=1920,1080')
     driver = webdriver.Chrome(options=options)
