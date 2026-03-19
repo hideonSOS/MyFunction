@@ -165,6 +165,7 @@ def main():
     options.add_argument('--no-sandbox')
     options.add_argument('--disable-dev-shm-usage')
     options.add_argument('--window-size=1920,1080')
+    options.add_argument('--user-data-dir=/tmp/chrome-profile')
     if os.path.exists('/usr/bin/google-chrome'):
         options.binary_location = '/usr/bin/google-chrome'
     elif os.path.exists('/usr/bin/chromium-browser'):
