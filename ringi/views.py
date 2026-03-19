@@ -193,10 +193,12 @@ def log_view(request):
         log_done  = '[DONE]' in content or '[ERROR]' in content
         done      = proc_done or log_done
 
-        if proc_done:
+        if '[DONE]' in content:
+            rc = 0
+        elif '[ERROR]' in content:
+            rc = 1
+        elif proc_done:
             rc = info['proc'].returncode
-        elif log_done:
-            rc = 0 if '[DONE]' in content else 1
         else:
             rc = None
 

@@ -52,6 +52,11 @@ KEIYAKU_MAP = {
     '総額':     f'{TA}[3]',    # TA[3]  (TA[2]=業務時間人員欄=未使用)
 }
 
+# 稟議書: フィールドキー → XPath
+RINGI_MAP = {
+    '内容': f'{TA}[1]',
+}
+
 # 外注費連絡表: フィールドキー → XPath
 GAICHUU_MAP = {
     '外注先名':  f'{INP}[1]',   # INP[9]  in VIEW
@@ -118,7 +123,8 @@ def fill_fields(driver, kind, data):
     time.sleep(2)
 
     field_map = KEIYAKU_MAP if kind == '契約連絡表' else \
-                GAICHUU_MAP if kind == '外注費連絡表' else {}
+                GAICHUU_MAP if kind == '外注費連絡表' else \
+                RINGI_MAP   if kind == '稟議書'      else {}
 
     filled = []
     for key, xpath in field_map.items():
@@ -195,7 +201,7 @@ def main():
         time.sleep(5)
         log("[3] 複写完了")
 
-        if field_data and kind in ('契約連絡表', '外注費連絡表'):
+        if field_data and kind in ('契約連絡表', '外注費連絡表', '稟議書'):
             log("[4] フィールド入力中...")
             fill_fields(driver, kind, field_data)
             log("[4] 入力完了")
