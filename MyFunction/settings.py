@@ -25,9 +25,13 @@ SECRET_KEY = 'django-insecure-q)gcu0^yk^+avu_8sj2)cl9dl=uxxd^)%h^rm7&dg9!0*9_!2(
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['133.88.121.139', 'localhost', '127.0.0.1']
+import os
 
-CSRF_TRUSTED_ORIGINS = ['https://133.88.121.139']
+_hosts = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1')
+ALLOWED_HOSTS = [h.strip() for h in _hosts.split(',')]
+
+_origins = os.environ.get('CSRF_TRUSTED_ORIGINS', '')
+CSRF_TRUSTED_ORIGINS = [o.strip() for o in _origins.split(',') if o.strip()]
 
 
 # Application definition
