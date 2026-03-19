@@ -1,3 +1,12 @@
+/* ── ハンバーガーメニュー ────────── */
+(function () {
+  const btn = document.getElementById('hamburger');
+  if (!btn) return;
+  btn.addEventListener('click', function () {
+    document.body.classList.toggle('sidebar-closed');
+  });
+})();
+
 /* ── サイドバー アクティブ状態 ─── */
 (function () {
   const path = window.location.pathname;
