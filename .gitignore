@@ -1,0 +1,24 @@
+# Python
+venv/
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Django
+db.sqlite3
+*.log
+logs/
+
+# キャッシュ・一時ファイル
+docs_cache.json
+*.pkl
+*.parquet
+*.json.tmp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
