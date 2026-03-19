@@ -6,6 +6,7 @@ from pathlib import Path
 from django.shortcuts import render
 from django.http import JsonResponse
 from django.views.decorators.http import require_POST
+from django.contrib.auth.decorators import login_required
 
 BASE_DIR     = Path(__file__).resolve().parent.parent
 DOCS_CACHE   = BASE_DIR / 'docs_cache.json'
@@ -26,6 +27,7 @@ def _load_docs():
         return json.load(f)
 
 
+@login_required
 def index(request):
     docs = _load_docs()
 
@@ -53,6 +55,7 @@ def index(request):
     return render(request, 'ringi/index.html', ctx)
 
 
+@login_required
 @require_POST
 def fetch_docs(request):
     mode     = request.POST.get('mode', 'update')   # 'update' or 'full'
@@ -76,6 +79,7 @@ def fetch_docs(request):
     return JsonResponse({'job_id': job_id, 'mode': mode})
 
 
+@login_required
 @require_POST
 def run_copy(request):
     doc_id     = request.POST.get('doc_id', '').strip()
@@ -115,6 +119,7 @@ def run_copy(request):
     return JsonResponse({'job_id': job_id})
 
 
+@login_required
 def kaisai_data_view(request):
     """kaisai_data.json を 開催ID キーの dict で返す"""
     data_file = BASE_DIR / 'kaisai_data.json'
@@ -154,6 +159,7 @@ def kaisai_data_view(request):
     return JsonResponse(grouped)
 
 
+@login_required
 def log_view(request):
     """常に JSON を返す。サーバー再起動でジョブが消えた場合もエラーにしない。"""
     try:

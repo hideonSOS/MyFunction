@@ -1,0 +1,113 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>LOGIN // MYFUNC SYS</title>
+  <link rel="stylesheet" href="{% static 'css/base.css' %}">
+  <style>
+    body {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      background: var(--bg, #0a0e17);
+    }
+    .login-box {
+      width: 360px;
+      border: 1px solid var(--accent, #00c8ff);
+      padding: 40px 36px;
+      background: var(--panel-bg, #0d1320);
+      box-shadow: 0 0 24px rgba(0,200,255,.18);
+    }
+    .login-logo {
+      text-align: center;
+      font-family: monospace;
+      font-size: 1.6rem;
+      font-weight: 700;
+      letter-spacing: .15em;
+      color: var(--accent, #00c8ff);
+      margin-bottom: 6px;
+    }
+    .login-logo span { color: #fff; }
+    .login-sub {
+      text-align: center;
+      font-size: .72rem;
+      color: #6a8499;
+      letter-spacing: .12em;
+      margin-bottom: 32px;
+    }
+    .login-box label {
+      display: block;
+      font-size: .75rem;
+      color: #6a8499;
+      letter-spacing: .1em;
+      margin-bottom: 4px;
+    }
+    .login-box input[type=text],
+    .login-box input[type=password] {
+      width: 100%;
+      box-sizing: border-box;
+      background: #060a10;
+      border: 1px solid #1e3a50;
+      color: #cce8ff;
+      padding: 9px 12px;
+      font-family: monospace;
+      font-size: .9rem;
+      margin-bottom: 18px;
+      outline: none;
+      transition: border-color .2s;
+    }
+    .login-box input[type=text]:focus,
+    .login-box input[type=password]:focus {
+      border-color: var(--accent, #00c8ff);
+    }
+    .login-box button {
+      width: 100%;
+      padding: 10px;
+      background: transparent;
+      border: 1px solid var(--accent, #00c8ff);
+      color: var(--accent, #00c8ff);
+      font-family: monospace;
+      font-size: .95rem;
+      letter-spacing: .12em;
+      cursor: pointer;
+      transition: background .2s, color .2s;
+    }
+    .login-box button:hover {
+      background: var(--accent, #00c8ff);
+      color: #000;
+    }
+    .error-msg {
+      background: rgba(255,60,60,.1);
+      border: 1px solid #ff3c3c;
+      color: #ff8080;
+      padding: 8px 12px;
+      font-size: .8rem;
+      margin-bottom: 16px;
+      font-family: monospace;
+    }
+  </style>
+</head>
+<body>
+  <div class="login-box">
+    <div class="login-logo">MY<span>//</span>FUNC</div>
+    <div class="login-sub">INTEGRATED WORKFLOW SYS</div>
+
+    {% if form.errors %}
+    <div class="error-msg">⚠ ユーザー名またはパスワードが正しくありません</div>
+    {% endif %}
+
+    <form method="post">
+      {% csrf_token %}
+      <input type="hidden" name="next" value="{{ next }}">
+      <label>USERNAME</label>
+      <input type="text" name="username" autofocus autocomplete="username">
+      <label>PASSWORD</label>
+      <input type="password" name="password" autocomplete="current-password">
+      <button type="submit">[ LOGIN ]</button>
+    </form>
+  </div>
+</body>
+</html>

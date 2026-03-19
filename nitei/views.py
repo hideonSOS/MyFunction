@@ -3,15 +3,18 @@ from django.shortcuts import render
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 from django.views.decorators.csrf import csrf_exempt
+from django.contrib.auth.decorators import login_required
 from .models import Title, WorkEntry
 
 
+@login_required
 def index(request):
     return render(request, 'nitei/index.html')
 
 
 # ── 開催タイトル API ──────────────────────────────
 
+@login_required
 def api_titles(request):
     titles = list(Title.objects.values('id', 'date_from', 'date_to', 'venue', 'title'))
     for t in titles:
@@ -22,6 +25,7 @@ def api_titles(request):
 
 # ── 勤務記録 API ──────────────────────────────────
 
+@login_required
 def api_schedule(request):
     entries = WorkEntry.objects.all()
     data = {f"w_{e.sheet_index}_{e.section_index}_{e.day_index}": e.status
@@ -29,6 +33,7 @@ def api_schedule(request):
     return JsonResponse(data)
 
 
+@login_required
 @csrf_exempt
 @require_http_methods(['POST'])
 def api_schedule_save(request):
@@ -56,6 +61,7 @@ def api_schedule_save(request):
     return JsonResponse({'ok': True})
 
 
+@login_required
 @csrf_exempt
 @require_http_methods(['POST'])
 def api_schedule_clear(request):
