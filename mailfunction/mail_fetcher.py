@@ -119,7 +119,7 @@ def get_header(headers, name):
 def fetch_detail(service, msg_id):
     msg = service.users().messages().get(
         userId='me', id=msg_id, format='metadata',
-        metadataHeaders=['Subject', 'From', 'Date']
+        metadataHeaders=['Subject', 'From', 'To', 'Date']
     ).execute()
     headers = msg.get('payload', {}).get('headers', [])
     return {
@@ -127,6 +127,7 @@ def fetch_detail(service, msg_id):
         'thread_id': msg.get('threadId', ''),
         'subject':   get_header(headers, 'Subject') or '（件名なし）',
         'from':      get_header(headers, 'From'),
+        'to':        get_header(headers, 'To'),
         'date':      get_header(headers, 'Date'),
         'snippet':   msg.get('snippet', ''),
         'labels':    msg.get('labelIds', []),

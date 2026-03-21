@@ -159,7 +159,7 @@ tr.selected td:first-child { border-left: 2px solid var(--cyan); padding-left: 8
   background: #010508; border: 1px solid var(--border); border-radius: 3px;
   padding: 12px 14px; font-family: 'Share Tech Mono', monospace; font-size: .78em;
   color: var(--text); line-height: 1.7; word-break: break-all;
-  white-space: pre-wrap; max-height: 260px; overflow-y: auto;
+  white-space: pre-wrap; max-height: 325px; overflow-y: auto;
 }
 .body-box::-webkit-scrollbar { width: 4px; }
 .body-box::-webkit-scrollbar-track { background: var(--bg); }
@@ -205,6 +205,50 @@ tr.selected td:first-child { border-left: 2px solid var(--cyan); padding-left: 8
 .log-box::-webkit-scrollbar { width: 4px; }
 .log-box::-webkit-scrollbar-track { background: var(--bg); }
 .log-box::-webkit-scrollbar-thumb { background: var(--cyan-dim); }
+
+/* ── コンポーズパネル ── */
+.compose-overlay {
+  display: none; position: fixed; inset: 0;
+  background: #00000088; z-index: 100; align-items: center; justify-content: center;
+}
+.compose-overlay.open { display: flex; }
+.compose-panel {
+  background: var(--bg2); border: 1px solid var(--cyan-dim);
+  border-radius: 4px; width: 560px; max-width: 95vw;
+  box-shadow: 0 0 40px #00f5ff22;
+}
+.compose-header {
+  font-family: 'Orbitron', monospace; font-size: .72em; letter-spacing: .15em;
+  color: var(--cyan); padding: 10px 16px; border-bottom: 1px solid var(--border);
+  display: flex; justify-content: space-between; align-items: center;
+}
+.compose-header button {
+  background: transparent; border: none; color: var(--text-dim);
+  font-size: 1.2em; cursor: pointer; line-height: 1;
+}
+.compose-header button:hover { color: var(--cyan); }
+.compose-body { padding: 16px; display: flex; flex-direction: column; gap: 10px; }
+.compose-field { display: flex; flex-direction: column; gap: 4px; }
+.compose-field label {
+  font-size: .65em; color: var(--text-dim); letter-spacing: .1em; text-transform: uppercase;
+}
+.compose-field input, .compose-field textarea {
+  background: var(--bg3); color: var(--text);
+  border: 1px solid var(--cyan-dim); border-radius: 3px;
+  padding: 7px 10px; font-family: 'Share Tech Mono', monospace; font-size: .84em;
+  outline: none; width: 100%; box-sizing: border-box;
+  transition: border-color .2s;
+}
+.compose-field input:focus, .compose-field textarea:focus {
+  border-color: var(--cyan); box-shadow: var(--glow-c);
+}
+.compose-field textarea { resize: vertical; min-height: 160px; }
+.compose-footer { padding: 0 16px 16px; display: flex; gap: 8px; justify-content: flex-end; }
+#compose-msg { font-size: .78em; align-self: center; margin-right: auto; }
+
+/* ── オレンジボタン ── */
+.btn-orange { color: var(--orange); border-color: #ff990080; }
+.btn-orange:hover:not(:disabled) { background: #ff990018; box-shadow: 0 0 10px #ff9900aa; border-color: var(--orange); }
 </style>
 {% endblock %}
 
@@ -252,7 +296,8 @@ tr.selected td:first-child { border-left: 2px solid var(--cyan); padding-left: 8
                 data-id="{{ m.id }}"
                 data-subject="{{ m.subject }}"
                 data-from="{{ m.from }}"
-                data-date="{{ m.date }}"
+                data-to="{{ m.to }}"
+                data-date="{{ m.date_detail }}"
                 data-snippet="{{ m.snippet }}"
                 data-labels="{{ m.labels|join:',' }}">
               <td class="col-from">{{ m.from|truncatechars:30 }}</td>
@@ -272,6 +317,9 @@ tr.selected td:first-child { border-left: 2px solid var(--cyan); padding-left: 8
 
       <div class="panel">
         <div class="panel-title">▸ Mail Detail</div>
+        <div class="toolbar" style="justify-content:flex-end;">
+          <button class="btn btn-orange" onclick="openCompose()">✉ 送 信</button>
+        </div>
       </div>
 
       {% if needs_auth %}
@@ -317,6 +365,44 @@ tr.selected td:first-child { border-left: 2px solid var(--cyan); padding-left: 8
     </div>
   </div>
 </div>
+<!-- コンポーズオーバーレイ -->
+<div class="compose-overlay" id="compose-overlay" onclick="closeComposeOnBg(event)">
+  <div class="compose-panel">
+    <div class="compose-header">
+      <span>▸ NEW MAIL</span>
+      <button onclick="closeCompose()">✕</button>
+    </div>
+    <div class="compose-body">
+      <div class="compose-field">
+        <label>To</label>
+        <input type="text" id="compose-to" list="contact-list" placeholder="送信先メールアドレス">
+        <datalist id="contact-list"></datalist>
+      </div>
+      <div class="compose-field">
+        <label>Subject</label>
+        <input type="text" id="compose-subject" placeholder="件名">
+      </div>
+      <div class="compose-field">
+        <label>Body</label>
+        <textarea id="compose-body" placeholder="本文"></textarea>
+      </div>
+      <div class="compose-field">
+        <label>添付ファイル</label>
+        <input type="file" id="compose-files" multiple style="display:none;" onchange="updateFileLabel()">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <button class="btn btn-cyan" type="button" onclick="document.getElementById('compose-files').click()">⊕ ファイル選択</button>
+          <span id="file-label" style="font-size:.78em;color:var(--text-dim);font-family:'Share Tech Mono',monospace;">未選択</span>
+        </div>
+      </div>
+    </div>
+    <div class="compose-footer">
+      <span id="compose-msg"></span>
+      <button class="btn btn-cyan" onclick="sendMail()">✉ SEND</button>
+      <button class="btn" style="color:var(--text-dim);border-color:var(--border);" onclick="closeCompose()">CANCEL</button>
+    </div>
+  </div>
+</div>
+
 {% endblock %}
 
 {% block extra_js %}
@@ -325,6 +411,107 @@ tr.selected td:first-child { border-left: 2px solid var(--cyan); padding-left: 8
 var CSRF      = '{{ csrf_token }}';
 var JOB_KEY   = 'mailfunction_active_job';   // localStorage キー
 var pollTimer = null;
+var _contacts = null;
+
+// ── コンポーズ ────────────────────────────────────────
+function openCompose(replyTo) {
+  var overlay = document.getElementById('compose-overlay');
+  overlay.classList.add('open');
+  document.getElementById('compose-msg').textContent = '';
+  if (replyTo) {
+    document.getElementById('compose-to').value      = replyTo.from || '';
+    document.getElementById('compose-subject').value = 'Re: ' + (replyTo.subject || '');
+    document.getElementById('compose-body').value    = '';
+  } else {
+    document.getElementById('compose-to').value      = '';
+    document.getElementById('compose-subject').value = '';
+    document.getElementById('compose-body').value    = '';
+  }
+  // コンタクト一覧を取得（初回のみ）
+  if (!_contacts) {
+    fetch('/mailfunction/contacts/')
+      .then(r => r.json())
+      .then(data => {
+        _contacts = data.contacts || [];
+        var dl = document.getElementById('contact-list');
+        dl.innerHTML = _contacts.map(function(c) {
+          return '<option value="' + esc(c.email) + '">' + esc(c.label) + '</option>';
+        }).join('');
+      });
+  }
+}
+
+function closeCompose() {
+  document.getElementById('compose-overlay').classList.remove('open');
+}
+
+function updateFileLabel() {
+  var files = document.getElementById('compose-files').files;
+  var label = document.getElementById('file-label');
+  if (files.length === 0) {
+    label.textContent = '未選択';
+  } else if (files.length === 1) {
+    label.textContent = files[0].name;
+  } else {
+    label.textContent = files.length + ' ファイル選択中';
+  }
+}
+
+function closeComposeOnBg(e) {
+  if (e.target === document.getElementById('compose-overlay')) closeCompose();
+}
+
+function sendMail() {
+  var to      = document.getElementById('compose-to').value.trim();
+  var subject = document.getElementById('compose-subject').value.trim();
+  var body    = document.getElementById('compose-body').value.trim();
+  var msg     = document.getElementById('compose-msg');
+
+  if (!to || !subject) {
+    msg.textContent = '⚠ 宛先と件名は必須です';
+    msg.style.color = 'var(--pink)';
+    return;
+  }
+  msg.textContent = '送信中...';
+  msg.style.color = 'var(--yellow)';
+
+  var fd = new FormData();
+  fd.append('csrfmiddlewaretoken', CSRF);
+  fd.append('to', to);
+  fd.append('subject', subject);
+  fd.append('body', body);
+  var files = document.getElementById('compose-files').files;
+  for (var i = 0; i < files.length; i++) { fd.append('attachments', files[i]); }
+
+  fetch('/mailfunction/send/', { method: 'POST', body: fd })
+    .then(r => r.json())
+    .then(data => {
+      if (data.ok) {
+        msg.textContent = '✓ 送信しました';
+        msg.style.color = 'var(--green)';
+        setTimeout(closeCompose, 1500);
+      } else {
+        msg.textContent = '✗ ' + (data.error || '送信失敗');
+        msg.style.color = 'var(--pink)';
+      }
+    })
+    .catch(() => {
+      msg.textContent = '✗ 通信エラー';
+      msg.style.color = 'var(--pink)';
+    });
+}
+
+function fmtDate(dateStr) {
+  if (!dateStr) return '';
+  var days = ['日','月','火','水','木','金','土'];
+  // "YYYY/MM/DD HH:MM" 形式（date_detail、JST変換済み）
+  var m = dateStr.match(/(\d{4})\/(\d{1,2})\/(\d{1,2}) (\d{2}):(\d{2})/);
+  if (m) {
+    var d = new Date(+m[1], +m[2]-1, +m[3]);
+    return m[1]+'/'+m[2]+'/'+m[3]+'('+days[d.getDay()]+') '+m[4]+':'+m[5];
+  }
+  return dateStr;
+}
 
 // ── メール選択 ───────────────────────────────────────
 function selectMail(tr) {
@@ -344,11 +531,12 @@ function selectMail(tr) {
   var html = '<div class="field-section-label">メール情報</div>';
   html += row('件名',  tr.dataset.subject, 'cyan');
   html += row('送信元', tr.dataset.from);
-  html += row('日付',  tr.dataset.date, 'yellow');
+  if (tr.dataset.to) html += row('送信先', tr.dataset.to);
+  html += row('日付',  fmtDate(tr.dataset.date), 'yellow');
   if (labelsHtml) html += '<div class="field-row"><span class="fk">ラベル</span><span class="fv">' + labelsHtml + '</span></div>';
 
   document.getElementById('field-list').innerHTML = html;
-  document.getElementById('snippet-box').textContent = tr.dataset.snippet || '（プレビューなし）';
+  document.getElementById('snippet-box').textContent = tr.dataset.subject || '（件名なし）';
   document.getElementById('detail-empty').style.display   = 'none';
   document.getElementById('detail-content').style.display = 'block';
 
@@ -538,7 +726,8 @@ function renderRows(mails) {
       + ' data-id="'      + esc(m.id)       + '"'
       + ' data-subject="' + esc(m.subject)   + '"'
       + ' data-from="'    + esc(m.from)      + '"'
-      + ' data-date="'    + esc(m.date_fmt)  + '"'
+      + ' data-date="'    + esc(m.date_detail || m.date_fmt) + '"'
+      + ' data-to="'      + esc(m.to || '')  + '"'
       + ' data-snippet="' + esc(m.snippet)   + '"'
       + ' data-labels="'  + esc(labels)      + '">'
       + '<td class="col-from">'    + esc(fromShort)  + '</td>'

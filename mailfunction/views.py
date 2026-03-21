@@ -4,8 +4,10 @@ import os
 import subprocess
 import sys
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 from email.utils import parsedate_to_datetime
+
+JST = timezone(timedelta(hours=9))
 from pathlib import Path
 
 from django.contrib.auth.decorators import login_required
@@ -33,7 +35,8 @@ _cache_mtime = None
 
 def _parse_date(date_str):
     try:
-        return parsedate_to_datetime(date_str).replace(tzinfo=None)
+        dt = parsedate_to_datetime(date_str)
+        return dt.astimezone(JST).replace(tzinfo=None)
     except Exception:
         return None
 
@@ -50,7 +53,8 @@ def _load_mails():
     mails.sort(key=lambda m: _parse_date(m.get('date', '')) or datetime.min, reverse=True)
     for m in mails:
         dt = _parse_date(m.get('date', ''))
-        m['date_fmt'] = dt.strftime('%Y/%m/%d') if dt else ''
+        m['date_fmt']    = dt.strftime('%Y/%m/%d') if dt else ''
+        m['date_detail'] = dt.strftime('%Y/%m/%d %H:%M') if dt else ''
     _cache_data  = mails
     _cache_mtime = mtime
     return mails
@@ -92,6 +96,8 @@ def oauth_start(request):
         access_type='offline',
     )
     request.session['oauth_state'] = state
+    if hasattr(flow, 'code_verifier') and flow.code_verifier:
+        request.session['oauth_code_verifier'] = flow.code_verifier
     return HttpResponseRedirect(auth_url)
 
 
@@ -106,8 +112,11 @@ def oauth_callback(request):
         state=state,
         redirect_uri=_build_redirect_uri(request),
     )
-    # 本番では HTTPS が前提。ローカル開発時のみ以下を有効化。
-    # os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
+    # ローカル開発時のみ有効（本番デプロイ前に再コメントアウト）
+    os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
+    code_verifier = request.session.get('oauth_code_verifier')
+    if code_verifier:
+        flow.code_verifier = code_verifier
     try:
         flow.fetch_token(authorization_response=request.build_absolute_uri())
         gc.save_credentials(flow.credentials)
@@ -133,12 +142,14 @@ def search(request):
                  query in m.get('snippet', '').lower()]
 
     result = [{
-        'id':       m['id'],
-        'subject':  m.get('subject', ''),
-        'from':     m.get('from', ''),
-        'date_fmt': m.get('date_fmt', ''),
-        'snippet':  m.get('snippet', ''),
-        'labels':   m.get('labels', []),
+        'id':          m['id'],
+        'subject':     m.get('subject', ''),
+        'from':        m.get('from', ''),
+        'to':          m.get('to', ''),
+        'date_fmt':    m.get('date_fmt', ''),
+        'date_detail': m.get('date_detail', ''),
+        'snippet':     m.get('snippet', ''),
+        'labels':      m.get('labels', []),
     } for m in mails[:500]]
 
     return JsonResponse({'mails': result, 'matched': len(mails)})
@@ -191,6 +202,61 @@ def attachment_download(request, mail_id, attachment_id):
         disposition = 'attachment'
     response['Content-Disposition'] = f'{disposition}; filename="{filename}"'
     return response
+
+
+# ── コンタクト一覧 ────────────────────────────────────
+@login_required
+def contacts(request):
+    """過去のメールから送信先候補（From / To）を抽出して返す。"""
+    import re
+    mails = _load_mails()
+    seen, result = set(), []
+
+    def _extract(field_val):
+        """'名前 <addr>' または 'addr' 形式からアドレスを抽出。"""
+        for addr in re.split(r',\s*', field_val or ''):
+            addr = addr.strip()
+            if not addr:
+                continue
+            m = re.search(r'<([^>]+)>', addr)
+            email = m.group(1) if m else addr
+            if '@' in email and email not in seen:
+                seen.add(email)
+                result.append({'label': addr, 'email': email})
+
+    for mail in mails:
+        _extract(mail.get('from', ''))
+        _extract(mail.get('to', ''))
+
+    return JsonResponse({'contacts': result[:500]})
+
+
+# ── メール送信 ────────────────────────────────────────
+@login_required
+@require_POST
+def send_mail(request):
+    to        = request.POST.get('to', '').strip()
+    subject   = request.POST.get('subject', '').strip()
+    body      = request.POST.get('body', '').strip()
+    thread_id = request.POST.get('thread_id', '').strip() or None
+
+    if not to or not subject:
+        return JsonResponse({'error': '宛先と件名は必須です'}, status=400)
+
+    service = gc.get_service()
+    if service is None:
+        return JsonResponse({'error': 'auth_required'}, status=401)
+
+    attachments = [
+        {'filename': f.name, 'data': f.read()}
+        for f in request.FILES.getlist('attachments')
+    ]
+
+    try:
+        result = gc.send_message(service, to, subject, body, thread_id, attachments or None)
+        return JsonResponse({'ok': True, 'id': result.get('id', '')})
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
 
 
 # ── SYNC ─────────────────────────────────────────────

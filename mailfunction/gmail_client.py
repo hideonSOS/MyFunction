@@ -8,6 +8,11 @@ gmail_client.py  –  Gmail API 共通クライアント
 """
 
 import base64
+import mimetypes
+from email import encoders
+from email.mime.base import MIMEBase
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
 from pathlib import Path
 
 from google.auth.transport.requests import Request
@@ -19,8 +24,11 @@ BASE_DIR   = APP_DIR.parent
 TOKEN_FILE = APP_DIR / 'token.json'
 CREDS_FILE = BASE_DIR / 'credentials.json'
 
-# 読み取り専用スコープ（送信追加時はここに gmail.send を足す）
-SCOPES = ['https://www.googleapis.com/auth/gmail.readonly']
+# 読み取り + 送信スコープ
+SCOPES = [
+    'https://www.googleapis.com/auth/gmail.readonly',
+    'https://www.googleapis.com/auth/gmail.send',
+]
 
 
 # ── 認証 ─────────────────────────────────────────────
@@ -68,6 +76,34 @@ def save_credentials(creds):
 def _save_token(creds):
     with open(TOKEN_FILE, 'w', encoding='utf-8') as f:
         f.write(creds.to_json())
+
+
+# ── メール送信 ───────────────────────────────────────
+def send_message(service, to, subject, body, thread_id=None, attachments=None):
+    """テキストメールを送信する。attachments は {'filename', 'data'} のリスト。"""
+    if attachments:
+        msg = MIMEMultipart()
+        msg['to']      = to
+        msg['subject'] = subject
+        msg.attach(MIMEText(body, 'plain', 'utf-8'))
+        for att in attachments:
+            mime_type, _ = mimetypes.guess_type(att['filename'])
+            main_type, sub_type = mime_type.split('/', 1) if mime_type else ('application', 'octet-stream')
+            part = MIMEBase(main_type, sub_type)
+            part.set_payload(att['data'])
+            encoders.encode_base64(part)
+            part.add_header('Content-Disposition', f'attachment; filename="{att["filename"]}"')
+            msg.attach(part)
+    else:
+        msg = MIMEText(body, 'plain', 'utf-8')
+        msg['to']      = to
+        msg['subject'] = subject
+
+    raw = base64.urlsafe_b64encode(msg.as_bytes()).decode()
+    payload = {'raw': raw}
+    if thread_id:
+        payload['threadId'] = thread_id
+    return service.users().messages().send(userId='me', body=payload).execute()
 
 
 # ── メッセージ詳細取得 ────────────────────────────────
