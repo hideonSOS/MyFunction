@@ -82,6 +82,12 @@ def log(msg):
     text = str(msg).replace('\xa0', ' ')
     print(text, flush=True)
 
+_step = 0
+def slog(msg):
+    global _step
+    _step += 1
+    log(f"[{_step}] {msg}")
+
 
 def wait_click(driver, xpath, timeout=15):
     el = WebDriverWait(driver, timeout).until(
@@ -179,7 +185,7 @@ def main():
     driver = webdriver.Chrome(options=options)
 
     try:
-        log("[1] ログイン中...")
+        slog("ログイン中...")
         driver.get(URL)
         time.sleep(2)
         wait_click(driver, XPATH_SEL_BTN)
@@ -189,29 +195,29 @@ def main():
         driver.find_element(By.XPATH, XPATH_PW).send_keys(PASSWORD)
         wait_click(driver, XPATH_LOGIN)
         time.sleep(3)
-        log("[1] ログイン完了")
+        slog("ログイン完了")
 
-        log("[2] 対象書類を開く...")
+        slog("対象書類を開く...")
         driver.get(f"{WORKFLOW_URL}#cmd=flowdisp&id={doc_id}")
         time.sleep(4)
-        log(f"[2] 書類を開きました（id={doc_id}）")
+        slog(f"書類を開きました（id={doc_id}）")
 
-        log("[3] 複写して作成...")
+        slog("複写して作成...")
         wait_click(driver, XPATH_COPY_BTN)
         time.sleep(5)
-        log("[3] 複写完了")
+        slog("複写完了")
 
         if field_data and kind in ('契約連絡表', '外注費連絡表', '稟議書'):
-            log("[4] フィールド入力中...")
+            slog("フィールド入力中...")
             fill_fields(driver, kind, field_data)
-            log("[4] 入力完了")
+            slog("入力完了")
         else:
-            log("[4] 入力データなし → スキップ")
+            slog("入力データなし → スキップ")
 
-        log("[5] 下書き保存中...")
+        slog("下書き保存中...")
         wait_click(driver, XPATH_DRAFT_BTN)
         time.sleep(3)
-        log("[5] 下書き保存完了")
+        slog("下書き保存完了")
 
         log("[DONE] 処理完了")
 

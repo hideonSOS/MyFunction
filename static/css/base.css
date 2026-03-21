@@ -132,7 +132,7 @@ body {
 .sb-label-wrap { display: flex; flex-direction: column; gap: 1px; }
 .sb-label-main {
   font-family: 'Orbitron', monospace;
-  font-size: .65em;
+  font-size: .975em;
   font-weight: 700;
   letter-spacing: .1em;
   text-transform: uppercase;

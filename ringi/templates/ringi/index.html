@@ -76,12 +76,15 @@
 .btn:disabled { opacity: .3; cursor: default; }
 
 .btn-kind { font-family: 'Share Tech Mono', monospace; font-size: .72em; padding: 4px 11px; letter-spacing: .04em; text-transform: none; }
+.btn-kind-all    { color: var(--text);   border-color: #3a5a7a44; }
 .btn-kind-cyan   { color: var(--cyan);   border-color: #00f5ff44; }
 .btn-kind-green  { color: var(--green);  border-color: #00ff8844; }
 .btn-kind-orange { color: var(--orange); border-color: #ff990044; }
+.btn-kind-all.active    { background: #b0c8e022; border-color: var(--text);   box-shadow: 0 0 10px #b0c8e0aa, 0 0 24px #b0c8e044; }
 .btn-kind-cyan.active   { background: #00f5ff22; border-color: var(--cyan);   box-shadow: 0 0 10px #00f5ffaa, 0 0 24px #00f5ff44; }
 .btn-kind-green.active  { background: #00ff8822; border-color: var(--green);  box-shadow: 0 0 10px #00ff88aa, 0 0 24px #00ff8844; }
 .btn-kind-orange.active { background: #ff990022; border-color: var(--orange); box-shadow: 0 0 10px #ff9900aa, 0 0 24px #ff990044; }
+.btn-cyan.active { background: #00f5ff22; border-color: var(--cyan); box-shadow: 0 0 10px #00f5ffaa, 0 0 24px #00f5ff44; }
 
 .count-badge { margin-left: auto; font-size: .75em; color: var(--text-dim); border: 1px solid var(--border); padding: 3px 10px; border-radius: 10px; }
 .count-badge b { color: var(--cyan); }
@@ -181,6 +184,7 @@ tr.selected td:first-child { border-left: 2px solid var(--cyan); padding-left: 8
       <div class="panel">
         <div class="panel-title">▸ Filter</div>
         <div class="toolbar">
+          <button class="btn btn-kind btn-kind-all    {% if not kind_filter %}active{% endif %}" id="kbtn-all"     onclick="setKindFilter('')">ALL</button>
           <button class="btn btn-kind btn-kind-cyan   {% if kind_filter == '契約連絡表' %}active{% endif %}" id="kbtn-keiyaku"  onclick="setKindFilter('契約連絡表')">契約連絡表</button>
           <button class="btn btn-kind btn-kind-green  {% if kind_filter == '外注費連絡表' %}active{% endif %}" id="kbtn-gaichuu" onclick="setKindFilter('外注費連絡表')">外注費連絡表</button>
           <button class="btn btn-kind btn-kind-orange {% if kind_filter == '稟議書' %}active{% endif %}" id="kbtn-ringi"   onclick="setKindFilter('稟議書')">稟議書</button>
@@ -190,14 +194,14 @@ tr.selected td:first-child { border-left: 2px solid var(--cyan); padding-left: 8
         </div>
         <div class="toolbar" style="padding-top:0; gap:6px; flex-wrap:wrap;">
           <span style="font-size:.65em; color:var(--text-dim); letter-spacing:.1em;">QUICK:</span>
-          <button class="btn btn-cyan" style="font-family:'Share Tech Mono',monospace; font-size:.72em; padding:3px 10px;" onclick="quickFilter('')">ALL</button>
-          <button class="btn btn-cyan" style="font-family:'Share Tech Mono',monospace; font-size:.72em; padding:3px 10px;" onclick="quickFilter('栗原')">栗原</button>
-          <button class="btn btn-cyan" style="font-family:'Share Tech Mono',monospace; font-size:.72em; padding:3px 10px;" onclick="quickFilter('芳松')">芳松</button>
-          <button class="btn btn-cyan" style="font-family:'Share Tech Mono',monospace; font-size:.72em; padding:3px 10px;" onclick="quickFilter('関西広告')">関西広告</button>
-          <button class="btn btn-cyan" style="font-family:'Share Tech Mono',monospace; font-size:.72em; padding:3px 10px;" onclick="quickFilter('山田達也')">山田達也</button>
-          <button class="btn btn-cyan" style="font-family:'Share Tech Mono',monospace; font-size:.72em; padding:3px 10px;" onclick="quickFilter('アクアライブ')">アクアライブ</button>
-          <button class="btn btn-cyan" style="font-family:'Share Tech Mono',monospace; font-size:.72em; padding:3px 10px;" onclick="quickFilter('都市')">都市</button>
-          <button class="btn btn-cyan" style="font-family:'Share Tech Mono',monospace; font-size:.72em; padding:3px 10px;" onclick="quickFilter('箕面')">箕面</button>
+          <button class="btn btn-cyan btn-quick" style="font-family:'Share Tech Mono',monospace; font-size:.72em; padding:3px 10px;" data-kw="" onclick="quickFilter('')">ALL</button>
+          <button class="btn btn-cyan btn-quick" style="font-family:'Share Tech Mono',monospace; font-size:.72em; padding:3px 10px;" data-kw="栗原" onclick="quickFilter('栗原')">栗原</button>
+          <button class="btn btn-cyan btn-quick" style="font-family:'Share Tech Mono',monospace; font-size:.72em; padding:3px 10px;" data-kw="芳松" onclick="quickFilter('芳松')">芳松</button>
+          <button class="btn btn-cyan btn-quick" style="font-family:'Share Tech Mono',monospace; font-size:.72em; padding:3px 10px;" data-kw="関西広告" onclick="quickFilter('関西広告')">関西広告</button>
+          <button class="btn btn-cyan btn-quick" style="font-family:'Share Tech Mono',monospace; font-size:.72em; padding:3px 10px;" data-kw="山田達也" onclick="quickFilter('山田達也')">山田達也</button>
+          <button class="btn btn-cyan btn-quick" style="font-family:'Share Tech Mono',monospace; font-size:.72em; padding:3px 10px;" data-kw="アクアライブ" onclick="quickFilter('アクアライブ')">アクアライブ</button>
+          <button class="btn btn-cyan btn-quick" style="font-family:'Share Tech Mono',monospace; font-size:.72em; padding:3px 10px;" data-kw="都市" onclick="quickFilter('都市')">都市</button>
+          <button class="btn btn-cyan btn-quick" style="font-family:'Share Tech Mono',monospace; font-size:.72em; padding:3px 10px;" data-kw="箕面" onclick="quickFilter('箕面')">箕面</button>
         </div>
       </div>
 
@@ -473,10 +477,21 @@ function pollLogRaw(jobId, onDone) {
 
 var currentKind = '{{ kind_filter }}';
 function setKindFilter(kind) {
-  currentKind = (currentKind === kind) ? '' : kind;
+  currentKind = (currentKind === kind && kind !== '') ? '' : kind;
+  document.getElementById('kbtn-all').classList.toggle('active',     currentKind === '');
   document.getElementById('kbtn-keiyaku').classList.toggle('active', currentKind === '契約連絡表');
   document.getElementById('kbtn-gaichuu').classList.toggle('active', currentKind === '外注費連絡表');
   document.getElementById('kbtn-ringi').classList.toggle('active',   currentKind === '稟議書');
+  applyFilter();
+}
+
+var currentQuick = '{{ query }}';
+function quickFilter(kw) {
+  currentQuick = kw;
+  document.querySelectorAll('.btn-quick').forEach(function(b) {
+    b.classList.toggle('active', b.dataset.kw === kw);
+  });
+  document.getElementById('query-input').value = kw;
   applyFilter();
 }
 
@@ -492,6 +507,9 @@ function applyFilter() {
 
 window.addEventListener('load', function() {
   var b = document.getElementById('fetch-btn'); if (b) b.disabled = false;
+  document.querySelectorAll('.btn-quick').forEach(function(btn) {
+    btn.classList.toggle('active', btn.dataset.kw === currentQuick);
+  });
 });
 </script>
 {% endblock %}

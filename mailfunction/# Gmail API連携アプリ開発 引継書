@@ -1,0 +1,79 @@
+# Gmail API連携アプリ開発 引継書
+
+## 1. プロジェクトの現状
+Google Cloud ConsoleでのGmail API有効化、OAuth同意画面の設定、およびGoogle Colab環境での認証テスト（`token.json`の生成）と、直近10件のメール取得テストに成功しています。
+
+## 2. Google Cloud Console の設定状況
+* **対象API**: Gmail API
+* **OAuth 同意画面**:
+  * ユーザーの種類: 外部（External）
+  * 公開ステータス: **本番環境（公開済）** ※テストユーザー制限による403エラー回避のため
+* **認証情報 (OAuth クライアント ID)**:
+  * アプリケーションの種類: デスクトップ アプリ
+  * スコープ: `https://www.googleapis.com/auth/gmail.readonly` (読み取り専用権限)
+
+## 3. 必要なファイル（ローカル環境へ移行するもの）
+ローカル開発ディレクトリのルートに以下の2ファイルを配置してください。
+* `credentials.json`: GCPからダウンロードしたクライアント情報。
+* `token.json`: Colabでの初回認証時に生成されたアクセス/リフレッシュトークン。このファイルを配置することで、ローカル実行時のブラウザ認証（URLコピペ等）をスキップし、自動化が可能です。
+
+## 4. 動作確認済みのリファレンスコード
+Gmail APIから最新10件のメールを取得し、ヘッダー（日付、送信元、件名）と本文スニペットを抽出する基礎コードです。APIのレスポンス構造（辞書型への変換と抽出ロジック）の参考にしてください。
+
+```python
+import os
+from google.auth.transport.requests import Request
+from google.oauth2.credentials import Credentials
+from google_auth_oauthlib.flow import InstalledAppFlow
+from googleapiclient.discovery import build
+
+# ローカルテスト用（必要に応じて着脱）
+os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
+SCOPES = ['[https://www.googleapis.com/auth/gmail.readonly](https://www.googleapis.com/auth/gmail.readonly)']
+
+def main():
+    creds = None
+    if os.path.exists('token.json'):
+        creds = Credentials.from_authorized_user_file('token.json', SCOPES)
+    
+    if not creds or not creds.valid:
+        if creds and creds.expired and creds.refresh_token:
+            creds.refresh(Request())
+        else:
+            flow = InstalledAppFlow.from_client_secrets_file('credentials.json', SCOPES)
+            flow.redirect_uri = 'http://localhost:8080/'
+            auth_url, _ = flow.authorization_url(prompt='consent')
+            redirect_response = input(f"URLを開いて許可し、リダイレクト後のURLを貼り付けてください:\n{auth_url}\n> ")
+            flow.fetch_token(authorization_response=redirect_response.strip())
+            creds = flow.credentials
+            
+        with open('token.json', 'w') as token:
+            token.write(creds.to_json())
+
+    try:
+        service = build('gmail', 'v1', credentials=creds)
+        
+        # 最新10件を取得
+        response = service.users().messages().list(userId='me', maxResults=10).execute()
+        messages = response.get('messages', [])
+
+        if not messages:
+            print("メッセージが見つかりません。")
+            return
+
+        for i, msg in enumerate(messages, 1):
+            msg_detail = service.users().messages().get(userId='me', id=msg['id'], format='full').execute()
+            
+            headers = msg_detail.get('payload', {}).get('headers', [])
+            subject = next((h['value'] for h in headers if h['name'] == 'Subject'), "件名なし")
+            sender = next((h['value'] for h in headers if h['name'] == 'From'), "不明")
+            date = next((h['value'] for h in headers if h['name'] == 'Date'), "不明")
+            snippet = msg_detail.get('snippet', '')
+            
+            print(f"[{i}件目]\n日付: {date}\n送信元: {sender}\n件名: {subject}\n本文一部: {snippet}\n" + "-" * 40)
+
+    except Exception as error:
+        print(f'エラーが発生しました: {error}')
+
+if __name__ == '__main__':
+    main()

@@ -36,6 +36,12 @@ def log(msg):
     text = str(msg).replace('\xa0', ' ')
     print(text, flush=True)
 
+_step = 0
+def slog(msg):
+    global _step
+    _step += 1
+    log(f"[{_step}] {msg}")
+
 
 def wait_click(driver, xpath, timeout=10):
     el = WebDriverWait(driver, timeout).until(
@@ -230,16 +236,16 @@ def extract_fields(driver, kind):
 def fetch_contents(driver, all_docs):
     """fields が未取得の書類を1件ずつ開いて取得・保存"""
     targets = [(i, d) for i, d in enumerate(all_docs) if d.get('fields') is None]
-    log(f"\n[6] 書類内容取得: {len(targets)} 件（未取得分）")
+    slog(f"書類内容取得: {len(targets)} 件（未取得分）")
     if not targets:
-        log("[6] 全件取得済み。スキップ。")
+        slog("全件取得済み。スキップ。")
         return
 
     ok = err = 0
     for n, (idx, doc) in enumerate(targets):
         doc_id = doc.get('doc_id', '')
         title  = doc.get('title', '').replace('\xa0', ' ')
-        log(f"  [{n+1}/{len(targets)}] {title[:55]}")
+        slog(f"[{n+1}/{len(targets)}] {title[:55]}")
 
         if not doc_id:
             all_docs[idx]['fields'] = {'_error': 'doc_id なし'}
@@ -279,7 +285,7 @@ def fetch_contents(driver, all_docs):
         with open(OUT_FILE, 'w', encoding='utf-8') as f:
             json.dump(all_docs, f, ensure_ascii=False, indent=2)
 
-    log(f"[6] 内容取得完了: 成功 {ok} 件 / エラー {err} 件")
+    slog(f"内容取得完了: 成功 {ok} 件 / エラー {err} 件")
 
 
 # ── メイン ───────────────────────────────────────
@@ -301,7 +307,7 @@ def main():
     driver = webdriver.Chrome(options=options)
 
     try:
-        log("[1] ログイン中...")
+        slog("ログイン中...")
         driver.get(URL)
         time.sleep(2)
         wait_click(driver, xpath_sel_btn)
@@ -311,13 +317,13 @@ def main():
         driver.find_element(By.XPATH, xpath_pw).send_keys(PASSWORD)
         wait_click(driver, xpath_login)
         time.sleep(3)
-        log("[1] ログイン完了")
+        slog("ログイン完了")
 
-        log("[2] ワークフロー画面へ...")
+        slog("ワークフロー画面へ...")
         driver.get(WORKFLOW_URL)
         time.sleep(4)
 
-        log("[3] 作成分（完了）を選択中...")
+        slog("作成分（完了）を選択中...")
         driver.switch_to.default_content()
         target_select = None
         for s in driver.find_elements(By.TAG_NAME, 'select'):
@@ -329,7 +335,7 @@ def main():
             raise Exception("ステータス選択ドロップダウンが見つかりません")
         sel = Select(target_select)
         sel.select_by_visible_text('作成分（完了）')
-        log("[3] '作成分（完了）' 選択完了 → リスト更新待ち...")
+        slog("'作成分（完了）' 選択完了 → リスト更新待ち...")
         WebDriverWait(driver, 20).until(
             EC.presence_of_element_located((By.CSS_SELECTOR, 'tr.flow-list-line'))
         )
@@ -341,24 +347,24 @@ def main():
         if mode == 'full':
             page = 1
             while True:
-                log(f"[4] ページ {page} を取得中...")
+                slog(f"ページ {page} を取得中...")
                 docs = scrape_current_page(driver, frame_idx)
                 log(f"    → {len(docs)} 件")
                 all_raw.extend(docs)
                 if not click_next_page(driver, frame_idx):
-                    log(f"[4] 全 {page} ページ完了")
+                    slog(f"全 {page} ページ完了")
                     break
                 time.sleep(3)
                 page += 1
         else:
-            log("[4] 最新ページを取得中...")
+            slog("最新ページを取得中...")
             all_raw = scrape_current_page(driver, frame_idx)
             log(f"    → {len(all_raw)} 件")
 
         with open(DEBUG_FILE, 'w', encoding='utf-8') as f:
             json.dump(all_raw[:30], f, ensure_ascii=False, indent=2)
 
-        log(f"[5] 一覧: 全 {len(all_raw)} 件")
+        slog(f"一覧: 全 {len(all_raw)} 件")
 
         existing = []
         if OUT_FILE.exists():
@@ -380,7 +386,7 @@ def main():
 
         with open(OUT_FILE, 'w', encoding='utf-8') as f:
             json.dump(all_docs, f, ensure_ascii=False, indent=2)
-        log(f"[5] 一覧保存完了（{len(all_docs)} 件）")
+        slog(f"一覧保存完了（{len(all_docs)} 件）")
 
         # ── 書類内容を取得（同じブラウザセッションで） ──
         fetch_contents(driver, all_docs)

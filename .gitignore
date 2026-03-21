@@ -9,8 +9,13 @@ db.sqlite3
 *.log
 logs/
 
+# 認証情報（Git管理外・SCPで直接サーバーへ転送）
+token.json
+mailfunction/token.json
+
 # キャッシュ・一時ファイル
 docs_cache.json
+mailfunction/mail_cache.json
 *.pkl
 *.parquet
 *.json.tmp
