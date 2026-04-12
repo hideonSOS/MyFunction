@@ -361,8 +361,11 @@ def main():
             all_raw = scrape_current_page(driver, frame_idx)
             log(f"    → {len(all_raw)} 件")
 
-        with open(DEBUG_FILE, 'w', encoding='utf-8') as f:
-            json.dump(all_raw[:30], f, ensure_ascii=False, indent=2)
+        try:
+            with open(DEBUG_FILE, 'w', encoding='utf-8') as f:
+                json.dump(all_raw[:30], f, ensure_ascii=False, indent=2)
+        except PermissionError:
+            pass
 
         slog(f"一覧: 全 {len(all_raw)} 件")
 
