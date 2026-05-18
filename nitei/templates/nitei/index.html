@@ -5,6 +5,13 @@
 
 {% block extra_head %}
 <link rel="stylesheet" href="{% static 'nitei/css/nitei.css' %}">
+{% if not user.is_authenticated %}
+<style>
+  #hamburger    { display: none !important; }
+  #sidebar      { display: none !important; }
+  #page-wrapper { margin-left: 0 !important; }
+</style>
+{% endif %}
 {% endblock %}
 
 {% block content %}
