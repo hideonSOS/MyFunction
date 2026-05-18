@@ -1,20 +1,51 @@
+// PERSON はテンプレート側で定義済み: const PERSON = "{{ person }}";
 const START_DATE     = new Date(2026, 3, 15);  // 2026-04-15
 const SCHEDULE_COUNT = 15;
-let TITLES    = [];
-let savedData = {};
+const DAYS_PER_ROW   = window.innerWidth < 768 ? 7 : 14;
+let TITLES     = [];
+let savedData  = {};
+let eventData  = {};
+
+// ── 保存キュー（DB lock 防止） ─────────────────────
+const _queue  = [];
+let   _saving = false;
+
+async function _flush() {
+  if (_saving || _queue.length === 0) return;
+  _saving = true;
+  const task = _queue.shift();
+  try {
+    await fetch(task.url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(task.body),
+    });
+  } finally {
+    _saving = false;
+    _flush();
+  }
+}
+
+function enqueue(url, body) {
+  _queue.push({ url, body });
+  _flush();
+}
+
+// ─────────────────────────────────────────────────────
 
 async function init() {
-  const [titlesRes, scheduleRes] = await Promise.all([
+  const [titlesRes, scheduleRes, eventsRes] = await Promise.all([
     fetch('/nitei/api/titles/'),
-    fetch('/nitei/api/schedule/'),
+    fetch(`/nitei/api/schedule/?person=${PERSON}`),
+    fetch(`/nitei/api/events/?person=${PERSON}`),
   ]);
   TITLES    = await titlesRes.json();
   savedData = await scheduleRes.json();
-  document.getElementById('status').textContent = '✓ データ読み込み完了';
+  eventData = await eventsRes.json();
+  document.getElementById('status').textContent = '✓ 読み込み完了';
   buildSheets();
 }
 
-/* ----- TITLESから日付→色 ----- */
 function getEventColor(date) {
   for (const t of TITLES) {
     const from = new Date(t.date_from.replace(/\//g, '-'));
@@ -28,24 +59,23 @@ function getEventColor(date) {
   return '';
 }
 
-/* ----- サーバーに1セル保存 ----- */
-async function saveCell(key, value) {
+function saveCell(key, value) {
   savedData[key] = value;
-  await fetch('/nitei/api/schedule/save/', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ key, status: value }),
-  });
+  enqueue('/nitei/api/schedule/save/', { key, status: value, person: PERSON });
 }
 
-/* ----- シートリセット ----- */
-async function clearSheet(sheetIndex, workCells, updateSum) {
+function saveEventTime(key, value) {
+  eventData[key] = value;
+  enqueue('/nitei/api/events/save/', { key, time_text: value, person: PERSON });
+}
+
+async function clearSheet(sheetIndex, workCells, eventCells, updateSum) {
   const label = sheetIndex === 0 ? '勤務表' : `勤務表${sheetIndex + 1}`;
   if (!confirm(`${label}の入力をリセットしますか？`)) return;
   await fetch('/nitei/api/schedule/clear/', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ sheet_index: sheetIndex }),
+    body: JSON.stringify({ sheet_index: sheetIndex, person: PERSON }),
   });
   Object.keys(savedData)
     .filter(k => k.startsWith(`w_${sheetIndex}_`))
@@ -68,7 +98,7 @@ function generateDays(start) {
   return days;
 }
 
-function createSection(dateList, workCells, eventCells, updateSum, sheetIndex, sectionIndex) {
+function createSection(dateList, workCells, eventCells, updateSum, sheetIndex, sectionIndex, dayOffset) {
   const table = document.createElement('table');
   const tr1 = document.createElement('tr');
   const tr2 = document.createElement('tr');
@@ -83,31 +113,55 @@ function createSection(dateList, workCells, eventCells, updateSum, sheetIndex, s
 
   const ORDER = ['', '公開FM', '有給', '公休', '本社', '公出勤'];
 
-  dateList.forEach((date, dayIndex) => {
+  dateList.forEach((date, localIndex) => {
+    const dayIndex = localIndex + dayOffset;
     const m = date.getMonth() + 1;
     const d = date.getDate();
     const dow = date.getDay();
 
+    // ── 日付行 ──
     const tdDay = document.createElement('td');
     tdDay.textContent = `${m}/${d}`;
     tdDay.className = 'day' + (dow === 6 ? ' sat' : dow === 0 ? ' sun' : '');
     tr1.appendChild(tdDay);
 
+    // ── 開催行（色 + 時間入力） ──
     const tdEvent = document.createElement('td');
-    tdEvent.style.cursor = 'default';
     const color = getEventColor(date);
-    if (color) tdEvent.classList.add(color);
+    const eventKey = `e_${sheetIndex}_${sectionIndex}_${dayIndex}`;
+
+    if (color) {
+      tdEvent.classList.add(color);
+      tdEvent.contentEditable = 'true';
+      tdEvent.spellcheck = false;
+      // 保存済み時間を表示
+      if (eventData[eventKey]) {
+        tdEvent.textContent = eventData[eventKey];
+      }
+      // Enter で確定（改行させない）
+      tdEvent.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') { e.preventDefault(); tdEvent.blur(); }
+      });
+      // フォーカスを外したとき保存
+      tdEvent.addEventListener('blur', () => {
+        const val = tdEvent.textContent.trim();
+        // 改行・余分な空白を除去して表示も更新
+        tdEvent.textContent = val;
+        saveEventTime(eventKey, val);
+      });
+    } else {
+      tdEvent.style.cursor = 'default';
+    }
+
     tr2.appendChild(tdEvent);
     eventCells.push(tdEvent);
 
+    // ── 出勤行（クリックで循環） ──
     const workKey = `w_${sheetIndex}_${sectionIndex}_${dayIndex}`;
     const tdWork = document.createElement('td');
 
     if (savedData[workKey] !== undefined) {
       tdWork.textContent = savedData[workKey];
-    } else if (color) {
-      tdWork.textContent = '公開FM';
-      saveCell(workKey, '公開FM');
     }
     applyWorkColor(tdWork);
 
@@ -144,13 +198,14 @@ function buildSheets() {
     const days = generateDays(currentStart);
 
     const sumTable = document.createElement('table');
+    sumTable.className = 'sumTable';
     const sumRow   = document.createElement('tr');
     sumRow.className = 'sumRow';
     const sumLabel = document.createElement('td');
     sumLabel.textContent = '合計';
     sumLabel.className = 'label';
     const sumCell = document.createElement('td');
-    sumCell.colSpan = 14;
+    sumCell.colSpan = DAYS_PER_ROW;
     sumCell.textContent = '0';
     sumCell.className = 'sumValue';
     sumRow.appendChild(sumLabel);
@@ -161,14 +216,21 @@ function buildSheets() {
       sumCell.textContent = cells.filter(c => ['公休', '公出勤'].includes(c.textContent)).length;
     })(workCells);
 
-    sheet.appendChild(createSection(days.slice(0, 14),  workCells, eventCells, updateSum, i, 0));
-    sheet.appendChild(createSection(days.slice(14, 28), workCells, eventCells, updateSum, i, 1));
+    for (let sec = 0; sec < 2; sec++) {
+      const secDays = days.slice(sec * 14, (sec + 1) * 14);
+      for (let chunk = 0; chunk * DAYS_PER_ROW < secDays.length; chunk++) {
+        const offset = chunk * DAYS_PER_ROW;
+        const chunkDays = secDays.slice(offset, offset + DAYS_PER_ROW);
+        sheet.appendChild(createSection(chunkDays, workCells, eventCells, updateSum, i, sec, offset));
+      }
+    }
+
     sheet.appendChild(sumTable);
 
     const resetBtn = document.createElement('button');
     resetBtn.textContent = 'リセット';
     resetBtn.style.marginTop = '4px';
-    resetBtn.onclick = ((si, wc, us) => () => clearSheet(si, wc, us))(i, workCells, updateSum);
+    resetBtn.onclick = ((si, wc, ec, us) => () => clearSheet(si, wc, ec, us))(i, workCells, eventCells, updateSum);
     sheet.appendChild(resetBtn);
 
     updateSum();

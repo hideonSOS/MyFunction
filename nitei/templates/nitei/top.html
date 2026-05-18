@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}日程 TOP{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'nitei/css/nitei.css' %}">
+{% endblock %}
+
+{% block content %}
+<div id="nitei-top">
+  <div class="top-header">
+    <div class="top-title">SCHEDULE MANAGER</div>
+    <div class="top-sub">勤務表を表示する担当者を選択してください</div>
+    {% if not user.is_authenticated %}
+    <a class="nitei-logout-btn" href="{% url 'nitei:logout' %}">ログアウト</a>
+    {% endif %}
+  </div>
+
+  <div class="person-grid">
+    {% for key, name in persons.items %}
+    <a class="person-card" href="/nitei/{{ key }}/">
+      <div class="person-icon">{{ name|slice:":1" }}</div>
+      <div class="person-name">{{ name }}</div>
+      <div class="person-label">Schedule</div>
+    </a>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

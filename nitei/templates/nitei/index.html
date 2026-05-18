@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% load static %}
 
-{% block title %}Nitei{% endblock %}
+{% block title %}日程 - {{ person_name }}{% endblock %}
 
 {% block extra_head %}
 <link rel="stylesheet" href="{% static 'nitei/css/nitei.css' %}">
@@ -9,9 +9,25 @@
 
 {% block content %}
 <div id="toolbar">
+  <a class="back-btn" href="/nitei/">← 一覧</a>
+  <span id="person-badge">{{ person_name }}</span>
   <span id="status">読み込み中...</span>
+  {% if not user.is_authenticated %}
+  <a class="nitei-logout-btn" href="{% url 'nitei:logout' %}">ログアウト</a>
+  {% endif %}
 </div>
+
+<div class="person-tabs">
+  {% for key, name in persons.items %}
+  <a class="person-tab {% if key == person %}active{% endif %}" href="/nitei/{{ key }}/">{{ name }}</a>
+  {% endfor %}
+</div>
+
 <div id="container"></div>
+
+<script>
+  const PERSON = "{{ person }}";
+</script>
 {% endblock %}
 
 {% block extra_js %}
