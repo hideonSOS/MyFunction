@@ -57,10 +57,50 @@ def top(request):
     return render(request, 'nitei/top.html', {'persons': PERSONS})
 
 
-@nitei_login_required
+def overview(request):
+    if not request.user.is_authenticated:
+        return redirect(f'/accounts/login/?next={request.path}')
+    return render(request, 'nitei/overview.html', {
+        'persons_json': json.dumps(PERSONS, ensure_ascii=False),
+    })
+
+
+def api_overview(request):
+    if not request.user.is_authenticated:
+        return JsonResponse({'error': 'unauthorized'}, status=403)
+    sheet_index   = int(request.GET.get('sheet_index', 0))
+    section_index = int(request.GET.get('section_index', 0))
+
+    data = {}
+    for person in PERSONS:
+        pdata = {}
+        for e in WorkEntry.objects.filter(
+                person=person, sheet_index=sheet_index, section_index=section_index):
+            pdata[f"w_{e.day_index}_{e.row_type}"] = e.status
+        for e in EventEntry.objects.filter(
+                person=person, sheet_index=sheet_index, section_index=section_index):
+            pdata[f"e_{e.day_index}"] = e.time_text
+        data[person] = pdata
+
+    titles = list(Title.objects.values('id', 'date_from', 'date_to', 'venue', 'title'))
+    for t in titles:
+        t['date_from'] = t['date_from'].strftime('%Y/%m/%d')
+        t['date_to']   = t['date_to'].strftime('%Y/%m/%d')
+
+    return JsonResponse({'data': data, 'titles': titles})
+
+
 def schedule(request, person):
     if person not in PERSONS:
         return redirect('nitei:top')
+
+    if person == 'a':
+        if not request.user.is_authenticated:
+            return redirect(f'/accounts/login/?next={request.path}')
+    else:
+        if not request.user.is_authenticated and not request.session.get(NITEI_SESSION_KEY):
+            return redirect('nitei:login')
+
     return render(request, 'nitei/index.html', {
         'person':      person,
         'person_name': PERSONS[person],
@@ -87,7 +127,7 @@ def api_schedule(request):
     if person not in PERSONS:
         return JsonResponse({'error': 'invalid person'}, status=400)
     entries = WorkEntry.objects.filter(person=person)
-    data = {f"w_{e.sheet_index}_{e.section_index}_{e.day_index}": e.status
+    data = {f"w_{e.sheet_index}_{e.section_index}_{e.day_index}_{e.row_type}": e.status
             for e in entries}
     return JsonResponse(data)
 
@@ -108,19 +148,19 @@ def api_schedule_save(request):
         return JsonResponse({'error': 'invalid person'}, status=400)
 
     parts = key.split('_')
-    if len(parts) != 4 or parts[0] != 'w':
+    if len(parts) != 5 or parts[0] != 'w':
         return JsonResponse({'error': 'bad key'}, status=400)
 
-    _, si, sec, di = parts
+    _, si, sec, di, rt = parts
     if status == '':
         WorkEntry.objects.filter(
             person=person,
-            sheet_index=int(si), section_index=int(sec), day_index=int(di)
+            sheet_index=int(si), section_index=int(sec), day_index=int(di), row_type=int(rt)
         ).delete()
     else:
         WorkEntry.objects.update_or_create(
             person=person,
-            sheet_index=int(si), section_index=int(sec), day_index=int(di),
+            sheet_index=int(si), section_index=int(sec), day_index=int(di), row_type=int(rt),
             defaults={'status': status}
         )
     return JsonResponse({'ok': True})

@@ -6,6 +6,11 @@ PERSON_CHOICES = [
     ('b', 'B氏'),
     ('c', 'C氏'),
     ('d', 'D氏'),
+    ('e', 'E氏'),
+    ('f', 'F氏'),
+    ('g', 'G氏'),
+    ('h', 'H氏'),
+    ('i', 'I氏'),
 ]
 
 PERSONS = {k: v for k, v in PERSON_CHOICES}
@@ -28,22 +33,17 @@ class Title(models.Model):
 
 class WorkEntry(models.Model):
     """勤務記録（1セル = 1レコード）"""
-    STATUS_CHOICES = [
-        ('公開FM', '公開FM'),
-        ('有給',   '有給'),
-        ('公休',   '公休'),
-        ('本社',   '本社'),
-        ('公出勤', '公出勤'),
-        ('',       '未入力'),
-    ]
+    ROW_TYPE_CHOICES = [(0, '上番'), (1, '下番')]
+
     person        = models.CharField(max_length=1, choices=PERSON_CHOICES, default='a')
     sheet_index   = models.IntegerField()
     section_index = models.IntegerField()
     day_index     = models.IntegerField()
-    status        = models.CharField(max_length=20, blank=True, choices=STATUS_CHOICES)
+    row_type      = models.IntegerField(default=0, choices=ROW_TYPE_CHOICES)
+    status        = models.CharField(max_length=20, blank=True)  # HH:MM 形式の時刻文字列
 
     class Meta:
-        unique_together = ('person', 'sheet_index', 'section_index', 'day_index')
+        unique_together = ('person', 'sheet_index', 'section_index', 'day_index', 'row_type')
 
     def __str__(self):
         return f"{self.person}:w_{self.sheet_index}_{self.section_index}_{self.day_index}={self.status}"

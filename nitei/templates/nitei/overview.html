@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}全員一覧{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'nitei/css/overview.css' %}">
+<style>
+  #page-wrapper { padding: 0; overflow-x: hidden; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div id="ov-nav">
+  <a class="ov-back" href="/nitei/">← 一覧</a>
+  <div class="ov-nav-center">
+    <button id="btn-prev">◀</button>
+    <span id="period-label"></span>
+    <button id="btn-next">▶</button>
+    <button id="btn-today">今日</button>
+  </div>
+  <span id="ov-status"></span>
+</div>
+
+<div id="ov-wrap">
+  <table id="overview-table">
+    <thead id="ov-thead"></thead>
+    <tbody id="ov-tbody"></tbody>
+  </table>
+</div>
+
+<script>const PERSONS = {{ persons_json|safe }};</script>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'nitei/js/overview.js' %}"></script>
+{% endblock %}

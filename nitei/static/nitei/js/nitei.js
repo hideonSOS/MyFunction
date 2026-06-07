@@ -2,6 +2,7 @@
 const START_DATE     = new Date(2026, 3, 15);  // 2026-04-15
 const SCHEDULE_COUNT = 15;
 const DAYS_PER_ROW   = window.innerWidth < 768 ? 7 : 14;
+const TODAY          = new Date(); TODAY.setHours(0, 0, 0, 0);
 let TITLES     = [];
 let savedData  = {};
 let eventData  = {};
@@ -44,6 +45,9 @@ async function init() {
   eventData = await eventsRes.json();
   document.getElementById('status').textContent = '✓ 読み込み完了';
   buildSheets();
+  syncSumWidth();
+  const todayCell = document.querySelector('td.today');
+  if (todayCell) todayCell.scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
 
 function getEventColor(date) {
@@ -84,12 +88,136 @@ async function clearSheet(sheetIndex, workCells, eventCells, updateSum) {
   updateSum();
 }
 
-function applyWorkColor(cell) {
+function applyEventColor(cell) {
   const t = cell.textContent;
-  if (['公休', '公出勤', '有給'].includes(t))   cell.style.color = '#ff9900';
-  else if (['公開FM', '本社'].includes(t))       cell.style.color = '#ffffff';
-  else                                           cell.style.color = '';
+  if (['公開FM', '本社'].includes(t)) cell.style.color = '#ffffff';
+  else if (t === '公休')              cell.style.color = '#ff9900';
+  else                                cell.style.color = '';
 }
+
+function applyTimeColor(cell) {
+  cell.style.color = cell.textContent ? '#ffe066' : '';
+}
+
+// ── タイムピッカー ────────────────────────────────
+let _pickerTarget = null;
+let _pickerSave   = null;
+
+function createTimePicker() {
+  const panel = document.createElement('div');
+  panel.id = 'time-picker';
+
+  // ヘッダー: time input + クリア + 閉じる
+  const header = document.createElement('div');
+  header.className = 'tp-header';
+
+  const inp = document.createElement('input');
+  inp.type = 'time';
+  inp.id   = 'tp-input';
+  inp.step = '900';  // 15分刻み
+
+  const btnClear = document.createElement('button');
+  btnClear.textContent = 'クリア';
+  btnClear.className   = 'tp-btn-clear';
+  btnClear.onclick = (e) => { e.stopPropagation(); selectTime(''); };
+
+  const btnClose = document.createElement('button');
+  btnClose.textContent = '×';
+  btnClose.className   = 'tp-btn-close';
+  btnClose.onclick = (e) => { e.stopPropagation(); closePicker(); };
+
+  header.appendChild(inp);
+  header.appendChild(btnClear);
+  header.appendChild(btnClose);
+  panel.appendChild(header);
+
+  // 時間グリッド（06:00〜23:00、30分刻み）
+  const grid = document.createElement('div');
+  grid.className = 'tp-grid';
+
+  for (let h = 6; h <= 23; h++) {
+    for (const m of [0, 30]) {
+      const btn = document.createElement('button');
+      btn.textContent = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+      btn.className   = 'tp-time-btn';
+      btn.onclick = (e) => { e.stopPropagation(); selectTime(btn.textContent); };
+      grid.appendChild(btn);
+    }
+  }
+
+  panel.appendChild(grid);
+
+  // inputのchangeで即時反映（モバイルネイティブピッカー確定時）
+  inp.addEventListener('change', () => { if (inp.value) selectTime(inp.value); });
+
+  document.body.appendChild(panel);
+
+  // パネル外クリックで閉じる
+  document.addEventListener('click', (e) => {
+    if (_pickerTarget && !panel.contains(e.target) && e.target !== _pickerTarget) {
+      closePicker();
+    }
+  }, true);
+
+  return panel;
+}
+
+function openPicker(cell, saveCallback) {
+  let panel = document.getElementById('time-picker');
+  if (!panel) panel = createTimePicker();
+
+  _pickerTarget = cell;
+  _pickerSave   = saveCallback;
+
+  panel.querySelector('#tp-input').value = cell.textContent || '';
+  panel.style.display = 'block';
+
+  if (window.innerWidth < 768) {
+    // モバイル: ボトムシート
+    Object.assign(panel.style, {
+      left: '0', right: '0', bottom: '0', top: 'auto',
+      width: '100%', borderRadius: '12px 12px 0 0', boxSizing: 'border-box',
+    });
+  } else {
+    // デスクトップ: セルの直下に配置
+    const rect = cell.getBoundingClientRect();
+    const pw   = 264;
+    let left   = rect.left + window.scrollX;
+    let top    = rect.bottom + window.scrollY + 4;
+    if (left + pw > window.innerWidth) left = Math.max(0, window.innerWidth - pw - 8);
+    Object.assign(panel.style, {
+      left: left + 'px', top: top + 'px', bottom: 'auto', right: 'auto',
+      width: pw + 'px', borderRadius: '6px', boxSizing: 'content-box',
+    });
+  }
+}
+
+function selectTime(value) {
+  if (_pickerTarget) {
+    _pickerTarget.textContent = value;
+    applyTimeColor(_pickerTarget);
+    if (_pickerSave) _pickerSave(value);
+  }
+  closePicker();
+}
+
+function closePicker() {
+  const panel = document.getElementById('time-picker');
+  if (panel) panel.style.display = 'none';
+  _pickerTarget = null;
+  _pickerSave   = null;
+}
+
+// ─────────────────────────────────────────────────────
+
+function syncSumWidth() {
+  const dayCell = document.querySelector('td.day');
+  if (!dayCell) return;
+  const w = dayCell.getBoundingClientRect().width;
+  document.querySelectorAll('td.sumValue').forEach(td => { td.style.width = w + 'px'; });
+}
+
+window.addEventListener('resize', syncSumWidth);
 
 function generateDays(start) {
   const days = [];
@@ -98,91 +226,94 @@ function generateDays(start) {
   return days;
 }
 
-function createSection(dateList, workCells, eventCells, updateSum, sheetIndex, sectionIndex, dayOffset) {
+function createSection(dateList, workCells, sumCells, eventCells, updateSum, sheetIndex, sectionIndex, dayOffset) {
   const table = document.createElement('table');
   const tr1 = document.createElement('tr');
   const tr2 = document.createElement('tr');
   const tr3 = document.createElement('tr');
+  const tr4 = document.createElement('tr');
 
-  ['日付', '開催', '出勤'].forEach((text, i) => {
+  tr2.className = 'row-event';
+  tr3.className = 'row-kami';
+  tr4.className = 'row-shimo';
+
+  ['日付', '開催', '上番', '下番'].forEach((text, i) => {
     const td = document.createElement('td');
     td.textContent = text;
     td.className = 'label';
-    [tr1, tr2, tr3][i].appendChild(td);
+    [tr1, tr2, tr3, tr4][i].appendChild(td);
   });
 
-  const ORDER = ['', '公開FM', '有給', '公休', '本社', '公出勤'];
+  const EVENT_ORDER = ['', '公開FM', '本社', '公休'];
 
   dateList.forEach((date, localIndex) => {
     const dayIndex = localIndex + dayOffset;
-    const m = date.getMonth() + 1;
-    const d = date.getDate();
+    const m   = date.getMonth() + 1;
+    const d   = date.getDate();
     const dow = date.getDay();
 
     // ── 日付行 ──
-    const tdDay = document.createElement('td');
+    const tdDay    = document.createElement('td');
+    const isToday  = date.getTime() === TODAY.getTime();
     tdDay.textContent = `${m}/${d}`;
-    tdDay.className = 'day' + (dow === 6 ? ' sat' : dow === 0 ? ' sun' : '');
+    tdDay.className = 'day' + (dow === 6 ? ' sat' : dow === 0 ? ' sun' : '') + (isToday ? ' today' : '');
     tr1.appendChild(tdDay);
 
-    // ── 開催行（色 + 時間入力） ──
-    const tdEvent = document.createElement('td');
-    const color = getEventColor(date);
+    // ── 開催行（クリックで循環） ──
+    const tdEvent  = document.createElement('td');
+    const color    = getEventColor(date);
     const eventKey = `e_${sheetIndex}_${sectionIndex}_${dayIndex}`;
 
-    if (color) {
-      tdEvent.classList.add(color);
-      tdEvent.contentEditable = 'true';
-      tdEvent.spellcheck = false;
-      // 保存済み時間を表示
-      if (eventData[eventKey]) {
-        tdEvent.textContent = eventData[eventKey];
-      }
-      // Enter で確定（改行させない）
-      tdEvent.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') { e.preventDefault(); tdEvent.blur(); }
-      });
-      // フォーカスを外したとき保存
-      tdEvent.addEventListener('blur', () => {
-        const val = tdEvent.textContent.trim();
-        // 改行・余分な空白を除去して表示も更新
-        tdEvent.textContent = val;
-        saveEventTime(eventKey, val);
-      });
-    } else {
-      tdEvent.style.cursor = 'default';
-    }
+    if (color) tdEvent.classList.add(color);
+    if (isToday) tdEvent.classList.add('today-col');
+    if (eventData[eventKey]) tdEvent.textContent = eventData[eventKey];
+    applyEventColor(tdEvent);
+
+    tdEvent.onclick = function () {
+      const idx = EVENT_ORDER.indexOf(tdEvent.textContent);
+      tdEvent.textContent = EVENT_ORDER[(idx + 1) % EVENT_ORDER.length];
+      saveEventTime(eventKey, tdEvent.textContent);
+      applyEventColor(tdEvent);
+      updateSum();
+    };
 
     tr2.appendChild(tdEvent);
     eventCells.push(tdEvent);
 
-    // ── 出勤行（クリックで循環） ──
-    const workKey = `w_${sheetIndex}_${sectionIndex}_${dayIndex}`;
-    const tdWork = document.createElement('td');
-
-    if (savedData[workKey] !== undefined) {
-      tdWork.textContent = savedData[workKey];
-    }
-    applyWorkColor(tdWork);
-
-    tdWork.onclick = function () {
-      const idx = ORDER.indexOf(tdWork.textContent);
-      tdWork.textContent = ORDER[(idx + 1) % ORDER.length];
-      saveCell(workKey, tdWork.textContent);
-      applyWorkColor(tdWork);
-      updateSum();
+    // ── 上番行（タイムピッカー） ──
+    const workKey0 = `w_${sheetIndex}_${sectionIndex}_${dayIndex}_0`;
+    const tdWork0  = document.createElement('td');
+    if (isToday) tdWork0.classList.add('today-col');
+    if (savedData[workKey0]) tdWork0.textContent = savedData[workKey0];
+    applyTimeColor(tdWork0);
+    tdWork0.onclick = function (e) {
+      e.stopPropagation();
+      openPicker(tdWork0, (val) => { saveCell(workKey0, val); updateSum(); });
     };
+    tr3.appendChild(tdWork0);
+    workCells.push(tdWork0);
+    sumCells.push(tdWork0);  // 上番を入力日数カウント対象に
 
-    tr3.appendChild(tdWork);
-    workCells.push(tdWork);
+    // ── 下番行（タイムピッカー） ──
+    const workKey1 = `w_${sheetIndex}_${sectionIndex}_${dayIndex}_1`;
+    const tdWork1  = document.createElement('td');
+    if (isToday) tdWork1.classList.add('today-col');
+    if (savedData[workKey1]) tdWork1.textContent = savedData[workKey1];
+    applyTimeColor(tdWork1);
+    tdWork1.onclick = function (e) {
+      e.stopPropagation();
+      openPicker(tdWork1, (val) => { saveCell(workKey1, val); updateSum(); });
+    };
+    tr4.appendChild(tdWork1);
+    workCells.push(tdWork1);
   });
 
-  [tr1, tr2, tr3].forEach(tr => table.appendChild(tr));
+  [tr1, tr2, tr3, tr4].forEach(tr => table.appendChild(tr));
   return table;
 }
 
 function buildSheets() {
-  const container = document.getElementById('container');
+  const container    = document.getElementById('container');
   const currentStart = new Date(START_DATE);
 
   for (let i = 0; i < SCHEDULE_COUNT; i++) {
@@ -194,6 +325,7 @@ function buildSheets() {
     sheet.appendChild(title);
 
     const workCells  = [];
+    const sumCells   = [];
     const eventCells = [];
     const days = generateDays(currentStart);
 
@@ -202,33 +334,32 @@ function buildSheets() {
     const sumRow   = document.createElement('tr');
     sumRow.className = 'sumRow';
     const sumLabel = document.createElement('td');
-    sumLabel.textContent = '合計';
-    sumLabel.className = 'label';
+    sumLabel.textContent = '公休日数';
+    sumLabel.className   = 'label';
     const sumCell = document.createElement('td');
-    sumCell.colSpan = DAYS_PER_ROW;
     sumCell.textContent = '0';
-    sumCell.className = 'sumValue';
+    sumCell.className  = 'sumValue';
     sumRow.appendChild(sumLabel);
     sumRow.appendChild(sumCell);
     sumTable.appendChild(sumRow);
 
-    const updateSum = (cells => () => {
-      sumCell.textContent = cells.filter(c => ['公休', '公出勤'].includes(c.textContent)).length;
-    })(workCells);
+    const updateSum = (ec => () => {
+      sumCell.textContent = ec.filter(c => c.textContent === '公休').length;
+    })(eventCells);
 
     for (let sec = 0; sec < 2; sec++) {
       const secDays = days.slice(sec * 14, (sec + 1) * 14);
       for (let chunk = 0; chunk * DAYS_PER_ROW < secDays.length; chunk++) {
-        const offset = chunk * DAYS_PER_ROW;
+        const offset    = chunk * DAYS_PER_ROW;
         const chunkDays = secDays.slice(offset, offset + DAYS_PER_ROW);
-        sheet.appendChild(createSection(chunkDays, workCells, eventCells, updateSum, i, sec, offset));
+        sheet.appendChild(createSection(chunkDays, workCells, sumCells, eventCells, updateSum, i, sec, offset));
       }
     }
 
     sheet.appendChild(sumTable);
 
     const resetBtn = document.createElement('button');
-    resetBtn.textContent = 'リセット';
+    resetBtn.textContent    = 'リセット';
     resetBtn.style.marginTop = '4px';
     resetBtn.onclick = ((si, wc, ec, us) => () => clearSheet(si, wc, ec, us))(i, workCells, eventCells, updateSum);
     sheet.appendChild(resetBtn);
