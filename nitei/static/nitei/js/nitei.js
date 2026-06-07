@@ -1,4 +1,4 @@
-// PERSON はテンプレート側で定義済み: const PERSON = "{{ person }}";
+﻿// PERSON はテンプレート側で定義済み: const PERSON = "{{ person }}";
 const START_DATE     = new Date(2026, 3, 15);  // 2026-04-15
 const SCHEDULE_COUNT = 15;
 const DAYS_PER_ROW   = window.innerWidth < 768 ? 7 : 14;
@@ -334,7 +334,7 @@ function buildSheets() {
     const sumRow   = document.createElement('tr');
     sumRow.className = 'sumRow';
     const sumLabel = document.createElement('td');
-    sumLabel.textContent = '公休日数';
+    sumLabel.textContent = '公休数';
     sumLabel.className   = 'label';
     const sumCell = document.createElement('td');
     sumCell.textContent = '0';
@@ -371,3 +371,4 @@ function buildSheets() {
 }
 
 init();
+
