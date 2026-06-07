@@ -86,7 +86,7 @@ body {
 
 #overview-table th,
 #overview-table td {
-  border: 1px solid #1e2e44;
+  border: 1px solid #555;
   vertical-align: middle;
   text-align: center;
   padding: 2px 4px;
@@ -104,8 +104,8 @@ body {
   top: 48px;
   left: 0;
   z-index: 100;
-  border-right: 2px solid #00e5ff33;
-  border-bottom: 2px solid #00e5ff22;
+  border-right: 2px solid #666;
+  border-bottom: 2px solid #555;
 }
 
 .ov-date {
@@ -117,7 +117,7 @@ body {
   position: sticky;
   top: 48px;
   z-index: 50;
-  border-bottom: 2px solid #00e5ff22;
+  border-bottom: 2px solid #555;
   line-height: 1.4;
 }
 .ov-date.ov-sat  { color: #40c8ff; background: #082030; }
@@ -142,7 +142,7 @@ body {
   position: sticky;
   left: 0;
   z-index: 10;
-  border-right: 2px solid #00e5ff33;
+  border-right: 2px solid #666;
   text-shadow: 0 0 6px #7fffd444;
 }
 
@@ -209,8 +209,8 @@ body {
   top: 96px;
   left: 0;
   z-index: 100;
-  border-right: 2px solid #00e5ff33;
-  border-bottom: 2px solid #00e5ff22;
+  border-right: 2px solid #666;
+  border-bottom: 2px solid #555;
 }
 
 .ov-ev-row {
@@ -220,7 +220,7 @@ body {
   position: sticky;
   top: 96px;
   z-index: 50;
-  border-bottom: 2px solid #00e5ff22;
+  border-bottom: 2px solid #555;
 }
 
 .ov-ev-row.ov-ev-green { background: #1a7a30; color: #ffffff; }
@@ -231,5 +231,6 @@ body {
 #ov-tbody tr:hover .ov-name {
   filter: brightness(1.25);
 }
+
 
 

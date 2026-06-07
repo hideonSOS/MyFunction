@@ -12,11 +12,11 @@ table {
 }
 
 /* グループ（日付〜下番）の上辺・下辺を強調 */
-table tr:first-child td { border-top: 2px solid #00e5ff66; }
-table tr:last-child td  { border-bottom: 2px solid #00e5ff66; }
+table tr:first-child td { border-top: 2px solid #666; }
+table tr:last-child td  { border-bottom: 2px solid #666; }
 
 /* 開催↔上番の境界線を強調（コード欄とシフト時刻欄の区切り） */
-tr.row-event td { border-bottom: 2px solid #00e5ff44; }
+tr.row-event td { border-bottom: 2px solid #555; }
 
 /* 上番・下番の背景を微差で区別 */
 tr.row-kami td:not(.label)  { background: #0e1c32; }
@@ -40,9 +40,9 @@ td:hover { background: #112244; }
   width: 80px;
   background: #071020;
   cursor: default;
-  color: #7fffd4;
+  color: #ffffff;
   border-color: #555;
-  text-shadow: 0 0 6px #7fffd4;
+  text-shadow: none;
 }
 
 .day  { background: #081428; color: #ffffff; cursor: default; font-size: 17px; }
@@ -318,7 +318,7 @@ button:hover {
   table {
     width: 100%;
     table-layout: fixed;
-    margin-bottom: 3px;
+    margin-bottom: 12px;
   }
 
   /* 合計行テーブルは fixed レイアウトから除外（幅はJSで同期） */
@@ -546,4 +546,7 @@ td.today-col {
   td    { width: 35px; height: 18px; font-size: 10px; }
   .label { width: 50px; }
 }
+
+
+
 
