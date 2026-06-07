@@ -1,13 +1,13 @@
-from django.db import models
+﻿from django.db import models
 
 
 PERSON_CHOICES = [
-    ('a', 'A氏'),
-    ('b', 'B氏'),
-    ('c', 'C氏'),
-    ('d', 'D氏'),
-    ('e', 'E氏'),
-    ('f', 'F氏'),
+    ('a', '松山'),
+    ('b', '竹田津'),
+    ('c', '金山'),
+    ('d', '三室'),
+    ('e', '山田'),
+    ('f', '芳松'),
     ('g', 'G氏'),
     ('h', 'H氏'),
     ('i', 'I氏'),
@@ -62,3 +62,4 @@ class EventEntry(models.Model):
 
     def __str__(self):
         return f"{self.person}:e_{self.sheet_index}_{self.section_index}_{self.day_index}={self.time_text}"
+
