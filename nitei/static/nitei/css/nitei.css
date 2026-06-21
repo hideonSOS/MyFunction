@@ -149,6 +149,33 @@ button:hover {
   border-color: #00e5ff66;
 }
 
+/* ═══ タブ列末尾のナビゲーションボタン ════════════ */
+/* 「← 一覧」「全員一覧」を sticky な person-tabs の末尾に固定配置 */
+.person-tab.nav-back {
+  margin-left: auto;          /* ナビ群を右端へ寄せる */
+  color: #7fffd4;
+  border-color: #7fffd444;
+  background: #071020;
+}
+.person-tab.nav-back:hover {
+  color: #7fffd4;
+  border-color: #7fffd4;
+  background: #0a1830;
+}
+
+.person-tab.nav-overview {
+  color: #ffe066;
+  border-color: #ffe06677;
+  background: #1a1600;
+  font-weight: bold;
+}
+.person-tab.nav-overview:hover {
+  color: #ffe066;
+  border-color: #ffe066;
+  background: #2a2200;
+  box-shadow: 0 0 10px #ffe06655;
+}
+
 /* ═══ トップページ ══════════════════════════════════ */
 #nitei-top {
   padding: 20px;

@@ -72,8 +72,8 @@ body {
 
 /* ── テーブルラッパー ────────────────────────────── */
 #ov-wrap {
-  padding: 20px;
-  overflow-x: auto;
+  overflow: auto;
+  max-height: calc(100vh - 48px);   /* 48px = #ov-nav の高さ。ここを唯一のスクロール基準にする */
 }
 
 /* ── テーブル本体 ────────────────────────────────── */
@@ -101,7 +101,7 @@ body {
   font-size: 11px;
   letter-spacing: 2px;
   position: sticky;
-  top: 48px;
+  top: 0;
   left: 0;
   z-index: 100;
   border-right: 2px solid #666;
@@ -115,7 +115,7 @@ body {
   height: 48px;
   font-size: 12px;
   position: sticky;
-  top: 48px;
+  top: 0;
   z-index: 50;
   border-bottom: 2px solid #555;
   line-height: 1.4;
@@ -206,7 +206,7 @@ body {
   letter-spacing: 1px;
   height: 28px;
   position: sticky;
-  top: 96px;
+  top: 48px;
   left: 0;
   z-index: 100;
   border-right: 2px solid #666;
@@ -218,7 +218,7 @@ body {
   font-size: 10px;
   background: #04090f;
   position: sticky;
-  top: 96px;
+  top: 48px;
   z-index: 50;
   border-bottom: 2px solid #555;
 }

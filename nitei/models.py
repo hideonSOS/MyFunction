@@ -8,9 +8,9 @@ PERSON_CHOICES = [
     ('d', '三室'),
     ('e', '山田'),
     ('f', '芳松'),
-    ('g', 'G氏'),
-    ('h', 'H氏'),
-    ('i', 'I氏'),
+    ('g', '表木'),
+    ('h', '虎谷'),
+    ('i', '栗原'),
 ]
 
 PERSONS = {k: v for k, v in PERSON_CHOICES}

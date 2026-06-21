@@ -57,16 +57,15 @@ def top(request):
     return render(request, 'nitei/top.html', {'persons': PERSONS})
 
 
+@nitei_login_required
 def overview(request):
-    if not request.user.is_authenticated:
-        return redirect(f'/accounts/login/?next={request.path}')
     return render(request, 'nitei/overview.html', {
         'persons_json': json.dumps(PERSONS, ensure_ascii=False),
     })
 
 
 def api_overview(request):
-    if not request.user.is_authenticated:
+    if not (request.user.is_authenticated or request.session.get(NITEI_SESSION_KEY)):
         return JsonResponse({'error': 'unauthorized'}, status=403)
     sheet_index   = int(request.GET.get('sheet_index', 0))
     section_index = int(request.GET.get('section_index', 0))
