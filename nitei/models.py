@@ -11,6 +11,9 @@ PERSON_CHOICES = [
     ('g', '表木'),
     ('h', '虎谷'),
     ('i', '栗原'),
+    ('j', '小林'),
+    ('k', 'S水'),
+    ('l', 'I田'),
 ]
 
 PERSONS = {k: v for k, v in PERSON_CHOICES}
