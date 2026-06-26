@@ -187,10 +187,16 @@ button:hover {
   position: relative;
 }
 
-.top-header .nitei-logout-btn {
+.top-actions {
   position: absolute;
   top: 0;
   right: 0;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.top-actions .nitei-logout-btn {
   margin-left: 0;
 }
 

@@ -19,10 +19,12 @@
   <div class="top-header">
     <div class="top-title">SCHEDULE MANAGER</div>
     <div class="top-sub">勤務表を表示する担当者を選択してください</div>
-    <a class="nitei-logout-btn" href="/nitei/overview/" style="color:#ffe066;border-color:#ffe06655;">全員一覧</a>
-    {% if not user.is_authenticated %}
-    <a class="nitei-logout-btn" href="{% url 'nitei:logout' %}">ログアウト</a>
-    {% endif %}
+    <div class="top-actions">
+      <a class="nitei-logout-btn" href="/nitei/overview/" style="color:#ffe066;border-color:#ffe06655;">全員一覧</a>
+      {% if not user.is_authenticated %}
+      <a class="nitei-logout-btn" href="{% url 'nitei:logout' %}">ログアウト</a>
+      {% endif %}
+    </div>
   </div>
 
   <div class="person-grid">
