@@ -5,7 +5,12 @@ from django.shortcuts import render, redirect
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 from django.views.decorators.csrf import csrf_exempt
-from .models import Title, WorkEntry, EventEntry, PERSONS
+from datetime import date as date_cls, datetime
+from .models import (
+    Title, WorkEntry, EventEntry, PERSONS,
+    LayoutDay, LayoutRace, LayoutCell,
+    LAYOUT_RACE_COUNT, LAYOUT_COL_COUNT, LAYOUT_DEFAULT_HEADERS,
+)
 
 NITEI_SESSION_KEY = 'nitei_authed'
 
@@ -55,6 +60,16 @@ def nitei_logout(request):
 @nitei_login_required
 def top(request):
     return render(request, 'nitei/top.html', {'persons': PERSONS})
+
+
+@nitei_login_required
+def haichi(request):
+    return render(request, 'nitei/haichi.html', {
+        'today':            date_cls.today().strftime('%Y-%m-%d'),
+        'race_count':       LAYOUT_RACE_COUNT,
+        'col_count':        LAYOUT_COL_COUNT,
+        'default_headers':  json.dumps(LAYOUT_DEFAULT_HEADERS, ensure_ascii=False),
+    })
 
 
 @nitei_login_required
@@ -227,4 +242,142 @@ def api_events_save(request):
             sheet_index=int(si), section_index=int(sec), day_index=int(di),
             defaults={'time_text': time_text}
         )
+    return JsonResponse({'ok': True})
+
+
+# ── 配置図 API ────────────────────────────────────────
+
+def _parse_date(value):
+    """'YYYY-MM-DD' を date に。不正なら None"""
+    try:
+        return datetime.strptime(value, '%Y-%m-%d').date()
+    except (TypeError, ValueError):
+        return None
+
+
+def _clean_time(value):
+    """HH:MM 形式だけ通す。それ以外は空文字"""
+    if not isinstance(value, str):
+        return ''
+    value = value.strip()
+    if not value:
+        return ''
+    try:
+        datetime.strptime(value, '%H:%M')
+    except ValueError:
+        return ''
+    return value
+
+
+@nitei_login_required
+def api_layout(request):
+    day_date = _parse_date(request.GET.get('date'))
+    if day_date is None:
+        return JsonResponse({'error': 'invalid date'}, status=400)
+
+    day = LayoutDay.objects.filter(date=day_date).first()
+    if day is None:
+        return JsonResponse({
+            'date':    day_date.strftime('%Y-%m-%d'),
+            'headers': LAYOUT_DEFAULT_HEADERS,
+            'races':   [],
+            'cells':   {},
+            'exists':  False,
+        })
+
+    headers = day.headers or LAYOUT_DEFAULT_HEADERS
+    headers = (list(headers) + [''] * LAYOUT_COL_COUNT)[:LAYOUT_COL_COUNT]
+
+    return JsonResponse({
+        'date':    day_date.strftime('%Y-%m-%d'),
+        'headers': headers,
+        'races': [{
+            'race':      r.race,
+            'start':     r.start_time,
+            'close':     r.close_time,
+            'highlight': r.highlight,
+        } for r in day.races.all()],
+        'cells':  {f"{c.race}_{c.col}": c.text for c in day.cells.all()},
+        'exists': True,
+    })
+
+
+@nitei_login_required
+@csrf_exempt
+@require_http_methods(['POST'])
+def api_layout_save(request):
+    """1日分をまとめて保存（差し替え）"""
+    try:
+        body = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'invalid json'}, status=400)
+
+    day_date = _parse_date(body.get('date'))
+    if day_date is None:
+        return JsonResponse({'error': 'invalid date'}, status=400)
+
+    headers = body.get('headers') or []
+    if not isinstance(headers, list):
+        return JsonResponse({'error': 'invalid headers'}, status=400)
+    headers = [str(h)[:50] for h in headers[:LAYOUT_COL_COUNT]]
+    headers += [''] * (LAYOUT_COL_COUNT - len(headers))
+
+    day, _ = LayoutDay.objects.update_or_create(
+        date=day_date, defaults={'headers': headers})
+
+    # レース時刻
+    day.races.all().delete()
+    races = []
+    for item in (body.get('races') or []):
+        try:
+            race = int(item.get('race'))
+        except (TypeError, ValueError):
+            continue
+        if not 1 <= race <= LAYOUT_RACE_COUNT:
+            continue
+        start     = _clean_time(item.get('start'))
+        close     = _clean_time(item.get('close'))
+        highlight = bool(item.get('highlight'))
+        if not start and not close and not highlight:
+            continue
+        races.append(LayoutRace(day=day, race=race, start_time=start,
+                                close_time=close, highlight=highlight))
+    LayoutRace.objects.bulk_create(races)
+
+    # 配置セル
+    day.cells.all().delete()
+    cells = []
+    for key, text in (body.get('cells') or {}).items():
+        parts = str(key).split('_')
+        if len(parts) != 2:
+            continue
+        try:
+            race, col = int(parts[0]), int(parts[1])
+        except ValueError:
+            continue
+        if not (1 <= race <= LAYOUT_RACE_COUNT and 0 <= col < LAYOUT_COL_COUNT):
+            continue
+        text = str(text or '').strip()[:200]
+        if not text:
+            continue
+        cells.append(LayoutCell(day=day, race=race, col=col, text=text))
+    LayoutCell.objects.bulk_create(cells)
+
+    return JsonResponse({'ok': True})
+
+
+@nitei_login_required
+@csrf_exempt
+@require_http_methods(['POST'])
+def api_layout_clear(request):
+    try:
+        body = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'invalid json'}, status=400)
+
+    day_date = _parse_date(body.get('date'))
+    if day_date is None:
+        return JsonResponse({'error': 'invalid date'}, status=400)
+
+    LayoutDay.objects.filter(date=day_date).delete()
     return JsonResponse({'ok': True})

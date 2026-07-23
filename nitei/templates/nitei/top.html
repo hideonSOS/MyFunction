@@ -21,6 +21,7 @@
     <div class="top-sub">勤務表を表示する担当者を選択してください</div>
     <div class="top-actions">
       <a class="nitei-logout-btn" href="/nitei/overview/" style="color:#ffe066;border-color:#ffe06655;">全員一覧</a>
+      <a class="nitei-logout-btn" href="/nitei/haichi/" style="color:#39ff14;border-color:#39ff1455;">配置図</a>
       {% if not user.is_authenticated %}
       <a class="nitei-logout-btn" href="{% url 'nitei:logout' %}">ログアウト</a>
       {% endif %}

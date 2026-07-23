@@ -1,0 +1,322 @@
+/* 配置図（1日単位） ── 月間シフト表と同じサイバー調 */
+
+#page-wrapper {
+  display: block;
+  overflow-y: auto;
+  padding: 20px;
+  font-family: 'Courier New', monospace;
+  color: #00e5ff;
+}
+
+/* ── ヘッダー ─────────────────────────────── */
+.hc-header {
+  margin-bottom: 16px;
+}
+
+.hc-title {
+  font-size: 20px;
+  letter-spacing: 4px;
+  color: #00e5ff;
+  text-shadow: 0 0 16px #00e5ff;
+  margin-bottom: 4px;
+}
+
+.hc-sub {
+  font-size: 11px;
+  color: #7fffd4;
+  letter-spacing: 2px;
+}
+
+/* ── ツールバー（person-tabs と同じ sticky 帯） ── */
+.hc-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  position: -webkit-sticky;
+  position: sticky;
+  top: 0;
+  z-index: 200;
+  background: #060e1a;
+  margin: 0 -20px 16px;
+  padding: 8px 20px;
+  border-bottom: 1px solid #00e5ff22;
+  box-shadow: 0 2px 16px rgba(0, 0, 0, 0.6);
+}
+
+.hc-spacer { flex: 1; }
+
+.hc-btn {
+  display: inline-block;
+  padding: 4px 10px;
+  border: 1px solid #00e5ff44;
+  border-radius: 3px;
+  background: #0d1526;
+  color: #00e5ff88;
+  font-family: 'Courier New', monospace;
+  font-size: 12px;
+  letter-spacing: 1px;
+  text-decoration: none;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.hc-btn:hover {
+  border-color: #00e5ff;
+  color: #00e5ff;
+  background: #112244;
+}
+
+.hc-btn.hc-back {
+  color: #7fffd4;
+  border-color: #7fffd444;
+  background: #071020;
+}
+.hc-btn.hc-back:hover { color: #7fffd4; border-color: #7fffd4; background: #0a1830; }
+
+.hc-btn.hc-danger { color: #ff6060; border-color: #ff606055; background: #1a0808; }
+.hc-btn.hc-danger:hover { color: #ff6060; border-color: #ff6060; background: #300808; }
+
+#date-input {
+  padding: 4px 8px;
+  border: 1px solid #00e5ff55;
+  border-radius: 3px;
+  background: #071020;
+  color: #00e5ff;
+  font-family: 'Courier New', monospace;
+  font-size: 14px;
+  letter-spacing: 1px;
+}
+
+#date-input:focus { outline: none; border-color: #00e5ff; }
+#date-input::-webkit-calendar-picker-indicator { filter: invert(1); cursor: pointer; }
+
+#hc-weekday {
+  font-size: 14px;
+  color: #ffffff;
+  letter-spacing: 1px;
+  text-shadow: 0 0 8px #00e5ff;
+}
+#hc-weekday.sat { color: #40c8ff; text-shadow: 0 0 8px #40c8ff; }
+#hc-weekday.sun { color: #ff6060; text-shadow: 0 0 8px #ff6060; }
+
+#hc-status { font-size: 12px; color: #7fffd4; min-width: 92px; }
+#hc-status.saving { color: #ffe066; }
+#hc-status.saved  { color: #39ff14; text-shadow: 0 0 6px #39ff14; }
+#hc-status.error  { color: #ff6060; text-shadow: 0 0 6px #ff6060; }
+
+.hc-note { margin-top: 12px; font-size: 11px; color: #00e5ff66; letter-spacing: 1px; }
+
+/* ── テーブル外枠（.sheet と同じ） ──────────── */
+.hc-wrap {
+  display: inline-block;
+  max-width: 100%;
+  overflow-x: auto;
+  border: 1px solid #00e5ff33;
+  border-radius: 4px;
+  padding: 12px;
+  box-shadow: 0 0 12px rgba(0, 229, 255, 0.1);
+}
+
+/* table-layout:fixed ＋ 先頭行(thead)の幅指定で、
+   入力文字数に関係なく列幅を固定する */
+#hc-table {
+  border-collapse: collapse;
+  table-layout: fixed;
+  width: 1px;              /* fixed レイアウトでは列幅の合計まで広がる */
+}
+
+#hc-table .hc-th-time { width: 96px; }
+#hc-table .hc-th-race { width: 46px; }
+#hc-table .hc-th-cell { width: 120px; }
+
+#hc-table th,
+#hc-table td {
+  border: 1px solid #555;
+  padding: 0;
+  text-align: center;
+  font-size: 13px;
+  background: #0d1526;
+  color: #00e5ff;
+}
+
+/* ヘッダー行（元の黒帯 → 濃紺＋シアン下線） */
+#hc-table thead th {
+  height: 28px;
+  background: #071020;
+  color: #ffffff;
+  border-color: #555;
+  border-bottom: 2px solid #00e5ff;
+  font-weight: normal;
+  letter-spacing: 1px;
+}
+
+.hc-head-input {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  height: 28px;
+  padding: 0 2px;
+  border: 0;
+  background: transparent;
+  color: #ffffff;
+  font-family: 'Courier New', monospace;
+  font-size: 13px;
+  letter-spacing: 1px;
+  text-align: center;
+  outline: none;
+}
+
+.hc-head-input::placeholder { color: #00e5ff44; }
+.hc-head-input:focus { background: #112244; box-shadow: inset 0 0 0 1px #00e5ffaa; }
+
+/* ── 時刻列（3段） ────────────────────────── */
+/* 背景色は #hc-table td の詳細度に勝てるよう #hc-table で修飾する */
+#hc-table .hc-time-cell { width: 96px; height: 22px; overflow: hidden; }
+
+/* 発売開始（元 水色） */
+#hc-table .hc-time-cell.row-start {
+  background: #0c2c4e;
+  box-shadow: inset 3px 0 0 #40c8ff;
+}
+/* 発売時間 = 自動計算（元 白） */
+#hc-table .hc-time-cell.row-dur {
+  background: #0b1528;
+  box-shadow: inset 3px 0 0 #7fffd455;
+}
+/* 締め切り（元 桃色） */
+#hc-table .hc-time-cell.row-close {
+  background: #3a1220;
+  box-shadow: inset 3px 0 0 #ff6060;
+}
+
+.hc-time-input {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  height: 22px;
+  padding: 0 4px;
+  border: 0;
+  background: transparent;
+  font-family: 'Courier New', monospace;
+  font-size: 13px;
+  letter-spacing: 1px;
+  text-align: center;
+  outline: none;
+  cursor: text;
+}
+
+.row-start .hc-time-input { color: #40c8ff; }
+.row-close .hc-time-input { color: #ff8080; }
+
+.hc-time-input::placeholder { color: #ffffff22; }
+.hc-time-input:focus { background: #112244; box-shadow: inset 0 0 0 1px #00e5ffaa; }
+
+.hc-dur {
+  height: 22px;
+  line-height: 22px;
+  font-size: 13px;
+  color: #7fffd4;
+  letter-spacing: 1px;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+/* ── レース番号列 ─────────────────────────── */
+#hc-table .hc-race {
+  width: 44px;
+  font-weight: bold;
+  font-size: 14px;
+  cursor: pointer;
+  color: #ffffff;
+  background: #081428;
+  user-select: none;
+  transition: background 0.15s;
+}
+
+#hc-table .hc-race:hover { background: #112244; }
+
+/* 着色レース（元 オレンジ → アンバー発光。.green/.blue と同じ塗り方） */
+#hc-table .hc-race.on {
+  background: #a07800;
+  color: #ffffff;
+  text-shadow: 0 0 6px #ffe066;
+  box-shadow: inset 0 0 10px rgba(255, 224, 102, 0.45);
+}
+
+#hc-table .hc-race.on:hover { background: #b88a00; }
+
+/* ── 配置セル ─────────────────────────────── */
+#hc-table .hc-cell { width: 120px; }
+
+.hc-cell-input {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  height: 66px;
+  padding: 0 4px;
+  border: 0;
+  background: transparent;
+  color: #00e5ff;
+  font-family: 'Courier New', monospace;
+  font-size: 13px;
+  text-align: center;
+  outline: none;
+  cursor: text;
+  transition: background 0.15s;
+}
+
+.hc-cell-input:hover { background: #112244; }
+.hc-cell-input:focus { background: #112244; box-shadow: inset 0 0 0 2px #00e5ffaa; }
+
+/* レース境界を強調 */
+#hc-table tr.race-close td { border-bottom: 2px solid #666; }
+#hc-table tbody tr:last-child td { border-bottom: 2px solid #666; }
+
+/* ── モバイル ─────────────────────────────── */
+@media (max-width: 767px) {
+  #page-wrapper { padding: 8px 4px; }
+
+  .hc-toolbar { gap: 4px; margin: 0 -4px 10px; padding: 6px 4px; }
+  .hc-btn { padding: 5px 8px; font-size: 11px; }
+  #date-input { font-size: 13px; padding: 4px 6px; }
+  #hc-status { min-width: 0; font-size: 11px; }
+
+  .hc-title { font-size: 15px; letter-spacing: 2px; }
+  .hc-wrap  { padding: 6px 4px; display: block; }
+
+  #hc-table th, #hc-table td { font-size: 10px; }
+  #hc-table .hc-th-time, #hc-table .hc-time-cell { width: 62px; height: 20px; }
+  #hc-table .hc-th-race, #hc-table .hc-race      { width: 30px; font-size: 11px; }
+  #hc-table .hc-th-cell, #hc-table .hc-cell      { width: 62px; }
+  .hc-time-input  { height: 20px; font-size: 11px; letter-spacing: 0; padding: 0 1px; }
+  .hc-dur         { height: 20px; line-height: 20px; font-size: 11px; letter-spacing: 0; }
+  .hc-cell-input  { height: 54px; font-size: 11px; }
+  .hc-head-input  { font-size: 10px; letter-spacing: 0; }
+}
+
+/* ── 印刷（背景を落として白地で出す） ───────── */
+@media print {
+  @page { size: A4 portrait; margin: 12mm; }
+
+  #hamburger, #sidebar, .hc-toolbar, .hc-note { display: none !important; }
+  #page-wrapper { margin-left: 0 !important; padding: 0 !important; color: #000; }
+
+  .hc-title, .hc-sub { color: #000; text-shadow: none; }
+
+  .hc-wrap { border: 0; box-shadow: none; padding: 0; overflow: visible; }
+
+  #hc-table th, #hc-table td { background: #fff; color: #000; border-color: #666; }
+  #hc-table thead th { border-bottom: 2px solid #000; }
+
+  .hc-head-input, .hc-time-input, .hc-cell-input { color: #000; }
+  .hc-dur { color: #000; }
+  #hc-table .hc-race,
+  #hc-table .hc-race.on { color: #000; text-shadow: none; box-shadow: none; background: #fff; }
+  #hc-table .hc-race.on { background: #ffbf00; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  #hc-table .hc-time-cell.row-start,
+  #hc-table .hc-time-cell.row-dur,
+  #hc-table .hc-time-cell.row-close { background: #fff; box-shadow: none; }
+
+  .hc-cell-input { height: 40px; }
+}

@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}配置図{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'nitei/css/haichi.css' %}">
+{% endblock %}
+
+{% block content %}
+<div id="haichi">
+
+  <div class="hc-header">
+    <div class="hc-title">DAILY LAYOUT</div>
+    <div class="hc-sub">配 置 図 // 1日単位</div>
+  </div>
+
+  <div class="hc-toolbar">
+    <a class="hc-btn hc-back" href="/nitei/">← 一覧</a>
+    <button class="hc-btn" id="prev-day" type="button">◀ 前日</button>
+    <input type="date" id="date-input" value="{{ today }}">
+    <button class="hc-btn" id="next-day" type="button">翌日 ▶</button>
+    <button class="hc-btn" id="today-btn" type="button">今日</button>
+    <span id="hc-weekday"></span>
+    <span class="hc-spacer"></span>
+    <span id="hc-status">読み込み中...</span>
+    <button class="hc-btn hc-danger" id="clear-btn" type="button">この日をクリア</button>
+    <button class="hc-btn" id="print-btn" type="button">印刷</button>
+  </div>
+
+  <div class="hc-wrap">
+    <table id="hc-table"></table>
+  </div>
+
+  <div class="hc-note">
+    セルをクリックして入力 → 自動保存。列名（上段）も編集できます。レース番号をクリックすると着色が切り替わります。
+  </div>
+
+</div>
+
+<script>
+  const RACE_COUNT      = {{ race_count }};
+  const COL_COUNT       = {{ col_count }};
+  const DEFAULT_HEADERS = {{ default_headers|safe }};
+</script>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'nitei/js/haichi.js' %}"></script>
+{% endblock %}

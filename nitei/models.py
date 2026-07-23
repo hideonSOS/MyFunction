@@ -19,6 +19,12 @@ PERSON_CHOICES = [
 PERSONS = {k: v for k, v in PERSON_CHOICES}
 
 
+# 配置図（1日単位）の既定レイアウト
+LAYOUT_RACE_COUNT = 12
+LAYOUT_DEFAULT_HEADERS = ['ホワイトボード', '映像', 'JLC', '音声', '', '']
+LAYOUT_COL_COUNT = len(LAYOUT_DEFAULT_HEADERS)
+
+
 class Title(models.Model):
     """開催タイトルマスター"""
     date_from = models.DateField()
@@ -65,4 +71,49 @@ class EventEntry(models.Model):
 
     def __str__(self):
         return f"{self.person}:e_{self.sheet_index}_{self.section_index}_{self.day_index}={self.time_text}"
+
+
+# ── 配置図（1日単位） ──────────────────────────────────
+
+class LayoutDay(models.Model):
+    """1日分の配置図"""
+    date    = models.DateField(unique=True)
+    headers = models.JSONField(default=list)  # ポジション列名（6列）
+
+    class Meta:
+        ordering = ['date']
+
+    def __str__(self):
+        return f"配置図 {self.date}"
+
+
+class LayoutRace(models.Model):
+    """レース行の時刻（発売開始 / 締め切り）"""
+    day        = models.ForeignKey(LayoutDay, related_name='races', on_delete=models.CASCADE)
+    race       = models.PositiveSmallIntegerField()          # 1〜12
+    start_time = models.CharField(max_length=5, blank=True)  # 発売開始 HH:MM
+    close_time = models.CharField(max_length=5, blank=True)  # 締め切り HH:MM
+    highlight  = models.BooleanField(default=False)          # レース番号の着色
+
+    class Meta:
+        unique_together = ('day', 'race')
+        ordering = ['race']
+
+    def __str__(self):
+        return f"{self.day.date} {self.race}R {self.start_time}〜{self.close_time}"
+
+
+class LayoutCell(models.Model):
+    """配置セル（1セル = 1レコード、自由テキスト）"""
+    day  = models.ForeignKey(LayoutDay, related_name='cells', on_delete=models.CASCADE)
+    race = models.PositiveSmallIntegerField()  # 1〜12
+    col  = models.PositiveSmallIntegerField()  # 0〜5
+    text = models.CharField(max_length=200, blank=True)
+
+    class Meta:
+        unique_together = ('day', 'race', 'col')
+        ordering = ['race', 'col']
+
+    def __str__(self):
+        return f"{self.day.date} {self.race}R col{self.col}={self.text}"
 
