@@ -24,6 +24,10 @@ LAYOUT_RACE_COUNT = 12
 LAYOUT_DEFAULT_HEADERS = ['ホワイトボード', '映像', 'JLC', '音声', '', '']
 LAYOUT_COL_COUNT = len(LAYOUT_DEFAULT_HEADERS)
 
+# 配置セルの背景色キー。実際の色は haichi.css の .tint-c1〜c10 で定義する
+# （キーだけを保存し、色そのものは CSS 側に持たせて一元管理する）
+LAYOUT_COLOR_KEYS = ['c%d' % i for i in range(1, 11)]
+
 
 class Title(models.Model):
     """開催タイトルマスター"""
@@ -105,15 +109,16 @@ class LayoutRace(models.Model):
 
 class LayoutCell(models.Model):
     """配置セル（1セル = 1レコード、自由テキスト）"""
-    day  = models.ForeignKey(LayoutDay, related_name='cells', on_delete=models.CASCADE)
-    race = models.PositiveSmallIntegerField()  # 1〜12
-    col  = models.PositiveSmallIntegerField()  # 0〜5
-    text = models.CharField(max_length=200, blank=True)
+    day   = models.ForeignKey(LayoutDay, related_name='cells', on_delete=models.CASCADE)
+    race  = models.PositiveSmallIntegerField()  # 1〜12
+    col   = models.PositiveSmallIntegerField()  # 0〜5
+    text  = models.CharField(max_length=200, blank=True)
+    color = models.CharField(max_length=8, blank=True)  # '' または c1〜c10
 
     class Meta:
         unique_together = ('day', 'race', 'col')
         ordering = ['race', 'col']
 
     def __str__(self):
-        return f"{self.day.date} {self.race}R col{self.col}={self.text}"
+        return f"{self.day.date} {self.race}R col{self.col}={self.text}({self.color})"
 

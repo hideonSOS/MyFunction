@@ -25,7 +25,6 @@
     <span class="hc-spacer"></span>
     <span id="hc-status">読み込み中...</span>
     <button class="hc-btn hc-danger" id="clear-btn" type="button">この日をクリア</button>
-    <button class="hc-btn" id="print-btn" type="button">印刷</button>
   </div>
 
   <div class="hc-wrap">
@@ -33,7 +32,8 @@
   </div>
 
   <div class="hc-note">
-    セルをクリックして入力 → 自動保存。列名（上段）も編集できます。レース番号をクリックすると着色が切り替わります。
+    セルをクリックして入力 → 自動保存。セル右下の折り目 <span class="hc-note-chip"></span> を押すと背景色を選べます。
+    列名（上段）も編集でき、レース番号をクリックすると着色が切り替わります。
   </div>
 
 </div>
@@ -42,6 +42,7 @@
   const RACE_COUNT      = {{ race_count }};
   const COL_COUNT       = {{ col_count }};
   const DEFAULT_HEADERS = {{ default_headers|safe }};
+  const COLOR_KEYS      = {{ color_keys|safe }};
 </script>
 {% endblock %}
 

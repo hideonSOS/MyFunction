@@ -9,7 +9,7 @@ from datetime import date as date_cls, datetime
 from .models import (
     Title, WorkEntry, EventEntry, PERSONS,
     LayoutDay, LayoutRace, LayoutCell,
-    LAYOUT_RACE_COUNT, LAYOUT_COL_COUNT, LAYOUT_DEFAULT_HEADERS,
+    LAYOUT_RACE_COUNT, LAYOUT_COL_COUNT, LAYOUT_DEFAULT_HEADERS, LAYOUT_COLOR_KEYS,
 )
 
 NITEI_SESSION_KEY = 'nitei_authed'
@@ -69,6 +69,7 @@ def haichi(request):
         'race_count':       LAYOUT_RACE_COUNT,
         'col_count':        LAYOUT_COL_COUNT,
         'default_headers':  json.dumps(LAYOUT_DEFAULT_HEADERS, ensure_ascii=False),
+        'color_keys':       json.dumps(LAYOUT_COLOR_KEYS),
     })
 
 
@@ -282,11 +283,21 @@ def api_layout(request):
             'headers': LAYOUT_DEFAULT_HEADERS,
             'races':   [],
             'cells':   {},
+            'colors':  {},
             'exists':  False,
         })
 
     headers = day.headers or LAYOUT_DEFAULT_HEADERS
     headers = (list(headers) + [''] * LAYOUT_COL_COUNT)[:LAYOUT_COL_COUNT]
+
+    cells  = {}
+    colors = {}
+    for c in day.cells.all():
+        key = f"{c.race}_{c.col}"
+        if c.text:
+            cells[key] = c.text
+        if c.color:
+            colors[key] = c.color
 
     return JsonResponse({
         'date':    day_date.strftime('%Y-%m-%d'),
@@ -297,7 +308,8 @@ def api_layout(request):
             'close':     r.close_time,
             'highlight': r.highlight,
         } for r in day.races.all()],
-        'cells':  {f"{c.race}_{c.col}": c.text for c in day.cells.all()},
+        'cells':  cells,
+        'colors': colors,
         'exists': True,
     })
 
@@ -344,24 +356,41 @@ def api_layout_save(request):
                                 close_time=close, highlight=highlight))
     LayoutRace.objects.bulk_create(races)
 
-    # 配置セル
-    day.cells.all().delete()
-    cells = []
-    for key, text in (body.get('cells') or {}).items():
+    # 配置セル（テキストと背景色。どちらか一方だけでも保存する）
+    def parse_key(key):
         parts = str(key).split('_')
         if len(parts) != 2:
-            continue
+            return None
         try:
             race, col = int(parts[0]), int(parts[1])
         except ValueError:
-            continue
+            return None
         if not (1 <= race <= LAYOUT_RACE_COUNT and 0 <= col < LAYOUT_COL_COUNT):
+            return None
+        return (race, col)
+
+    merged = {}
+    for key, text in (body.get('cells') or {}).items():
+        rc = parse_key(key)
+        if rc is None:
             continue
         text = str(text or '').strip()[:200]
-        if not text:
+        if text:
+            merged.setdefault(rc, {'text': '', 'color': ''})['text'] = text
+
+    for key, color in (body.get('colors') or {}).items():
+        rc = parse_key(key)
+        if rc is None:
             continue
-        cells.append(LayoutCell(day=day, race=race, col=col, text=text))
-    LayoutCell.objects.bulk_create(cells)
+        color = str(color or '').strip()
+        if color in LAYOUT_COLOR_KEYS:
+            merged.setdefault(rc, {'text': '', 'color': ''})['color'] = color
+
+    day.cells.all().delete()
+    LayoutCell.objects.bulk_create([
+        LayoutCell(day=day, race=rc[0], col=rc[1], text=v['text'], color=v['color'])
+        for rc, v in merged.items()
+    ])
 
     return JsonResponse({'ok': True})
 

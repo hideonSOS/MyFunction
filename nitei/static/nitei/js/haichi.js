@@ -19,6 +19,7 @@
     headers: DEFAULT_HEADERS.slice(),
     races:   {},   // race -> {start, close, highlight}
     cells:   {},   // "race_col" -> text
+    colors:  {},   // "race_col" -> 'c1'〜'c10'
   };
 
   function blankRace() {
@@ -125,6 +126,7 @@
       headers: state.headers.slice(),
       races:   races,
       cells:   Object.assign({}, state.cells),
+      colors:  Object.assign({}, state.colors),
     };
 
     fetch(API_SAVE, {
@@ -195,10 +197,24 @@
       tr1.appendChild(tdRace);
 
       for (let c = 0; c < COL_COUNT; c++) {
-        const td = document.createElement('td');
-        td.className = 'hc-cell';
-        td.rowSpan = 3;
         const key = r + '_' + c;
+        const td = document.createElement('td');
+        td.rowSpan = 3;
+        applyCellTint(td, key);
+
+        // 左上のカラーチップ。入力欄のクリックを奪わないよう小さく置く
+        const chip = document.createElement('button');
+        chip.type = 'button';
+        chip.className = 'hc-chip';
+        chip.title = '背景色を選ぶ';
+        chip.setAttribute('aria-label', '背景色を選ぶ');
+        chip.addEventListener('click', ev => {
+          ev.preventDefault();
+          ev.stopPropagation();
+          openPalette(chip, key);
+        });
+        td.appendChild(chip);
+
         const input = document.createElement('input');
         input.className = 'hc-cell-input';
         input.value = state.cells[key] || '';
@@ -255,6 +271,109 @@
     return td;
   }
 
+  // ── セル背景色 ─────────────────────────────
+  /** td に現在の色クラスを反映する */
+  function applyCellTint(td, key) {
+    const color = state.colors[key] || '';
+    td.className = 'hc-cell' + (color ? ' tinted tint-' + color : '');
+    td.dataset.key = key;
+  }
+
+  // パレット（1つを使い回す）
+  let palette      = null;
+  let paletteKey   = null;   // 編集中のセル
+  let paletteChip  = null;
+
+  function buildPalette() {
+    palette = document.createElement('div');
+    palette.id = 'hc-palette';
+
+    const grid = document.createElement('div');
+    grid.className = 'hc-pal-grid';
+    COLOR_KEYS.forEach(ck => {
+      const sw = document.createElement('button');
+      sw.type = 'button';
+      sw.className = 'hc-swatch tint-' + ck;
+      sw.dataset.color = ck;
+      sw.title = ck;
+      sw.addEventListener('click', () => pickColor(ck));
+      grid.appendChild(sw);
+    });
+    palette.appendChild(grid);
+
+    const clearBtn = document.createElement('button');
+    clearBtn.type = 'button';
+    clearBtn.className = 'hc-pal-clear';
+    clearBtn.textContent = '色なし';
+    clearBtn.addEventListener('click', () => pickColor(''));
+    palette.appendChild(clearBtn);
+
+    document.getElementById('haichi').appendChild(palette);
+  }
+
+  function openPalette(chip, key) {
+    if (!palette) buildPalette();
+    if (paletteKey === key && palette.classList.contains('open')) {
+      closePalette();
+      return;
+    }
+    paletteKey  = key;
+    paletteChip = chip;
+
+    // 現在の色を選択表示
+    const current = state.colors[key] || '';
+    palette.querySelectorAll('.hc-swatch').forEach(sw => {
+      sw.classList.toggle('selected', sw.dataset.color === current);
+    });
+
+    palette.classList.add('open');
+
+    // チップの真下へ。画面右端・下端からはみ出さないよう寄せる
+    const host = document.getElementById('haichi').getBoundingClientRect();
+    const rect = chip.getBoundingClientRect();
+    const pw   = palette.offsetWidth;
+    const ph   = palette.offsetHeight;
+
+    let left = rect.left - host.left;
+    let top  = rect.bottom - host.top + 4;
+    const maxLeft = host.width - pw - 4;
+    if (left > maxLeft) left = Math.max(0, maxLeft);
+    if (rect.bottom + ph > window.innerHeight) {
+      top = rect.top - host.top - ph - 4;
+    }
+    palette.style.left = left + 'px';
+    palette.style.top  = top + 'px';
+  }
+
+  function closePalette() {
+    if (palette) palette.classList.remove('open');
+    paletteKey = null;
+    paletteChip = null;
+  }
+
+  function pickColor(color) {
+    if (paletteKey === null) return;
+    const key = paletteKey;
+    if (color) state.colors[key] = color; else delete state.colors[key];
+
+    const td = table.querySelector('.hc-cell[data-key="' + key + '"]');
+    if (td) applyCellTint(td, key);
+
+    closePalette();
+    scheduleSave();
+  }
+
+  // パレット外クリック / Esc で閉じる
+  document.addEventListener('click', ev => {
+    if (!palette || !palette.classList.contains('open')) return;
+    if (palette.contains(ev.target) || ev.target === paletteChip) return;
+    closePalette();
+  });
+
+  document.addEventListener('keydown', ev => {
+    if (ev.key === 'Escape') closePalette();
+  });
+
   function refreshDuration(race) {
     const el = table.querySelector('.hc-dur[data-race="' + race + '"]');
     if (el) el.textContent = duration(state.races[race].start, state.races[race].close);
@@ -286,7 +405,9 @@
             highlight: !!item.highlight,
           };
         });
-        state.cells = Object.assign({}, data.cells || {});
+        state.cells  = Object.assign({}, data.cells  || {});
+        state.colors = Object.assign({}, data.colors || {});
+        closePalette();
         render();
         setStatus(data.exists ? '読み込み完了' : '新規（未入力）', '');
       })
@@ -307,8 +428,6 @@
          String(d.getMonth() + 1).padStart(2, '0') + '-' +
          String(d.getDate()).padStart(2, '0'));
   });
-
-  document.getElementById('print-btn').addEventListener('click', () => window.print());
 
   document.getElementById('clear-btn').addEventListener('click', () => {
     if (!confirm(state.date + ' の配置図をすべて消去します。よろしいですか？')) return;
