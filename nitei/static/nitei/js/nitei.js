@@ -1,8 +1,7 @@
 ﻿// PERSON はテンプレート側で定義済み: const PERSON = "{{ person }}";
-const START_DATE     = new Date(2026, 3, 15);  // 2026-04-15
-const SCHEDULE_COUNT = 15;
-const DAYS_PER_ROW   = window.innerWidth < 768 ? 7 : 14;
-const TODAY          = new Date(); TODAY.setHours(0, 0, 0, 0);
+// 期間定義（シートの開始日・日数・セクション割り）は periods.js の NITEI_SHEETS に集約
+const IS_MOBILE = window.innerWidth < 768;
+const TODAY     = new Date(); TODAY.setHours(0, 0, 0, 0);
 let TITLES     = [];
 let savedData  = {};
 let eventData  = {};
@@ -74,7 +73,8 @@ function saveEventTime(key, value) {
 }
 
 async function clearSheet(sheetIndex, workCells, eventCells, updateSum) {
-  const label = sheetIndex === 0 ? '勤務表' : `勤務表${sheetIndex + 1}`;
+  const sheet = NITEI_SHEETS[sheetIndex];
+  const label = `${sheet.label}（${niteiRangeLabel(sheet)}）`;
   if (!confirm(`${label}の入力をリセットしますか？`)) return;
   await fetch('/nitei/api/schedule/clear/', {
     method: 'POST',
@@ -220,13 +220,6 @@ function syncSumWidth() {
 
 window.addEventListener('resize', syncSumWidth);
 
-function generateDays(start) {
-  const days = [];
-  const d = new Date(start);
-  for (let i = 0; i < 28; i++) { days.push(new Date(d)); d.setDate(d.getDate() + 1); }
-  return days;
-}
-
 function createSection(dateList, workCells, sumCells, eventCells, updateSum, sheetIndex, sectionIndex, dayOffset) {
   const table = document.createElement('table');
   const tr1 = document.createElement('tr');
@@ -314,21 +307,20 @@ function createSection(dateList, workCells, sumCells, eventCells, updateSum, she
 }
 
 function buildSheets() {
-  const container    = document.getElementById('container');
-  const currentStart = new Date(START_DATE);
+  const container = document.getElementById('container');
 
-  for (let i = 0; i < SCHEDULE_COUNT; i++) {
+  NITEI_SHEETS.forEach(def => {
+    const i = def.index;
     const sheet = document.createElement('div');
     sheet.className = 'sheet';
 
     const title = document.createElement('h2');
-    title.textContent = i === 0 ? '勤務表' : `勤務表${i + 1}`;
+    title.textContent = `${def.label}  ${niteiRangeLabel(def)}（${def.days.length}日）`;
     sheet.appendChild(title);
 
     const workCells  = [];
     const sumCells   = [];
     const eventCells = [];
-    const days = generateDays(currentStart);
 
     const sumTable = document.createElement('table');
     sumTable.className = 'sumTable';
@@ -348,14 +340,17 @@ function buildSheets() {
       sumCell.textContent = ec.filter(c => c.textContent === '公休').length;
     })(eventCells);
 
-    for (let sec = 0; sec < 2; sec++) {
-      const secDays = days.slice(sec * 14, (sec + 1) * 14);
-      for (let chunk = 0; chunk * DAYS_PER_ROW < secDays.length; chunk++) {
-        const offset    = chunk * DAYS_PER_ROW;
-        const chunkDays = secDays.slice(offset, offset + DAYS_PER_ROW);
+    // セクション単位で1テーブル。スマホだけ7日前後で折り返す
+    // （15日を 7+7+1 のように余らせず、5+5+5 のように均等割りする）
+    def.sections.forEach((secDays, sec) => {
+      const rowSize = IS_MOBILE
+        ? Math.ceil(secDays.length / Math.ceil(secDays.length / 7))
+        : secDays.length;
+      for (let offset = 0; offset < secDays.length; offset += rowSize) {
+        const chunkDays = secDays.slice(offset, offset + rowSize);
         sheet.appendChild(createSection(chunkDays, workCells, sumCells, eventCells, updateSum, i, sec, offset));
       }
-    }
+    });
 
     sheet.appendChild(sumTable);
 
@@ -367,8 +362,7 @@ function buildSheets() {
 
     updateSum();
     container.appendChild(sheet);
-    currentStart.setDate(currentStart.getDate() + 28);
-  }
+  });
 }
 
 init();

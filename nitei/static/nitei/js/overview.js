@@ -1,25 +1,44 @@
 ﻿// PERSONS はテンプレート側で定義済み
-const OV_START_DATE     = new Date(2026, 3, 15);  // 2026-04-15
-const OV_DAYS           = 28;                      // 1シート = 28日
-const OV_TOTAL_SECTIONS = 15;                      // 15シート
-const OV_DOW            = ['日', '月', '火', '水', '木', '金', '土'];
+//
+// 全員一覧は「カレンダー月」単位で表示する（勤務表ページの28日/14日/月サイクルとは別）。
+// 保存データは位置キー（sheet/section/day）なので、periods.js の
+// niteiPositionForDate() で日付から保存位置を逆引きして拾う。
+const OV_DOW = ['日', '月', '火', '水', '木', '金', '土'];
 
-let ovSection = 0;
-let ovTitles  = [];
+let ovYear   = 0;   // 表示中の年
+let ovMonth  = 0;   // 表示中の月（0始まり）
+let ovTitles = [];
 
 const TODAY = new Date(); TODAY.setHours(0, 0, 0, 0);
 
+// 勤務表がカバーしている範囲の月（ここより外へはナビゲートさせない）
+const OV_FIRST = { y: NITEI_RANGE.start.getFullYear(), m: NITEI_RANGE.start.getMonth() };
+const OV_LAST  = { y: NITEI_RANGE.end.getFullYear(),   m: NITEI_RANGE.end.getMonth()   };
+
 // ── ユーティリティ ────────────────────────────────
 
-function sectionStartDate(s) {
-  const d = new Date(OV_START_DATE);
-  d.setDate(d.getDate() + s * OV_DAYS);
-  return d;
+/** 年月を通し番号にして比較しやすくする */
+function ovSerial(y, m) { return y * 12 + m; }
+
+function ovClampToRange(y, m) {
+  const s   = ovSerial(y, m);
+  const min = ovSerial(OV_FIRST.y, OV_FIRST.m);
+  const max = ovSerial(OV_LAST.y,  OV_LAST.m);
+  const v   = Math.max(min, Math.min(max, s));
+  return { y: Math.floor(v / 12), m: v % 12 };
 }
 
-function currentSectionFromToday() {
-  const diff = Math.floor((TODAY - OV_START_DATE) / 86400000);
-  return Math.max(0, Math.min(OV_TOTAL_SECTIONS - 1, Math.floor(diff / OV_DAYS)));
+function ovSetMonthFromToday() {
+  const c = ovClampToRange(TODAY.getFullYear(), TODAY.getMonth());
+  ovYear = c.y; ovMonth = c.m;
+}
+
+/** 表示中の月の日付一覧 */
+function ovMonthDays() {
+  const last = new Date(ovYear, ovMonth + 1, 0).getDate();
+  const days = [];
+  for (let i = 1; i <= last; i++) days.push(new Date(ovYear, ovMonth, i));
+  return days;
 }
 
 function getEventInfo(date) {
@@ -41,43 +60,56 @@ function getEventColor(date) {
 
 async function loadAndRender() {
   document.getElementById('ov-status').textContent = '読み込み中...';
-  const si = ovSection;
 
-  // 両セクション（前半14日・後半14日）を並行取得
-  const [res0, res1] = await Promise.all([
-    fetch(`/nitei/api/overview/?sheet_index=${si}&section_index=0`),
-    fetch(`/nitei/api/overview/?sheet_index=${si}&section_index=1`),
-  ]);
-  const [json0, json1] = await Promise.all([res0.json(), res1.json()]);
-  ovTitles = json0.titles;
+  const days      = ovMonthDays();
+  const positions = days.map(d => niteiPositionForDate(d));
 
-  // セクション1のキーを14オフセットしてマージ
+  // この月が触れる (sheet, section) の組み合わせだけを取得する。
+  // 月は勤務表の区切りをまたぐので、1〜3 組になることが多い。
+  const needed = [];
+  const seen   = {};
+  positions.forEach(p => {
+    if (!p) return;
+    const id = `${p.sheet}_${p.section}`;
+    if (!seen[id]) { seen[id] = true; needed.push(p); }
+  });
+
+  const results = await Promise.all(
+    needed.map(p =>
+      fetch(`/nitei/api/overview/?sheet_index=${p.sheet}&section_index=${p.section}`)
+        .then(r => r.json())
+        .then(json => ({ id: `${p.sheet}_${p.section}`, json }))
+    )
+  );
+
+  const bySection = {};
+  results.forEach(r => { bySection[r.id] = r.json.data; });
+  if (results.length) ovTitles = results[0].json.titles;
+
+  // 日付ごとに、その日の保存位置から値を引いて日付インデックスへ詰め替える
   const data = {};
-  for (const person of Object.keys(json0.data)) {
-    const pdata = { ...json0.data[person] };
-    for (const [key, val] of Object.entries(json1.data[person] || {})) {
-      const m = key.match(/^([ew])_(\d+)(.*)$/);
-      if (m) pdata[`${m[1]}_${parseInt(m[2]) + 14}${m[3]}`] = val;
-    }
+  Object.keys(PERSONS).forEach(person => {
+    const pdata = {};
+    positions.forEach((p, i) => {
+      if (!p) return;
+      const src = (bySection[`${p.sheet}_${p.section}`] || {})[person] || {};
+      const ev  = src[`e_${p.day}`];
+      const w0  = src[`w_${p.day}_0`];
+      const w1  = src[`w_${p.day}_1`];
+      if (ev !== undefined) pdata[`e_${i}`]   = ev;
+      if (w0 !== undefined) pdata[`w_${i}_0`] = w0;
+      if (w1 !== undefined) pdata[`w_${i}_1`] = w1;
+    });
     data[person] = pdata;
-  }
+  });
 
-  render(data);
+  render(data, days, positions);
   document.getElementById('ov-status').textContent = '✓';
 }
 
-function render(data) {
-  const start = sectionStartDate(ovSection);
-  const days  = [];
-  for (let i = 0; i < OV_DAYS; i++) {
-    const d = new Date(start);
-    d.setDate(d.getDate() + i);
-    days.push(d);
-  }
-
-  // 期間ラベル更新
-  const fmt = d => `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}`;
-  document.getElementById('period-label').textContent = `${fmt(days[0])}  〜  ${fmt(days[OV_DAYS-1])}`;
+function render(data, days, positions) {
+  // 期間ラベルは「2026年9月」
+  document.getElementById('period-label').textContent = `${ovYear}年${ovMonth + 1}月`;
 
   // ── thead ──
   const thead = document.getElementById('ov-thead');
@@ -159,7 +191,8 @@ function render(data) {
         + (dow === 6 ? ' ov-sat' : dow === 0 ? ' ov-sun' : '')
         + (color && !isKyu ? ` ov-ev-${color}` : '')
         + (isKyu ? ' ov-kyu' : '')
-        + (isToday ? ' ov-today' : '');
+        + (isToday ? ' ov-today' : '')
+        + (positions[i] ? '' : ' ov-nodata');   // 勤務表の対象期間外
 
       let html = '';
       if (eventCode) html += `<div class="ov-code ${isKyu ? 'c-kyu' : 'c-ev'}">${eventCode}</div>`;
@@ -176,18 +209,18 @@ function render(data) {
 
 // ── ナビゲーション ────────────────────────────────
 
-document.getElementById('btn-prev').onclick = () => {
-  if (ovSection > 0) { ovSection--; loadAndRender(); }
-};
-document.getElementById('btn-next').onclick = () => {
-  if (ovSection < OV_TOTAL_SECTIONS - 1) { ovSection++; loadAndRender(); }
-};
-document.getElementById('btn-today').onclick = () => {
-  ovSection = currentSectionFromToday();
+function ovShiftMonth(delta) {
+  const c = ovClampToRange(ovYear, ovMonth + delta);
+  if (c.y === ovYear && c.m === ovMonth) return;   // 範囲端では動かさない
+  ovYear = c.y; ovMonth = c.m;
   loadAndRender();
-};
+}
+
+document.getElementById('btn-prev').onclick  = () => ovShiftMonth(-1);
+document.getElementById('btn-next').onclick  = () => ovShiftMonth(1);
+document.getElementById('btn-today').onclick = () => { ovSetMonthFromToday(); loadAndRender(); };
 
 // ── 初期表示 ──────────────────────────────────────
-ovSection = currentSectionFromToday();
+ovSetMonthFromToday();
 loadAndRender();
 

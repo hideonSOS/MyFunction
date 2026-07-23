@@ -165,6 +165,13 @@ body {
 .ov-cell.ov-ev-green { background: #092818; }
 .ov-cell.ov-kyu      { background: #1e0e00; }
 
+/* 勤務表がカバーしていない日（入力欄そのものが存在しない） */
+#ov-tbody .ov-cell.ov-nodata {
+  background: #05080f;
+  background-image: repeating-linear-gradient(
+    45deg, transparent 0 5px, rgba(255, 255, 255, 0.035) 5px 10px);
+}
+
 /* 今日列 */
 @keyframes ov-today-pulse {
   0%, 100% { box-shadow: inset 0 0 0 2px #00e5ff; }
