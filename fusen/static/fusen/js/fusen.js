@@ -565,14 +565,37 @@
     if (t.remind_at) add('remind', '🔔 ' + fmtWhen(t.remind_at));
 
     const detail = document.getElementById('fs-tm-vdetail');
-    detail.textContent = t.detail || '(詳細なし)';
-    detail.classList.toggle('empty', !t.detail);
+    if (t.detail) {
+      detail.innerHTML = bodyToHtml(t.detail);
+      detail.classList.remove('empty');
+      // 閲覧でもチェックはトグル＆保存できる
+      bindChecklist(detail, async html => { await persistTaskDetail(html); });
+    } else {
+      detail.textContent = '(詳細なし)';
+      detail.classList.add('empty');
+    }
+  }
+
+  // 閲覧時のチェックリスト・トグルで詳細だけ保存する
+  async function persistTaskDetail(html) {
+    if (!currentTask) return;
+    const t = currentTask;
+    const saved = await post('/fusen/api/task/save/', {
+      id: t.id, title: t.title, detail: html,
+      due_at: t.due_at || '', remind_at: t.remind_at || '',
+      priority: t.priority, status: t.status, all_day: t.all_day, tone: t.tone,
+    });
+    replaceTask(saved);
+    currentTask = saved;
+    render();
   }
 
   // 編集フォームに値を流し込む
   function fillTaskEdit(t, presetDay) {
     document.getElementById('fs-f-title').value    = t ? t.title : '';
-    document.getElementById('fs-f-detail').value   = t ? t.detail : '';
+    const detEd = document.getElementById('fs-f-detail');
+    detEd.innerHTML = bodyToHtml(t ? t.detail : '');
+    bindChecklist(detEd);
     let due = t && t.due_at ? t.due_at : '';
     if (!t && presetDay) due = presetDay + 'T09:00';   // 新規で日付指定なら 09:00
     document.getElementById('fs-f-due').value      = due;
@@ -616,7 +639,7 @@
     const payload = {
       id:        currentTask ? currentTask.id : null,
       title,
-      detail:    document.getElementById('fs-f-detail').value,
+      detail:    editorGetHtml(document.getElementById('fs-f-detail')),
       due_at:    document.getElementById('fs-f-due').value,
       remind_at: document.getElementById('fs-f-remind').value,
       priority:  parseInt(document.getElementById('fs-f-priority').value, 10),
@@ -704,7 +727,11 @@
     if (body) {
       vb.innerHTML = bodyToHtml(body);
       vb.classList.remove('empty');
-      bindChecklist(vb, true);   // 閲覧でもチェックはトグル＆保存できる
+      // 閲覧でもチェックはトグル＆保存できる
+      bindChecklist(vb, async html => {
+        currentNote.body = html;
+        await saveNote({ id: currentNote.id, body: html });
+      });
     } else {
       vb.textContent = '(中身なし)';
       vb.classList.add('empty');
@@ -720,7 +747,7 @@
     document.getElementById('fs-nm-title').value   = n.title || '';
     const ed = document.getElementById('fs-nm-body');
     ed.innerHTML = bodyToHtml(n.body || '');
-    bindChecklist(ed, false);
+    bindChecklist(ed);
     document.getElementById('fs-nm-date').value    = n.date || '';
     document.getElementById('fs-nm-time').value    = n.time || '';
     document.getElementById('fs-nm-pinned').checked = !!n.pinned;
@@ -760,8 +787,7 @@
   }
 
   // エディタの内容を取り出す（実質空なら空文字）
-  function editorGetHtml() {
-    const ed = document.getElementById('fs-nm-body');
+  function editorGetHtml(ed) {
     const text = (ed.textContent || '').replace(/​/g, '').trim();
     const hasMedia = ed.querySelector('img, .fs-ckbox, li');
     if (!text && !hasMedia) return '';
@@ -773,7 +799,7 @@
     const saved = await saveNote({
       id:     currentNote.id,
       title:  document.getElementById('fs-nm-title').value,
-      body:   editorGetHtml(),
+      body:   editorGetHtml(document.getElementById('fs-nm-body')),
       date:   document.getElementById('fs-nm-date').value,
       time:   document.getElementById('fs-nm-time').value,
       pinned: document.getElementById('fs-nm-pinned').checked,
@@ -808,10 +834,7 @@
   noteModal.addEventListener('click', ev => { if (ev.target === noteModal) closeNoteModal(); });
   document.addEventListener('keydown', ev => { if (ev.key === 'Escape' && !noteModal.hidden) closeNoteModal(); });
 
-  // ── リッチテキスト エディタ ────────────────
-  const editor  = document.getElementById('fs-nm-body');
-  const toolbar = document.getElementById('fs-rte-toolbar');
-
+  // ── リッチテキスト エディタ（付箋・タスク共通） ──
   const FORE_COLORS = [
     ['標準', '#b0c8e0'], ['白', '#ffffff'], ['シアン', '#00f5ff'], ['緑', '#00ff88'],
     ['黄', '#ffe600'], ['橙', '#ff9900'], ['桃', '#ff006e'], ['赤', '#ff5555'],
@@ -823,78 +846,10 @@
     ['紫', 'rgba(185,139,255,0.30)'],
   ];
 
-  function exec(cmd, value) {
-    editor.focus();
-    try { document.execCommand('styleWithCSS', false, true); } catch (e) {}
-    document.execCommand(cmd, false, value);
-    refreshToolbarState();
-  }
-
-  // ツールバー: mousedown で選択を保持しつつコマンド実行
-  toolbar.addEventListener('mousedown', ev => {
-    const btn = ev.target.closest('.fs-rte-btn');
-    if (!btn) return;
-    if (btn.dataset.pop) return;   // ポップオーバーは click で扱う
-    ev.preventDefault();
-    if (btn.dataset.cmd) {
-      exec(btn.dataset.cmd);
-      if (btn.dataset.clearblock) exec('formatBlock', 'div');   // 見出し/引用も解除
-    } else if (btn.dataset.block) {
-      // トグル: 既にそのブロックなら通常段落へ
-      const cur = document.queryCommandValue('formatBlock');
-      exec('formatBlock', (cur || '').toLowerCase() === btn.dataset.block ? 'div' : btn.dataset.block);
-    } else if (btn.dataset.checklist) {
-      insertChecklistItem();
-    }
-  });
-
-  // 色ポップオーバーを組み立て
-  function buildPop(popId, colors, apply) {
-    const pop = document.getElementById(popId);
-    colors.forEach(([label, color]) => {
-      const sw = el('button', 'fs-rte-swatch');
-      sw.type = 'button';
-      sw.style.background = color;
-      sw.title = label;
-      sw.addEventListener('mousedown', ev => { ev.preventDefault(); apply(color); pop.classList.remove('open'); });
-      pop.appendChild(sw);
-    });
-    const none = el('button', 'fs-rte-swatch none', 'なし');
-    none.type = 'button';
-    none.addEventListener('mousedown', ev => { ev.preventDefault(); apply(null); pop.classList.remove('open'); });
-    pop.appendChild(none);
-  }
-  buildPop('fs-rte-fore-pop', FORE_COLORS, c => exec('foreColor', c || '#b0c8e0'));
-  buildPop('fs-rte-hl-pop',  HL_COLORS,  c => exec('hiliteColor', c || 'transparent'));
-
-  // ポップオーバーの開閉
-  toolbar.addEventListener('click', ev => {
-    const btn = ev.target.closest('.fs-rte-btn[data-pop]');
-    if (!btn) return;
-    ev.preventDefault();
-    const pop = document.getElementById(btn.dataset.pop === 'fore' ? 'fs-rte-fore-pop' : 'fs-rte-hl-pop');
-    const wasOpen = pop.classList.contains('open');
-    document.querySelectorAll('.fs-rte-pop').forEach(p => p.classList.remove('open'));
-    if (!wasOpen) pop.classList.add('open');
-  });
-  document.addEventListener('click', ev => {
-    if (!ev.target.closest('.fs-rte-pop-wrap')) {
-      document.querySelectorAll('.fs-rte-pop').forEach(p => p.classList.remove('open'));
-    }
-  });
-
-  // チェックリスト項目を挿入
-  function insertChecklistItem() {
-    editor.focus();
-    const html = '<div class="fs-ck"><span class="fs-ckbox" contenteditable="false">☐</span>&nbsp;</div>';
-    document.execCommand('insertHTML', false, html);
-    bindChecklist(editor, false);
-  }
-
-  // チェックボックスのトグル。persist=true（閲覧時）は保存もする
+  // チェックボックスのトグル。onToggle(html) があれば保存に使う（閲覧時）
   // 属性で印を付けると保存HTMLに残るので WeakSet で管理する
   const boundBoxes = new WeakSet();
-  function bindChecklist(root, persist) {
+  function bindChecklist(root, onToggle) {
     root.querySelectorAll('.fs-ckbox').forEach(box => {
       if (boundBoxes.has(box)) return;
       boundBoxes.add(box);
@@ -903,29 +858,87 @@
         const done = box.textContent.trim() === '☑';
         box.textContent = done ? '☐' : '☑';
         if (line) line.classList.toggle('done', !done);
-        if (persist && currentNote) {
-          const html = cleanHtml(root.innerHTML);
-          currentNote.body = html;
-          await saveNote({ id: currentNote.id, body: html });
-        }
+        if (onToggle) await onToggle(cleanHtml(root.innerHTML));
       });
     });
   }
 
-  // 選択位置の書式に合わせてツールバーの active 状態を更新
-  function refreshToolbarState() {
-    if (noteBox.classList.contains('mode-edit') === false) return;
-    const states = { bold: 'bold', italic: 'italic', underline: 'underline', strikeThrough: 'strikeThrough' };
-    toolbar.querySelectorAll('.fs-rte-btn[data-cmd]').forEach(btn => {
-      const cmd = btn.dataset.cmd;
-      let on = false;
-      if (states[cmd]) { try { on = document.queryCommandState(cmd); } catch (e) {} }
-      else if (cmd.startsWith('insert')) { try { on = document.queryCommandState(cmd); } catch (e) {} }
-      btn.classList.toggle('active', on);
+  // 1つのエディタ（ツールバー＋contenteditable）を初期化する
+  function initEditor(toolbar, editor) {
+    function exec(cmd, value) {
+      editor.focus();
+      try { document.execCommand('styleWithCSS', false, true); } catch (e) {}
+      document.execCommand(cmd, false, value);
+      refreshState();
+    }
+
+    toolbar.addEventListener('mousedown', ev => {
+      const btn = ev.target.closest('.fs-rte-btn');
+      if (!btn || btn.dataset.pop) return;   // ポップは click で扱う
+      ev.preventDefault();
+      if (btn.dataset.cmd) {
+        exec(btn.dataset.cmd);
+        if (btn.dataset.clearblock) exec('formatBlock', 'div');
+      } else if (btn.dataset.block) {
+        const cur = document.queryCommandValue('formatBlock');
+        exec('formatBlock', (cur || '').toLowerCase() === btn.dataset.block ? 'div' : btn.dataset.block);
+      } else if (btn.dataset.checklist) {
+        editor.focus();
+        document.execCommand('insertHTML', false,
+          '<div class="fs-ck"><span class="fs-ckbox" contenteditable="false">☐</span>&nbsp;</div>');
+        bindChecklist(editor);
+      }
     });
+
+    // このツールバー内の色ポップオーバーを組み立て
+    toolbar.querySelectorAll('.fs-rte-pop-wrap').forEach(wrap => {
+      const kind = wrap.querySelector('[data-pop]').dataset.pop;   // 'fore' | 'hl'
+      const pop  = wrap.querySelector('.fs-rte-pop');
+      const list = kind === 'fore' ? FORE_COLORS : HL_COLORS;
+      const apply = c => kind === 'fore'
+        ? exec('foreColor', c || '#b0c8e0')
+        : exec('hiliteColor', c || 'transparent');
+      list.forEach(([label, color]) => {
+        const sw = el('button', 'fs-rte-swatch'); sw.type = 'button';
+        sw.style.background = color; sw.title = label;
+        sw.addEventListener('mousedown', ev => { ev.preventDefault(); apply(color); pop.classList.remove('open'); });
+        pop.appendChild(sw);
+      });
+      const none = el('button', 'fs-rte-swatch none', 'なし'); none.type = 'button';
+      none.addEventListener('mousedown', ev => { ev.preventDefault(); apply(null); pop.classList.remove('open'); });
+      pop.appendChild(none);
+    });
+
+    toolbar.addEventListener('click', ev => {
+      const btn = ev.target.closest('.fs-rte-btn[data-pop]');
+      if (!btn) return;
+      ev.preventDefault();
+      const pop = btn.closest('.fs-rte-pop-wrap').querySelector('.fs-rte-pop');
+      const wasOpen = pop.classList.contains('open');
+      document.querySelectorAll('.fs-rte-pop').forEach(p => p.classList.remove('open'));
+      if (!wasOpen) pop.classList.add('open');
+    });
+
+    function refreshState() {
+      toolbar.querySelectorAll('.fs-rte-btn[data-cmd]').forEach(btn => {
+        let on = false;
+        try { on = document.queryCommandState(btn.dataset.cmd); } catch (e) {}
+        btn.classList.toggle('active', on);
+      });
+    }
+    editor.addEventListener('keyup', refreshState);
+    editor.addEventListener('mouseup', refreshState);
   }
-  editor.addEventListener('keyup', refreshToolbarState);
-  editor.addEventListener('mouseup', refreshToolbarState);
+
+  // ポップオーバーは外側クリックで閉じる（全エディタ共通）
+  document.addEventListener('click', ev => {
+    if (!ev.target.closest('.fs-rte-pop-wrap')) {
+      document.querySelectorAll('.fs-rte-pop').forEach(p => p.classList.remove('open'));
+    }
+  });
+
+  initEditor(document.getElementById('fs-rte-toolbar'),      document.getElementById('fs-nm-body'));
+  initEditor(document.getElementById('fs-rte-toolbar-task'), document.getElementById('fs-f-detail'));
 
   // ── 週ナビゲーション ───────────────────────
   function recenterToday() {

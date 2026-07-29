@@ -212,7 +212,7 @@ def api_task_save(request):
 
     fields = {
         'title':     title[:200],
-        'detail':    str(data.get('detail', ''))[:5000],
+        'detail':    sanitize_html(str(data.get('detail', ''))),
         'tone':      data.get('tone', 'blue'),
         'status':    status,
         'priority':  priority,
