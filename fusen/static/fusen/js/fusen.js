@@ -261,10 +261,11 @@
     if (i >= 0) tasks[i] = u; else tasks.push(u);
   }
 
-  // ── 付箋カード（見出しのみ。クリックで編集モーダル） ──
+  // ── 付箋カード（見出しのみ。クリックで閲覧モーダル） ──
   function noteHeading(n) {
+    if (n.title && n.title.trim()) return n.title.trim();
     const first = (n.body || '').split('\n').find(l => l.trim()) || '';
-    return first.trim() || '(空の付箋)';
+    return first.trim() || '(無題)';
   }
 
   function noteCard(n) {
@@ -285,7 +286,7 @@
     const head = document.createElement('div');
     head.className = 'fs-note-head';
     head.textContent = noteHeading(n);
-    head.title = n.body || '';
+    head.title = n.title || noteHeading(n);
     card.appendChild(head);
 
     card.addEventListener('click', () => openNoteModal(n));
@@ -306,12 +307,12 @@
     render();
   }
 
-  // 新規付箋: 空で作成し、そのまま広い入力エリア（モーダル）を開く
+  // 新規付箋: 空で作成し、そのまま編集モードでモーダルを開く
   async function addNote(day) {
-    const saved = await post('/fusen/api/note/save/', { body: '', tone: 'yellow', date: day || '' });
+    const saved = await post('/fusen/api/note/save/', { title: '', body: '', tone: 'yellow', date: day || '' });
     notes.push(saved);
     render();
-    openNoteModal(saved);
+    openNoteModal(saved, true);   // 新規は最初から編集モード
   }
 
   // ── ドラッグ&ドロップ ─────────────────────
@@ -498,9 +499,10 @@
     el.addEventListener('click', () => setModalTone(el.dataset.tone));
   });
 
-  // ── 付箋モーダル ───────────────────────────
+  // ── 付箋モーダル（閲覧 / 編集） ─────────────
   const noteModal = document.getElementById('fs-note-modal');
-  let editingNoteId = null;
+  const noteBox   = document.getElementById('fs-nm-box');
+  let currentNote = null;         // 表示中の付箋
   let noteModalTone = 'yellow';
 
   function setNoteTone(tone) {
@@ -510,36 +512,78 @@
     });
   }
 
-  function openNoteModal(n) {
-    editingNoteId = n.id;
+  // 閲覧モードの表示を組み立てる
+  function fillNoteView(n) {
+    const vt = document.getElementById('fs-nm-vtitle');
+    const vb = document.getElementById('fs-nm-vbody');
+    const title = (n.title || '').trim();
+    vt.textContent = title || '(無題)';
+    vt.classList.toggle('empty', !title);
+    const body = n.body || '';
+    vb.textContent = body || '(中身なし)';
+    vb.classList.toggle('empty', !body);
+    const meta = [];
+    if (n.date)   meta.push('日付 ' + n.date);
+    if (n.pinned) meta.push('📌 ピン留め');
+    document.getElementById('fs-nm-vmeta').textContent = meta.join('　');
+  }
+
+  // 編集フォームに値を流し込む
+  function fillNoteEdit(n) {
+    document.getElementById('fs-nm-title').value   = n.title || '';
     document.getElementById('fs-nm-body').value    = n.body || '';
     document.getElementById('fs-nm-date').value    = n.date || '';
     document.getElementById('fs-nm-pinned').checked = !!n.pinned;
     setNoteTone(n.tone || 'yellow');
-    noteModal.hidden = false;
-    const ta = document.getElementById('fs-nm-body');
-    ta.focus();
-    ta.setSelectionRange(ta.value.length, ta.value.length);
   }
 
-  function closeNoteModal() { noteModal.hidden = true; editingNoteId = null; }
+  function setNoteMode(mode) {
+    noteBox.classList.toggle('mode-view', mode === 'view');
+    noteBox.classList.toggle('mode-edit', mode === 'edit');
+  }
+
+  // edit=true で最初から編集モード（新規付箋）。既定は閲覧モード
+  function openNoteModal(n, edit) {
+    currentNote = n;
+    fillNoteView(n);
+    fillNoteEdit(n);
+    setNoteMode(edit ? 'edit' : 'view');
+    noteModal.hidden = false;
+    if (edit) {
+      const ti = document.getElementById('fs-nm-title');
+      ti.focus();
+    }
+  }
+
+  function enterEditMode() {
+    if (!currentNote) return;
+    fillNoteEdit(currentNote);
+    setNoteMode('edit');
+    document.getElementById('fs-nm-title').focus();
+  }
+
+  function closeNoteModal() { noteModal.hidden = true; currentNote = null; }
 
   async function saveNoteModal() {
-    if (editingNoteId == null) return;
-    await saveNote({
-      id:     editingNoteId,
+    if (!currentNote) return;
+    const saved = await saveNote({
+      id:     currentNote.id,
+      title:  document.getElementById('fs-nm-title').value,
       body:   document.getElementById('fs-nm-body').value,
       date:   document.getElementById('fs-nm-date').value,
       pinned: document.getElementById('fs-nm-pinned').checked,
       tone:   noteModalTone,
     });
-    closeNoteModal();
+    // 保存後は閲覧モードに戻す（続けて確認できる）
+    currentNote = saved;
+    fillNoteView(saved);
+    setNoteMode('view');
   }
 
   async function deleteNoteModal() {
-    if (editingNoteId == null) return;
+    if (!currentNote) return;
     if (!confirm('この付箋を削除しますか？')) return;
-    const id = editingNoteId;
+    const id = currentNote.id;
     closeNoteModal();
     await deleteNote(id);
   }
@@ -547,9 +591,14 @@
   document.querySelectorAll('#fs-nm-tone .fs-tone').forEach(el => {
     el.addEventListener('click', () => setNoteTone(el.dataset.tone));
   });
+  document.getElementById('fs-nm-edit').addEventListener('click', enterEditMode);
   document.getElementById('fs-nm-save').addEventListener('click', saveNoteModal);
-  document.getElementById('fs-nm-cancel').addEventListener('click', closeNoteModal);
+  document.getElementById('fs-nm-cancel').addEventListener('click', () => {
+    // 編集を破棄して閲覧へ（新規で空のままキャンセルしたら閉じる）
+    if (currentNote) { fillNoteView(currentNote); setNoteMode('view'); }
+  });
   document.getElementById('fs-nm-close').addEventListener('click', closeNoteModal);
+  document.getElementById('fs-nm-close2').addEventListener('click', closeNoteModal);
   document.getElementById('fs-nm-delete').addEventListener('click', deleteNoteModal);
   noteModal.addEventListener('click', ev => { if (ev.target === noteModal) closeNoteModal(); });
   document.addEventListener('keydown', ev => { if (ev.key === 'Escape' && !noteModal.hidden) closeNoteModal(); });

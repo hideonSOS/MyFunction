@@ -110,17 +110,30 @@
   </div>
 </div>
 
-<!-- ── 付箋編集モーダル ─────────────────────── -->
+<!-- ── 付箋モーダル（閲覧 / 編集） ───────────── -->
 <div id="fs-note-modal" class="fs-modal" hidden>
-  <div class="fs-modal-box">
+  <div class="fs-modal-box" id="fs-nm-box">
     <div class="fs-modal-head">
       <span>付箋</span>
       <button class="fs-modal-close" id="fs-nm-close" type="button">×</button>
     </div>
-    <div class="fs-modal-body">
+
+    <!-- 閲覧モード -->
+    <div class="fs-modal-body fs-nm-view">
+      <div class="fs-nm-view-title" id="fs-nm-vtitle"></div>
+      <div class="fs-nm-view-body" id="fs-nm-vbody"></div>
+      <div class="fs-nm-view-meta" id="fs-nm-vmeta"></div>
+    </div>
+
+    <!-- 編集モード -->
+    <div class="fs-modal-body fs-nm-edit">
       <label class="fs-field">
-        <span>メモ</span>
-        <textarea id="fs-nm-body" rows="8" placeholder="メモを入力..."></textarea>
+        <span>タイトル</span>
+        <input type="text" id="fs-nm-title" maxlength="200" placeholder="見出し">
+      </label>
+      <label class="fs-field">
+        <span>中身</span>
+        <textarea id="fs-nm-body" placeholder="メモを入力..."></textarea>
       </label>
       <div class="fs-field-row">
         <label class="fs-field">
@@ -141,9 +154,14 @@
         </div>
       </div>
     </div>
+
     <div class="fs-modal-foot">
       <button class="fs-btn fs-danger" id="fs-nm-delete" type="button">削除</button>
       <span class="fs-spacer"></span>
+      <!-- 閲覧モードのボタン -->
+      <button class="fs-btn" id="fs-nm-close2" type="button">閉じる</button>
+      <button class="fs-btn fs-primary" id="fs-nm-edit" type="button">編集</button>
+      <!-- 編集モードのボタン -->
       <button class="fs-btn" id="fs-nm-cancel" type="button">キャンセル</button>
       <button class="fs-btn fs-primary" id="fs-nm-save" type="button">保存</button>
     </div>

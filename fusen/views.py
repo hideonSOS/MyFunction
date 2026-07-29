@@ -23,6 +23,7 @@ def _dt(value):
 def note_dict(n):
     return {
         'id':       n.id,
+        'title':    n.title,
         'body':     n.body,
         'tone':     n.tone,
         'pinned':   n.pinned,
@@ -117,6 +118,8 @@ def api_note_save(request):
     else:
         note = Note(user=request.user)
 
+    if 'title' in data:
+        note.title = str(data.get('title') or '')[:200]
     if 'body' in data:
         note.body = str(data.get('body') or '')[:5000]
     if 'tone' in data and data['tone'] in dict(TONE_CHOICES):

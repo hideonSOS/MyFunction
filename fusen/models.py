@@ -18,7 +18,8 @@ class Note(models.Model):
     """付箋（自由メモ）。ボードにピン留めして貼っておく"""
     user     = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE,
                                  related_name='notes')
-    body     = models.TextField(blank=True)
+    title    = models.CharField(max_length=200, blank=True)  # 見出し
+    body     = models.TextField(blank=True)                  # 中身
     tone     = models.CharField(max_length=10, choices=TONE_CHOICES, default='yellow')
     pinned   = models.BooleanField(default=False)
     archived = models.BooleanField(default=False)
@@ -32,6 +33,8 @@ class Note(models.Model):
         ordering = ['-pinned', 'order', '-updated']
 
     def __str__(self):
+        if self.title.strip():
+            return self.title.strip()[:20]
         head = (self.body or '').strip().splitlines()[0] if self.body.strip() else '(空の付箋)'
         return head[:20]
 
