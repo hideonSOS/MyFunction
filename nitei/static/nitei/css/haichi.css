@@ -77,6 +77,9 @@
 .hc-btn.hc-danger { color: #ff6060; border-color: #ff606055; background: #1a0808; }
 .hc-btn.hc-danger:hover { color: #ff6060; border-color: #ff6060; background: #300808; }
 
+.hc-btn.hc-overview { color: #ffe066; border-color: #ffe06655; background: #1a1600; font-weight: bold; }
+.hc-btn.hc-overview:hover { color: #ffe066; border-color: #ffe066; background: #2a2200; box-shadow: 0 0 10px #ffe06655; }
+
 #date-input {
   padding: 4px 8px;
   border: 1px solid #00e5ff55;
