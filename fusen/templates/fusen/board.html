@@ -137,7 +137,7 @@
     <!-- 閲覧モード -->
     <div class="fs-modal-body fs-nm-view">
       <div class="fs-nm-view-title" id="fs-nm-vtitle"></div>
-      <div class="fs-nm-view-body" id="fs-nm-vbody"></div>
+      <div class="fs-nm-view-body fs-rich" id="fs-nm-vbody"></div>
       <div class="fs-nm-view-meta" id="fs-nm-vmeta"></div>
     </div>
 
@@ -147,10 +147,34 @@
         <span>タイトル</span>
         <input type="text" id="fs-nm-title" maxlength="200" placeholder="見出し">
       </label>
-      <label class="fs-field fs-field-grow">
+      <div class="fs-field fs-field-grow">
         <span>中身</span>
-        <textarea id="fs-nm-body" placeholder="メモを入力..."></textarea>
-      </label>
+        <div class="fs-rte-toolbar" id="fs-rte-toolbar">
+          <button type="button" class="fs-rte-btn" data-cmd="bold" title="太字"><b>B</b></button>
+          <button type="button" class="fs-rte-btn" data-cmd="italic" title="斜体"><i>I</i></button>
+          <button type="button" class="fs-rte-btn" data-cmd="underline" title="下線"><u>U</u></button>
+          <button type="button" class="fs-rte-btn" data-cmd="strikeThrough" title="打ち消し"><s>S</s></button>
+          <span class="fs-rte-sep"></span>
+          <button type="button" class="fs-rte-btn" data-block="h2" title="見出し">見出し</button>
+          <button type="button" class="fs-rte-btn" data-block="blockquote" title="引用">❝</button>
+          <span class="fs-rte-sep"></span>
+          <button type="button" class="fs-rte-btn" data-cmd="insertUnorderedList" title="箇条書き">•</button>
+          <button type="button" class="fs-rte-btn" data-cmd="insertOrderedList" title="番号付き">1.</button>
+          <button type="button" class="fs-rte-btn" data-checklist="1" title="チェックリスト">☑</button>
+          <span class="fs-rte-sep"></span>
+          <div class="fs-rte-pop-wrap">
+            <button type="button" class="fs-rte-btn fs-rte-color-btn" data-pop="fore" title="文字色">A<span class="fs-rte-color-bar" id="fs-rte-fore-bar"></span></button>
+            <div class="fs-rte-pop" id="fs-rte-fore-pop"></div>
+          </div>
+          <div class="fs-rte-pop-wrap">
+            <button type="button" class="fs-rte-btn fs-rte-hl-btn" data-pop="hl" title="ハイライト">🖊</button>
+            <div class="fs-rte-pop" id="fs-rte-hl-pop"></div>
+          </div>
+          <span class="fs-rte-sep"></span>
+          <button type="button" class="fs-rte-btn" data-cmd="removeFormat" data-clearblock="1" title="書式クリア">⌫</button>
+        </div>
+        <div id="fs-nm-body" class="fs-rte fs-rich" contenteditable="true" data-placeholder="メモを入力..."></div>
+      </div>
       <div class="fs-field-row">
         <label class="fs-field">
           <span>日付</span>

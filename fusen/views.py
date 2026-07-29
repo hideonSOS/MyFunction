@@ -1,4 +1,5 @@
 import json
+import re
 
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
@@ -9,6 +10,26 @@ from django.utils.dateparse import parse_datetime, parse_date
 from django.views.decorators.http import require_http_methods
 
 from .models import Note, Task, TONE_CHOICES
+
+
+# ── リッチテキスト本文の軽量サニタイズ ─────────────────
+# 付箋の中身はリッチテキスト(HTML)を保存する。ログイン必須・本人のみ閲覧の
+# 個人メモだが、危険なタグ／属性だけは念のため除去する（完全な sanitizer
+# ではない。危険要素の持ち込みを防ぐ最小限の防御）。
+_TAG_BLOCKLIST = re.compile(
+    r'<\s*/?\s*(script|style|iframe|object|embed|link|meta|form|input|button)\b[^>]*>',
+    re.IGNORECASE)
+_ON_ATTR = re.compile(r'\son\w+\s*=\s*("[^"]*"|\'[^\']*\'|[^\s>]+)', re.IGNORECASE)
+_JS_URL = re.compile(r'(href|src)\s*=\s*("|\')\s*javascript:[^"\']*\2', re.IGNORECASE)
+
+
+def sanitize_html(html):
+    if not html:
+        return ''
+    html = _TAG_BLOCKLIST.sub('', html)
+    html = _ON_ATTR.sub('', html)
+    html = _JS_URL.sub('', html)
+    return html[:20000]
 
 
 # ── シリアライズ ──────────────────────────────────────
@@ -133,7 +154,7 @@ def api_note_save(request):
     if 'title' in data:
         note.title = str(data.get('title') or '')[:200]
     if 'body' in data:
-        note.body = str(data.get('body') or '')[:5000]
+        note.body = sanitize_html(str(data.get('body') or ''))
     if 'tone' in data and data['tone'] in dict(TONE_CHOICES):
         note.tone = data['tone']
     if 'pinned' in data:

@@ -346,10 +346,18 @@
     if (i >= 0) tasks[i] = u; else tasks.push(u);
   }
 
+  // HTML → 表示用テキスト（タグ除去。見出し抽出に使う）
+  function htmlToText(html) {
+    if (!html) return '';
+    const tmp = document.createElement('div');
+    tmp.innerHTML = html.replace(/<(br|div|p|li|h2|blockquote)[^>]*>/gi, '\n');
+    return (tmp.textContent || '').replace(/ /g, ' ');
+  }
+
   // ── 付箋カード（見出しのみ。クリックで閲覧モーダル） ──
   function noteHeading(n) {
     if (n.title && n.title.trim()) return n.title.trim();
-    const first = (n.body || '').split('\n').find(l => l.trim()) || '';
+    const first = htmlToText(n.body).split('\n').find(l => l.trim()) || '';
     return first.trim() || '(無題)';
   }
 
@@ -677,6 +685,14 @@
     });
   }
 
+  // 保存された本文をエディタ用HTMLに。旧データ（プレーンテキスト）は改行を <br> に
+  function bodyToHtml(body) {
+    if (!body) return '';
+    if (/<[a-z][\s\S]*>/i.test(body)) return body;   // すでにHTML
+    const esc = body.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    return esc.replace(/\n/g, '<br>');
+  }
+
   // 閲覧モードの表示を組み立てる
   function fillNoteView(n) {
     const vt = document.getElementById('fs-nm-vtitle');
@@ -685,8 +701,14 @@
     vt.textContent = title || '(無題)';
     vt.classList.toggle('empty', !title);
     const body = n.body || '';
-    vb.textContent = body || '(中身なし)';
-    vb.classList.toggle('empty', !body);
+    if (body) {
+      vb.innerHTML = bodyToHtml(body);
+      vb.classList.remove('empty');
+      bindChecklist(vb, true);   // 閲覧でもチェックはトグル＆保存できる
+    } else {
+      vb.textContent = '(中身なし)';
+      vb.classList.add('empty');
+    }
     const meta = [];
     if (n.date)   meta.push('日付 ' + n.date + (n.time ? ' ' + n.time : ' 終日'));
     if (n.pinned) meta.push('📌 ピン留め');
@@ -696,7 +718,9 @@
   // 編集フォームに値を流し込む
   function fillNoteEdit(n) {
     document.getElementById('fs-nm-title').value   = n.title || '';
-    document.getElementById('fs-nm-body').value    = n.body || '';
+    const ed = document.getElementById('fs-nm-body');
+    ed.innerHTML = bodyToHtml(n.body || '');
+    bindChecklist(ed, false);
     document.getElementById('fs-nm-date').value    = n.date || '';
     document.getElementById('fs-nm-time').value    = n.time || '';
     document.getElementById('fs-nm-pinned').checked = !!n.pinned;
@@ -730,12 +754,26 @@
 
   function closeNoteModal() { noteModal.hidden = true; currentNote = null; }
 
+  // 保存用に内部属性を除去
+  function cleanHtml(html) {
+    return (html || '').replace(/\sdata-bound="1"/g, '');
+  }
+
+  // エディタの内容を取り出す（実質空なら空文字）
+  function editorGetHtml() {
+    const ed = document.getElementById('fs-nm-body');
+    const text = (ed.textContent || '').replace(/​/g, '').trim();
+    const hasMedia = ed.querySelector('img, .fs-ckbox, li');
+    if (!text && !hasMedia) return '';
+    return cleanHtml(ed.innerHTML);
+  }
+
   async function saveNoteModal() {
     if (!currentNote) return;
     const saved = await saveNote({
       id:     currentNote.id,
       title:  document.getElementById('fs-nm-title').value,
-      body:   document.getElementById('fs-nm-body').value,
+      body:   editorGetHtml(),
       date:   document.getElementById('fs-nm-date').value,
       time:   document.getElementById('fs-nm-time').value,
       pinned: document.getElementById('fs-nm-pinned').checked,
@@ -769,6 +807,125 @@
   document.getElementById('fs-nm-delete').addEventListener('click', deleteNoteModal);
   noteModal.addEventListener('click', ev => { if (ev.target === noteModal) closeNoteModal(); });
   document.addEventListener('keydown', ev => { if (ev.key === 'Escape' && !noteModal.hidden) closeNoteModal(); });
+
+  // ── リッチテキスト エディタ ────────────────
+  const editor  = document.getElementById('fs-nm-body');
+  const toolbar = document.getElementById('fs-rte-toolbar');
+
+  const FORE_COLORS = [
+    ['標準', '#b0c8e0'], ['白', '#ffffff'], ['シアン', '#00f5ff'], ['緑', '#00ff88'],
+    ['黄', '#ffe600'], ['橙', '#ff9900'], ['桃', '#ff006e'], ['赤', '#ff5555'],
+    ['紫', '#b98bff'], ['空', '#7fd0ff'],
+  ];
+  const HL_COLORS = [
+    ['黄', 'rgba(255,230,0,0.28)'], ['緑', 'rgba(0,255,136,0.25)'],
+    ['青', 'rgba(0,180,255,0.30)'], ['桃', 'rgba(255,0,110,0.25)'],
+    ['紫', 'rgba(185,139,255,0.30)'],
+  ];
+
+  function exec(cmd, value) {
+    editor.focus();
+    try { document.execCommand('styleWithCSS', false, true); } catch (e) {}
+    document.execCommand(cmd, false, value);
+    refreshToolbarState();
+  }
+
+  // ツールバー: mousedown で選択を保持しつつコマンド実行
+  toolbar.addEventListener('mousedown', ev => {
+    const btn = ev.target.closest('.fs-rte-btn');
+    if (!btn) return;
+    if (btn.dataset.pop) return;   // ポップオーバーは click で扱う
+    ev.preventDefault();
+    if (btn.dataset.cmd) {
+      exec(btn.dataset.cmd);
+      if (btn.dataset.clearblock) exec('formatBlock', 'div');   // 見出し/引用も解除
+    } else if (btn.dataset.block) {
+      // トグル: 既にそのブロックなら通常段落へ
+      const cur = document.queryCommandValue('formatBlock');
+      exec('formatBlock', (cur || '').toLowerCase() === btn.dataset.block ? 'div' : btn.dataset.block);
+    } else if (btn.dataset.checklist) {
+      insertChecklistItem();
+    }
+  });
+
+  // 色ポップオーバーを組み立て
+  function buildPop(popId, colors, apply) {
+    const pop = document.getElementById(popId);
+    colors.forEach(([label, color]) => {
+      const sw = el('button', 'fs-rte-swatch');
+      sw.type = 'button';
+      sw.style.background = color;
+      sw.title = label;
+      sw.addEventListener('mousedown', ev => { ev.preventDefault(); apply(color); pop.classList.remove('open'); });
+      pop.appendChild(sw);
+    });
+    const none = el('button', 'fs-rte-swatch none', 'なし');
+    none.type = 'button';
+    none.addEventListener('mousedown', ev => { ev.preventDefault(); apply(null); pop.classList.remove('open'); });
+    pop.appendChild(none);
+  }
+  buildPop('fs-rte-fore-pop', FORE_COLORS, c => exec('foreColor', c || '#b0c8e0'));
+  buildPop('fs-rte-hl-pop',  HL_COLORS,  c => exec('hiliteColor', c || 'transparent'));
+
+  // ポップオーバーの開閉
+  toolbar.addEventListener('click', ev => {
+    const btn = ev.target.closest('.fs-rte-btn[data-pop]');
+    if (!btn) return;
+    ev.preventDefault();
+    const pop = document.getElementById(btn.dataset.pop === 'fore' ? 'fs-rte-fore-pop' : 'fs-rte-hl-pop');
+    const wasOpen = pop.classList.contains('open');
+    document.querySelectorAll('.fs-rte-pop').forEach(p => p.classList.remove('open'));
+    if (!wasOpen) pop.classList.add('open');
+  });
+  document.addEventListener('click', ev => {
+    if (!ev.target.closest('.fs-rte-pop-wrap')) {
+      document.querySelectorAll('.fs-rte-pop').forEach(p => p.classList.remove('open'));
+    }
+  });
+
+  // チェックリスト項目を挿入
+  function insertChecklistItem() {
+    editor.focus();
+    const html = '<div class="fs-ck"><span class="fs-ckbox" contenteditable="false">☐</span>&nbsp;</div>';
+    document.execCommand('insertHTML', false, html);
+    bindChecklist(editor, false);
+  }
+
+  // チェックボックスのトグル。persist=true（閲覧時）は保存もする
+  // 属性で印を付けると保存HTMLに残るので WeakSet で管理する
+  const boundBoxes = new WeakSet();
+  function bindChecklist(root, persist) {
+    root.querySelectorAll('.fs-ckbox').forEach(box => {
+      if (boundBoxes.has(box)) return;
+      boundBoxes.add(box);
+      box.addEventListener('click', async () => {
+        const line = box.closest('.fs-ck');
+        const done = box.textContent.trim() === '☑';
+        box.textContent = done ? '☐' : '☑';
+        if (line) line.classList.toggle('done', !done);
+        if (persist && currentNote) {
+          const html = cleanHtml(root.innerHTML);
+          currentNote.body = html;
+          await saveNote({ id: currentNote.id, body: html });
+        }
+      });
+    });
+  }
+
+  // 選択位置の書式に合わせてツールバーの active 状態を更新
+  function refreshToolbarState() {
+    if (noteBox.classList.contains('mode-edit') === false) return;
+    const states = { bold: 'bold', italic: 'italic', underline: 'underline', strikeThrough: 'strikeThrough' };
+    toolbar.querySelectorAll('.fs-rte-btn[data-cmd]').forEach(btn => {
+      const cmd = btn.dataset.cmd;
+      let on = false;
+      if (states[cmd]) { try { on = document.queryCommandState(cmd); } catch (e) {} }
+      else if (cmd.startsWith('insert')) { try { on = document.queryCommandState(cmd); } catch (e) {} }
+      btn.classList.toggle('active', on);
+    });
+  }
+  editor.addEventListener('keyup', refreshToolbarState);
+  editor.addEventListener('mouseup', refreshToolbarState);
 
   // ── 週ナビゲーション ───────────────────────
   function recenterToday() {
