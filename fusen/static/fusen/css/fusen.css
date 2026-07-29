@@ -73,38 +73,123 @@
 .fs-rm-actions .fs-rm-done { color: var(--green); border-color: #00ff8844; }
 .fs-rm-actions .fs-rm-done:hover { border-color: var(--green); }
 
-/* ── 2カラム ──────────────────────────────── */
-.fs-cols {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 20px;
+/* ── 週ナビゲーション ─────────────────────── */
+.fs-weeknav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+.fs-range {
+  font-size: 13px;
+  letter-spacing: 1px;
+  color: var(--cyan);
+  text-shadow: 0 0 8px #00f5ff44;
+  margin-left: 6px;
+}
+.fs-today-btn { color: var(--yellow); border-color: #ffe60044; }
+.fs-today-btn:hover { color: var(--yellow); border-color: var(--yellow); }
+
+/* ── 未分類（インボックス） ───────────────── */
+.fs-inbox {
+  margin-bottom: 14px;
+  border: 1px dashed var(--border);
+  border-radius: 6px;
+  background: var(--bg2);
+  padding: 10px 12px;
+}
+.fs-inbox-head {
+  font-size: 12px;
+  letter-spacing: 1px;
+  color: var(--text-dim);
+  margin-bottom: 8px;
+}
+.fs-count { color: var(--cyan); }
+.fs-inbox-body {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  min-height: 20px;
+}
+.fs-inbox-body > .fs-task,
+.fs-inbox-body > .fs-note { width: 200px; }
+.fs-inbox-hint { font-size: 11px; color: var(--text-dim); padding: 4px 0; }
+
+/* ── カレンダー ───────────────────────────── */
+.fs-cal-wrap {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-bottom: 10px;
+}
+.fs-calendar {
+  display: flex;
+  gap: 10px;
+  align-items: stretch;
+  min-height: 60vh;
 }
 
-@media (max-width: 1000px) {
-  .fs-cols { grid-template-columns: 1fr; }
-}
-
-.fs-panel {
+.fs-col {
+  flex: 0 0 190px;
+  width: 190px;
+  display: flex;
+  flex-direction: column;
   border: 1px solid var(--border);
   border-radius: 6px;
   background: var(--bg2);
-  padding: 14px;
-  box-shadow: 0 0 12px #00f5ff11;
+}
+.fs-col.sat .fs-col-head { color: #6fb7ff; }
+.fs-col.sun .fs-col-head { color: #ff6b8a; }
+.fs-col.today {
+  border-color: var(--cyan);
+  box-shadow: 0 0 0 1px var(--cyan), 0 0 16px #00f5ff33;
 }
 
-.fs-panel-head {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 12px;
-  flex-wrap: wrap;
+.fs-col-head {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
 }
-
-.fs-panel-title {
-  font-size: 14px;
-  letter-spacing: 2px;
+.fs-col.today .fs-col-head {
+  background: #00f5ff11;
   color: var(--cyan);
 }
+.fs-col-date b { font-size: 15px; }
+.fs-col-dow { font-size: 12px; opacity: 0.8; }
+
+.fs-col-add {
+  display: flex;
+  gap: 4px;
+  margin-top: 6px;
+}
+.fs-col-add button {
+  flex: 1;
+  font-family: inherit;
+  font-size: 10px;
+  padding: 3px 0;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  background: transparent;
+  color: var(--text-dim);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.fs-col-add button:hover { color: var(--green); border-color: #00ff8844; }
+
+.fs-col-body {
+  flex: 1;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  overflow-y: auto;
+}
+
+/* ドロップ対象のハイライト */
+.fs-drop-over { outline: 2px dashed var(--cyan); outline-offset: -3px; }
+.fs-drop-over.fs-col { background: #00f5ff0c; }
+body.fs-dragging .fs-col-body { min-height: 40px; }
 
 /* ── ボタン ───────────────────────────────── */
 .fs-btn {
@@ -130,55 +215,29 @@
 .fs-add-task, .fs-add-note { margin-left: auto; color: var(--green); border-color: #00ff8844; }
 .fs-add-task:hover, .fs-add-note:hover { border-color: var(--green); color: var(--green); box-shadow: var(--glow-g); }
 
-/* ── フィルタチップ ───────────────────────── */
-.fs-filters { display: flex; gap: 4px; flex-wrap: wrap; }
-
-.fs-chip {
-  font-family: inherit;
-  font-size: 11px;
-  padding: 3px 9px;
-  border-radius: 12px;
-  border: 1px solid var(--border);
-  background: transparent;
-  color: var(--text-dim);
-  cursor: pointer;
-  transition: all 0.15s;
-}
-.fs-chip:hover { color: var(--text); border-color: var(--cyan-dim); }
-.fs-chip.active { color: var(--cyan); border-color: var(--cyan); background: #00f5ff11; }
-
-.fs-empty {
-  padding: 24px;
-  text-align: center;
-  color: var(--text-dim);
-  font-size: 12px;
-  letter-spacing: 1px;
-}
-
-/* ── タスク一覧 ───────────────────────────── */
-.fs-task-list { display: flex; flex-direction: column; gap: 8px; }
-
+/* ── タスクカード（カレンダー用・縦積み） ─── */
 .fs-task {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  padding: 10px 12px;
   border: 1px solid var(--border);
   border-left: 3px solid var(--tone-c, var(--cyan-dim));
   border-radius: 4px;
   background: var(--bg3);
+  padding: 7px 8px;
   transition: border-color 0.15s, background 0.15s;
+  cursor: grab;
 }
 .fs-task:hover { background: #0d1c30; }
+.fs-task:active { cursor: grabbing; }
 .fs-task.done { opacity: 0.5; }
 .fs-task.overdue { border-left-color: var(--pink); box-shadow: inset 0 0 12px #ff006e11; }
+
+.fs-task-top { display: flex; align-items: flex-start; gap: 8px; }
 
 /* チェックボックス */
 .fs-check {
   flex-shrink: 0;
-  width: 18px;
-  height: 18px;
-  margin-top: 2px;
+  width: 17px;
+  height: 17px;
+  margin-top: 1px;
   border: 1px solid var(--cyan-dim);
   border-radius: 3px;
   background: transparent;
@@ -190,42 +249,44 @@
 .fs-check.checked { background: var(--green); border-color: var(--green); box-shadow: var(--glow-g); }
 .fs-check.checked::after {
   content: '✓';
-  position: absolute;
-  inset: 0;
+  position: absolute; inset: 0;
   display: flex; align-items: center; justify-content: center;
-  color: #04121a; font-size: 13px; font-weight: bold;
+  color: #04121a; font-size: 12px; font-weight: bold;
 }
 .fs-check.doing { border-color: var(--yellow); }
 .fs-check.doing::after {
   content: '▷';
   position: absolute; inset: 0;
   display: flex; align-items: center; justify-content: center;
-  color: var(--yellow); font-size: 10px;
+  color: var(--yellow); font-size: 9px;
 }
 
-.fs-task-main { flex: 1; min-width: 0; cursor: pointer; }
-
 .fs-task-title {
-  font-size: 14px;
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  line-height: 1.35;
   color: var(--text);
   word-break: break-word;
+  cursor: pointer;
 }
 .fs-task.done .fs-task-title { text-decoration: line-through; }
 
 .fs-task-meta {
   display: flex;
-  gap: 8px;
+  gap: 5px;
   flex-wrap: wrap;
-  margin-top: 4px;
-  font-size: 11px;
+  margin-top: 5px;
+  font-size: 10px;
   color: var(--text-dim);
 }
 
 .fs-badge {
-  padding: 1px 7px;
+  padding: 1px 6px;
   border-radius: 10px;
   border: 1px solid var(--border);
   letter-spacing: 1px;
+  white-space: nowrap;
 }
 .fs-badge.due      { color: var(--text); }
 .fs-badge.due.soon { color: var(--yellow); border-color: #ffe60055; }
@@ -235,62 +296,55 @@
 .fs-badge.prio-1   { color: var(--cyan);   border-color: var(--cyan-dim); }
 .fs-badge.prio-0   { color: var(--text-dim); }
 
-.fs-task-detail {
-  margin-top: 5px;
-  font-size: 12px;
-  color: var(--text-dim);
-  white-space: pre-wrap;
-  word-break: break-word;
-}
-
-/* ── 付箋ボード ───────────────────────────── */
-.fs-note-board {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-  gap: 12px;
-}
-
+/* ── 付箋カード（カレンダー用・コンパクト） ── */
 .fs-note {
   position: relative;
-  min-height: 130px;
-  padding: 12px 12px 28px;
+  padding: 6px 8px 24px 20px;
   border-radius: 4px;
   border: 1px solid #00000033;
-  background: var(--note-bg, #3a3a20);
-  box-shadow: 0 3px 10px #00000055;
+  background: var(--note-bg, #f5e17a);
+  box-shadow: 0 2px 6px #00000055;
   color: #10141c;
-  display: flex;
-  flex-direction: column;
 }
-.fs-note.pinned { box-shadow: 0 0 0 1px var(--cyan), 0 3px 12px #00f5ff44; }
+.fs-note.pinned { box-shadow: 0 0 0 1px var(--cyan), 0 2px 8px #00f5ff44; }
+
+.fs-note-grip {
+  position: absolute;
+  left: 4px; top: 4px;
+  font-size: 12px;
+  line-height: 1;
+  color: #00000055;
+  cursor: grab;
+  user-select: none;
+}
+.fs-note-grip:active { cursor: grabbing; }
 
 .fs-note-body {
-  flex: 1;
   border: 0;
   background: transparent;
-  resize: none;
+  resize: vertical;
   font-family: 'Share Tech Mono', monospace;
-  font-size: 13px;
-  line-height: 1.5;
+  font-size: 12px;
+  line-height: 1.45;
   color: #10141c;
   outline: none;
   width: 100%;
+  min-height: 48px;
 }
 .fs-note-body::placeholder { color: #00000055; }
 
 .fs-note-bar {
   position: absolute;
-  left: 8px; right: 8px; bottom: 6px;
+  left: 6px; right: 6px; bottom: 4px;
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
 }
-
 .fs-note-pin, .fs-note-del, .fs-note-tone {
   border: 0;
   background: transparent;
   cursor: pointer;
-  font-size: 13px;
+  font-size: 12px;
   line-height: 1;
   padding: 2px;
   color: #00000077;
@@ -301,17 +355,11 @@
 
 .fs-note-tones {
   display: none;
-  gap: 4px;
+  gap: 3px;
   margin-left: auto;
 }
 .fs-note-tones.open { display: flex; }
-.fs-note-tones .fs-tone { width: 15px; height: 15px; }
-
-.fs-note-updated {
-  margin-left: auto;
-  font-size: 10px;
-  color: #00000055;
-}
+.fs-note-tones .fs-tone { width: 14px; height: 14px; }
 
 /* ── 色見本（トーン） ─────────────────────── */
 .fs-tone-pick { display: flex; gap: 6px; }
@@ -423,5 +471,7 @@
 @media (max-width: 640px) {
   #fusen { padding: 14px 10px 50px; }
   .fs-title { font-size: 17px; letter-spacing: 2px; }
-  .fs-note-board { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); }
+  .fs-col { flex: 0 0 160px; width: 160px; }
+  .fs-inbox-body > .fs-task,
+  .fs-inbox-body > .fs-note { width: 160px; }
 }

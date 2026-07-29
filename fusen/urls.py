@@ -12,6 +12,7 @@ urlpatterns = [
     path('api/note/delete/',    views.api_note_delete,   name='api_note_delete'),
 
     path('api/task/save/',      views.api_task_save,     name='api_task_save'),
+    path('api/task/move/',      views.api_task_move,     name='api_task_move'),
     path('api/task/status/',    views.api_task_status,   name='api_task_status'),
     path('api/task/reminded/',  views.api_task_reminded, name='api_task_reminded'),
     path('api/task/delete/',    views.api_task_delete,   name='api_task_delete'),

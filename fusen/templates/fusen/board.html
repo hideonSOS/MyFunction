@@ -18,35 +18,26 @@
   <!-- 思い出しバナー（リマインド時刻を過ぎたタスク） -->
   <div id="fs-reminders" class="fs-reminders" hidden></div>
 
-  <div class="fs-cols">
+  <!-- 週ナビゲーション -->
+  <div class="fs-weeknav">
+    <button class="fs-btn" id="fs-prev" type="button">◀ 前へ</button>
+    <button class="fs-btn fs-today-btn" id="fs-today" type="button">今日</button>
+    <button class="fs-btn" id="fs-next" type="button">次へ ▶</button>
+    <span id="fs-range" class="fs-range"></span>
+    <span class="fs-spacer"></span>
+    <button class="fs-btn fs-add-task" id="fs-add-task">＋ タスク</button>
+    <button class="fs-btn fs-add-note" id="fs-add-note">＋ 付箋</button>
+  </div>
 
-    <!-- ── タスク ─────────────────────────── -->
-    <section class="fs-panel fs-tasks">
-      <div class="fs-panel-head">
-        <span class="fs-panel-title">◆ タスク</span>
-        <div class="fs-filters" id="fs-filters">
-          <button class="fs-chip active" data-filter="active">未完了</button>
-          <button class="fs-chip" data-filter="today">今日</button>
-          <button class="fs-chip" data-filter="overdue">期限切れ</button>
-          <button class="fs-chip" data-filter="done">完了</button>
-          <button class="fs-chip" data-filter="all">すべて</button>
-        </div>
-        <button class="fs-btn fs-add-task" id="fs-add-task">＋ タスク</button>
-      </div>
-      <div id="fs-task-list" class="fs-task-list"></div>
-      <div id="fs-task-empty" class="fs-empty" hidden>タスクはありません</div>
-    </section>
+  <!-- 未分類（日付なしのタスク・付箋） -->
+  <section class="fs-inbox" id="fs-inbox" data-day="">
+    <div class="fs-inbox-head">📥 未分類 <span id="fs-inbox-count" class="fs-count"></span></div>
+    <div class="fs-inbox-body" id="fs-inbox-body"></div>
+  </section>
 
-    <!-- ── 付箋ボード ─────────────────────── -->
-    <section class="fs-panel fs-notes">
-      <div class="fs-panel-head">
-        <span class="fs-panel-title">◆ 付箋ボード</span>
-        <button class="fs-btn fs-add-note" id="fs-add-note">＋ 付箋</button>
-      </div>
-      <div id="fs-note-board" class="fs-note-board"></div>
-      <div id="fs-note-empty" class="fs-empty" hidden>付箋はありません</div>
-    </section>
-
+  <!-- カレンダー（当日を中心に前後5日 = 11日） -->
+  <div class="fs-cal-wrap">
+    <div id="fs-calendar" class="fs-calendar"></div>
   </div>
 </div>
 

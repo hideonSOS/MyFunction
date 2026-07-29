@@ -3,8 +3,9 @@ import json
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
 from django.shortcuts import render
+from datetime import datetime, time as dtime
 from django.utils import timezone
-from django.utils.dateparse import parse_datetime
+from django.utils.dateparse import parse_datetime, parse_date
 from django.views.decorators.http import require_http_methods
 
 from .models import Note, Task, TONE_CHOICES
@@ -25,6 +26,7 @@ def note_dict(n):
         'body':     n.body,
         'tone':     n.tone,
         'pinned':   n.pinned,
+        'date':     n.date.strftime('%Y-%m-%d') if n.date else None,
         'order':    n.order,
         'updated':  _dt(n.updated),
     }
@@ -60,6 +62,19 @@ def _parse_dt(value):
     return dt
 
 
+def _parse_date(value):
+    """'YYYY-MM-DD' を date に。空・不正なら None"""
+    if not value:
+        return None
+    return parse_date(value)
+
+
+def _combine_local(d, t):
+    """date と time をローカルタイムの aware datetime にする"""
+    naive = datetime.combine(d, t)
+    return timezone.make_aware(naive, timezone.get_current_timezone())
+
+
 # ── ページ ────────────────────────────────────────────
 
 @login_required
@@ -87,35 +102,36 @@ def api_state(request):
 @login_required
 @require_http_methods(['POST'])
 def api_note_save(request):
+    """部分更新。payload に含まれるキーだけを反映する
+    （ドラッグ移動が {id, date} だけ送っても本文が消えないように）"""
     try:
         data = json.loads(request.body)
     except json.JSONDecodeError:
         return JsonResponse({'error': 'invalid json'}, status=400)
 
     note_id = data.get('id')
-    fields = {
-        'body':   str(data.get('body', ''))[:5000],
-        'tone':   data.get('tone', 'yellow'),
-        'pinned': bool(data.get('pinned', False)),
-    }
-    if fields['tone'] not in dict(TONE_CHOICES):
-        fields['tone'] = 'yellow'
-    if 'order' in data:
-        try:
-            fields['order'] = int(data['order'])
-        except (TypeError, ValueError):
-            pass
-
     if note_id:
         note = Note.objects.filter(user=request.user, id=note_id).first()
         if not note:
             return JsonResponse({'error': 'not found'}, status=404)
-        for k, v in fields.items():
-            setattr(note, k, v)
-        note.save()
     else:
-        note = Note.objects.create(user=request.user, **fields)
+        note = Note(user=request.user)
 
+    if 'body' in data:
+        note.body = str(data.get('body') or '')[:5000]
+    if 'tone' in data and data['tone'] in dict(TONE_CHOICES):
+        note.tone = data['tone']
+    if 'pinned' in data:
+        note.pinned = bool(data['pinned'])
+    if 'date' in data:
+        note.date = _parse_date(data['date'])
+    if 'order' in data:
+        try:
+            note.order = int(data['order'])
+        except (TypeError, ValueError):
+            pass
+
+    note.save()
     return JsonResponse(note_dict(note))
 
 
@@ -191,6 +207,31 @@ def api_task_save(request):
     elif not task.is_done:
         task.done_at = None
 
+    task.save()
+    return JsonResponse(task_dict(task))
+
+
+@login_required
+@require_http_methods(['POST'])
+def api_task_move(request):
+    """タスクの期限日を変更（ドラッグ移動用）。時刻は保持、無ければ 09:00。
+    date が空なら期限を外す（未分類へ）"""
+    try:
+        data = json.loads(request.body)
+        task_id = int(data['id'])
+    except (KeyError, ValueError, json.JSONDecodeError):
+        return JsonResponse({'error': 'invalid'}, status=400)
+
+    task = Task.objects.filter(user=request.user, id=task_id).first()
+    if not task:
+        return JsonResponse({'error': 'not found'}, status=404)
+
+    new_date = _parse_date(data.get('date'))
+    if new_date is None:
+        task.due_at = None
+    else:
+        keep_time = timezone.localtime(task.due_at).time() if task.due_at else dtime(9, 0)
+        task.due_at = _combine_local(new_date, keep_time)
     task.save()
     return JsonResponse(task_dict(task))
 

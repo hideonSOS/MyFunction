@@ -22,6 +22,7 @@ class Note(models.Model):
     tone     = models.CharField(max_length=10, choices=TONE_CHOICES, default='yellow')
     pinned   = models.BooleanField(default=False)
     archived = models.BooleanField(default=False)
+    date     = models.DateField(null=True, blank=True)  # カレンダー上の配置日（未設定=未分類）
     order    = models.IntegerField(default=0)          # ボード内の並び順
     created  = models.DateTimeField(auto_now_add=True)
     updated  = models.DateTimeField(auto_now=True)
