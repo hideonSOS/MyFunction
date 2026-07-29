@@ -1,0 +1,427 @@
+/* 付箋・タスク（fusen） ── base.css の CSS変数・サイバー調に準拠 */
+
+/* display を明示する要素は [hidden] が効かないので明示的に打ち消す */
+#fusen [hidden],
+.fs-modal[hidden] { display: none !important; }
+
+#fusen {
+  padding: 20px 24px 60px;
+  max-width: 1500px;
+}
+
+/* ── ヘッダー ─────────────────────────────── */
+.fs-header { margin-bottom: 18px; }
+
+.fs-title {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 4px;
+  color: var(--cyan);
+  text-shadow: var(--glow-c);
+}
+
+.fs-sub {
+  margin-top: 4px;
+  font-size: 11px;
+  letter-spacing: 2px;
+  color: var(--text-dim);
+}
+
+/* ── 思い出しバナー ───────────────────────── */
+.fs-reminders {
+  margin-bottom: 18px;
+  border: 1px solid var(--orange);
+  border-radius: 6px;
+  background: linear-gradient(90deg, #1a0f00, #0a1628);
+  box-shadow: 0 0 16px #ff990033;
+  padding: 10px 14px;
+}
+
+.fs-reminders-title {
+  font-size: 12px;
+  letter-spacing: 2px;
+  color: var(--orange);
+  text-shadow: 0 0 8px #ff990088;
+  margin-bottom: 8px;
+}
+
+.fs-remind-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 0;
+  border-top: 1px solid #ffffff11;
+}
+.fs-remind-item:first-of-type { border-top: 0; }
+
+.fs-remind-item .fs-rm-title { flex: 1; color: var(--text); font-size: 13px; }
+.fs-remind-item .fs-rm-when  { font-size: 11px; color: var(--orange); }
+
+.fs-rm-actions { display: flex; gap: 6px; }
+.fs-rm-actions button {
+  font-family: inherit;
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: 3px;
+  border: 1px solid var(--border);
+  background: var(--bg3);
+  color: var(--text);
+  cursor: pointer;
+}
+.fs-rm-actions button:hover { border-color: var(--cyan); color: var(--cyan); }
+.fs-rm-actions .fs-rm-done { color: var(--green); border-color: #00ff8844; }
+.fs-rm-actions .fs-rm-done:hover { border-color: var(--green); }
+
+/* ── 2カラム ──────────────────────────────── */
+.fs-cols {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 20px;
+}
+
+@media (max-width: 1000px) {
+  .fs-cols { grid-template-columns: 1fr; }
+}
+
+.fs-panel {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg2);
+  padding: 14px;
+  box-shadow: 0 0 12px #00f5ff11;
+}
+
+.fs-panel-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.fs-panel-title {
+  font-size: 14px;
+  letter-spacing: 2px;
+  color: var(--cyan);
+}
+
+/* ── ボタン ───────────────────────────────── */
+.fs-btn {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 12px;
+  letter-spacing: 1px;
+  padding: 5px 12px;
+  border-radius: 3px;
+  border: 1px solid var(--border);
+  background: var(--bg3);
+  color: var(--text);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.fs-btn:hover { border-color: var(--cyan); color: var(--cyan); }
+
+.fs-btn.fs-primary { color: var(--cyan); border-color: var(--cyan-dim); }
+.fs-btn.fs-primary:hover { background: #00f5ff11; box-shadow: var(--glow-c); }
+
+.fs-btn.fs-danger { color: var(--pink); border-color: #ff006e44; }
+.fs-btn.fs-danger:hover { background: #ff006e11; border-color: var(--pink); }
+
+.fs-add-task, .fs-add-note { margin-left: auto; color: var(--green); border-color: #00ff8844; }
+.fs-add-task:hover, .fs-add-note:hover { border-color: var(--green); color: var(--green); box-shadow: var(--glow-g); }
+
+/* ── フィルタチップ ───────────────────────── */
+.fs-filters { display: flex; gap: 4px; flex-wrap: wrap; }
+
+.fs-chip {
+  font-family: inherit;
+  font-size: 11px;
+  padding: 3px 9px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-dim);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.fs-chip:hover { color: var(--text); border-color: var(--cyan-dim); }
+.fs-chip.active { color: var(--cyan); border-color: var(--cyan); background: #00f5ff11; }
+
+.fs-empty {
+  padding: 24px;
+  text-align: center;
+  color: var(--text-dim);
+  font-size: 12px;
+  letter-spacing: 1px;
+}
+
+/* ── タスク一覧 ───────────────────────────── */
+.fs-task-list { display: flex; flex-direction: column; gap: 8px; }
+
+.fs-task {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--tone-c, var(--cyan-dim));
+  border-radius: 4px;
+  background: var(--bg3);
+  transition: border-color 0.15s, background 0.15s;
+}
+.fs-task:hover { background: #0d1c30; }
+.fs-task.done { opacity: 0.5; }
+.fs-task.overdue { border-left-color: var(--pink); box-shadow: inset 0 0 12px #ff006e11; }
+
+/* チェックボックス */
+.fs-check {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  margin-top: 2px;
+  border: 1px solid var(--cyan-dim);
+  border-radius: 3px;
+  background: transparent;
+  cursor: pointer;
+  position: relative;
+  transition: all 0.15s;
+}
+.fs-check:hover { border-color: var(--cyan); }
+.fs-check.checked { background: var(--green); border-color: var(--green); box-shadow: var(--glow-g); }
+.fs-check.checked::after {
+  content: '✓';
+  position: absolute;
+  inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  color: #04121a; font-size: 13px; font-weight: bold;
+}
+.fs-check.doing { border-color: var(--yellow); }
+.fs-check.doing::after {
+  content: '▷';
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--yellow); font-size: 10px;
+}
+
+.fs-task-main { flex: 1; min-width: 0; cursor: pointer; }
+
+.fs-task-title {
+  font-size: 14px;
+  color: var(--text);
+  word-break: break-word;
+}
+.fs-task.done .fs-task-title { text-decoration: line-through; }
+
+.fs-task-meta {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
+.fs-badge {
+  padding: 1px 7px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  letter-spacing: 1px;
+}
+.fs-badge.due      { color: var(--text); }
+.fs-badge.due.soon { color: var(--yellow); border-color: #ffe60055; }
+.fs-badge.due.over { color: var(--pink);   border-color: #ff006e55; }
+.fs-badge.remind   { color: var(--orange); border-color: #ff990044; }
+.fs-badge.prio-2   { color: var(--pink);   border-color: #ff006e55; }
+.fs-badge.prio-1   { color: var(--cyan);   border-color: var(--cyan-dim); }
+.fs-badge.prio-0   { color: var(--text-dim); }
+
+.fs-task-detail {
+  margin-top: 5px;
+  font-size: 12px;
+  color: var(--text-dim);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* ── 付箋ボード ───────────────────────────── */
+.fs-note-board {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 12px;
+}
+
+.fs-note {
+  position: relative;
+  min-height: 130px;
+  padding: 12px 12px 28px;
+  border-radius: 4px;
+  border: 1px solid #00000033;
+  background: var(--note-bg, #3a3a20);
+  box-shadow: 0 3px 10px #00000055;
+  color: #10141c;
+  display: flex;
+  flex-direction: column;
+}
+.fs-note.pinned { box-shadow: 0 0 0 1px var(--cyan), 0 3px 12px #00f5ff44; }
+
+.fs-note-body {
+  flex: 1;
+  border: 0;
+  background: transparent;
+  resize: none;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #10141c;
+  outline: none;
+  width: 100%;
+}
+.fs-note-body::placeholder { color: #00000055; }
+
+.fs-note-bar {
+  position: absolute;
+  left: 8px; right: 8px; bottom: 6px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.fs-note-pin, .fs-note-del, .fs-note-tone {
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  font-size: 13px;
+  line-height: 1;
+  padding: 2px;
+  color: #00000077;
+  border-radius: 3px;
+}
+.fs-note-pin:hover, .fs-note-del:hover, .fs-note-tone:hover { color: #000; background: #00000015; }
+.fs-note-pin.on { color: #0a5; }
+
+.fs-note-tones {
+  display: none;
+  gap: 4px;
+  margin-left: auto;
+}
+.fs-note-tones.open { display: flex; }
+.fs-note-tones .fs-tone { width: 15px; height: 15px; }
+
+.fs-note-updated {
+  margin-left: auto;
+  font-size: 10px;
+  color: #00000055;
+}
+
+/* ── 色見本（トーン） ─────────────────────── */
+.fs-tone-pick { display: flex; gap: 6px; }
+
+.fs-tone {
+  width: 22px;
+  height: 22px;
+  border-radius: 4px;
+  border: 1px solid #ffffff33;
+  cursor: pointer;
+  padding: 0;
+}
+.fs-tone.selected { border-color: #fff; box-shadow: 0 0 0 2px var(--cyan); }
+
+/* トーン定義（付箋＝背景、タスク＝左枠のアクセント） */
+.tone-yellow { background: #f5e17a; }
+.tone-pink   { background: #f5a3c7; }
+.tone-green  { background: #a3e6b0; }
+.tone-blue   { background: #a3c7f5; }
+.tone-purple { background: #cbb3f0; }
+.tone-gray   { background: #cfd6de; }
+
+/* ── モーダル ─────────────────────────────── */
+.fs-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #010509cc;
+  backdrop-filter: blur(2px);
+}
+
+.fs-modal-box {
+  width: min(520px, 92vw);
+  max-height: 90vh;
+  overflow-y: auto;
+  border: 1px solid var(--cyan-dim);
+  border-radius: 8px;
+  background: var(--bg2);
+  box-shadow: 0 0 30px #00f5ff33;
+}
+
+.fs-modal-head {
+  display: flex;
+  align-items: center;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+}
+.fs-modal-head span { flex: 1; font-size: 14px; letter-spacing: 2px; color: var(--cyan); }
+
+.fs-modal-close {
+  border: 0; background: transparent; color: var(--pink);
+  font-size: 20px; cursor: pointer; line-height: 1;
+}
+
+.fs-modal-body { padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+
+.fs-field { display: flex; flex-direction: column; gap: 4px; flex: 1; }
+.fs-field > span { font-size: 11px; letter-spacing: 1px; color: var(--text-dim); }
+
+.fs-field input, .fs-field textarea, .fs-field select {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 13px;
+  padding: 7px 9px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg3);
+  color: var(--text);
+  outline: none;
+}
+.fs-field input:focus, .fs-field textarea:focus, .fs-field select:focus { border-color: var(--cyan); }
+.fs-field input::-webkit-calendar-picker-indicator { filter: invert(0.7); cursor: pointer; }
+
+.fs-field-row { display: flex; gap: 12px; }
+@media (max-width: 520px) { .fs-field-row { flex-direction: column; } }
+
+.fs-remind-quick {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-top: -4px;
+}
+.fs-quick-label { font-size: 11px; color: var(--text-dim); }
+.fs-remind-quick button {
+  font-family: inherit;
+  font-size: 11px;
+  padding: 3px 9px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--orange);
+  cursor: pointer;
+}
+.fs-remind-quick button:hover { border-color: var(--orange); background: #ff990011; }
+
+.fs-modal-foot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  border-top: 1px solid var(--border);
+}
+.fs-spacer { flex: 1; }
+
+/* ── モバイル ─────────────────────────────── */
+@media (max-width: 640px) {
+  #fusen { padding: 14px 10px 50px; }
+  .fs-title { font-size: 17px; letter-spacing: 2px; }
+  .fs-note-board { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); }
+}

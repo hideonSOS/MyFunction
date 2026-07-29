@@ -25,6 +25,7 @@ INSTALLED_APPS = [
     'ringi',
     'nitei',
     'mailfunction',
+    'fusen',
 ]
 
 MIDDLEWARE = [

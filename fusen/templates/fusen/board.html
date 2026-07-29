@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}付箋・タスク{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'fusen/css/fusen.css' %}">
+{% endblock %}
+
+{% block content %}
+<div id="fusen" data-csrf="{{ csrf_token }}">
+
+  <div class="fs-header">
+    <div class="fs-title">NOTES &amp; TASKS</div>
+    <div class="fs-sub">付 箋 と タスクスケジューラ // 忘れない・思い出す</div>
+  </div>
+
+  <!-- 思い出しバナー（リマインド時刻を過ぎたタスク） -->
+  <div id="fs-reminders" class="fs-reminders" hidden></div>
+
+  <div class="fs-cols">
+
+    <!-- ── タスク ─────────────────────────── -->
+    <section class="fs-panel fs-tasks">
+      <div class="fs-panel-head">
+        <span class="fs-panel-title">◆ タスク</span>
+        <div class="fs-filters" id="fs-filters">
+          <button class="fs-chip active" data-filter="active">未完了</button>
+          <button class="fs-chip" data-filter="today">今日</button>
+          <button class="fs-chip" data-filter="overdue">期限切れ</button>
+          <button class="fs-chip" data-filter="done">完了</button>
+          <button class="fs-chip" data-filter="all">すべて</button>
+        </div>
+        <button class="fs-btn fs-add-task" id="fs-add-task">＋ タスク</button>
+      </div>
+      <div id="fs-task-list" class="fs-task-list"></div>
+      <div id="fs-task-empty" class="fs-empty" hidden>タスクはありません</div>
+    </section>
+
+    <!-- ── 付箋ボード ─────────────────────── -->
+    <section class="fs-panel fs-notes">
+      <div class="fs-panel-head">
+        <span class="fs-panel-title">◆ 付箋ボード</span>
+        <button class="fs-btn fs-add-note" id="fs-add-note">＋ 付箋</button>
+      </div>
+      <div id="fs-note-board" class="fs-note-board"></div>
+      <div id="fs-note-empty" class="fs-empty" hidden>付箋はありません</div>
+    </section>
+
+  </div>
+</div>
+
+<!-- ── タスク編集モーダル ─────────────────── -->
+<div id="fs-modal" class="fs-modal" hidden>
+  <div class="fs-modal-box">
+    <div class="fs-modal-head">
+      <span id="fs-modal-title">タスク</span>
+      <button class="fs-modal-close" id="fs-modal-close" type="button">×</button>
+    </div>
+    <div class="fs-modal-body">
+      <label class="fs-field">
+        <span>タイトル</span>
+        <input type="text" id="fs-f-title" maxlength="200" placeholder="やること">
+      </label>
+      <label class="fs-field">
+        <span>詳細</span>
+        <textarea id="fs-f-detail" rows="3" placeholder="メモ"></textarea>
+      </label>
+      <div class="fs-field-row">
+        <label class="fs-field">
+          <span>期限</span>
+          <input type="datetime-local" id="fs-f-due">
+        </label>
+        <label class="fs-field">
+          <span>リマインド</span>
+          <input type="datetime-local" id="fs-f-remind">
+        </label>
+      </div>
+      <div class="fs-remind-quick" id="fs-remind-quick">
+        <span class="fs-quick-label">よく使う:</span>
+        <button type="button" data-min="60">1時間後</button>
+        <button type="button" data-min="180">3時間後</button>
+        <button type="button" data-at="tomorrow9">明日9時</button>
+        <button type="button" data-due="1">期限に合わせる</button>
+      </div>
+      <div class="fs-field-row">
+        <label class="fs-field">
+          <span>優先度</span>
+          <select id="fs-f-priority">
+            <option value="2">高</option>
+            <option value="1" selected>中</option>
+            <option value="0">低</option>
+          </select>
+        </label>
+        <label class="fs-field">
+          <span>状態</span>
+          <select id="fs-f-status">
+            <option value="todo">未着手</option>
+            <option value="doing">進行中</option>
+            <option value="done">完了</option>
+          </select>
+        </label>
+      </div>
+      <div class="fs-field">
+        <span>色</span>
+        <div class="fs-tone-pick" id="fs-f-tone">
+          {% for t in tones %}
+          <button type="button" class="fs-tone tone-{{ t.key }}" data-tone="{{ t.key }}" title="{{ t.label }}"></button>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+    <div class="fs-modal-foot">
+      <button class="fs-btn fs-danger" id="fs-modal-delete" type="button" hidden>削除</button>
+      <span class="fs-spacer"></span>
+      <button class="fs-btn" id="fs-modal-cancel" type="button">キャンセル</button>
+      <button class="fs-btn fs-primary" id="fs-modal-save" type="button">保存</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  const FS_TONES = {{ tones|length }};
+</script>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'fusen/js/fusen.js' %}"></script>
+{% endblock %}
