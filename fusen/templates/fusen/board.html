@@ -110,6 +110,46 @@
   </div>
 </div>
 
+<!-- ── 付箋編集モーダル ─────────────────────── -->
+<div id="fs-note-modal" class="fs-modal" hidden>
+  <div class="fs-modal-box">
+    <div class="fs-modal-head">
+      <span>付箋</span>
+      <button class="fs-modal-close" id="fs-nm-close" type="button">×</button>
+    </div>
+    <div class="fs-modal-body">
+      <label class="fs-field">
+        <span>メモ</span>
+        <textarea id="fs-nm-body" rows="8" placeholder="メモを入力..."></textarea>
+      </label>
+      <div class="fs-field-row">
+        <label class="fs-field">
+          <span>日付</span>
+          <input type="date" id="fs-nm-date">
+        </label>
+        <label class="fs-field fs-nm-pin-field">
+          <span>ピン留め</span>
+          <label class="fs-toggle"><input type="checkbox" id="fs-nm-pinned"><span>先頭に固定</span></label>
+        </label>
+      </div>
+      <div class="fs-field">
+        <span>色</span>
+        <div class="fs-tone-pick" id="fs-nm-tone">
+          {% for t in tones %}
+          <button type="button" class="fs-tone tone-{{ t.key }}" data-tone="{{ t.key }}" title="{{ t.label }}"></button>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+    <div class="fs-modal-foot">
+      <button class="fs-btn fs-danger" id="fs-nm-delete" type="button">削除</button>
+      <span class="fs-spacer"></span>
+      <button class="fs-btn" id="fs-nm-cancel" type="button">キャンセル</button>
+      <button class="fs-btn fs-primary" id="fs-nm-save" type="button">保存</button>
+    </div>
+  </div>
+</div>
+
 <script>
   const FS_TONES = {{ tones|length }};
 </script>

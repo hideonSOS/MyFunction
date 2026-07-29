@@ -215,7 +215,7 @@
     setDropTarget(document.getElementById('fs-inbox'), '');
   }
 
-  // ── タスクカード ───────────────────────────
+  // ── タスクカード（見出しのみ。クリックで編集モーダル） ──
   function taskCard(t) {
     const card = document.createElement('div');
     card.className = 'fs-task' + (t.is_done ? ' done' : '') + (t.is_overdue ? ' overdue' : '');
@@ -223,9 +223,6 @@
     card.draggable = true;
     card.addEventListener('dragstart', ev => onDragStart(ev, 'task', t.id));
     card.addEventListener('dragend', onDragEnd);
-
-    const top = document.createElement('div');
-    top.className = 'fs-task-top';
 
     const check = document.createElement('button');
     check.className = 'fs-check' + (t.is_done ? ' checked' : t.status === 'doing' ? ' doing' : '');
@@ -235,34 +232,21 @@
       const next = { todo: 'doing', doing: 'done', done: 'todo' }[t.status] || 'todo';
       updateStatus(t, next);
     });
-    top.appendChild(check);
+    card.appendChild(check);
 
     const title = document.createElement('div');
     title.className = 'fs-task-title';
     title.textContent = t.title;
-    title.addEventListener('click', () => openTaskModal(t));
-    top.appendChild(title);
-    card.appendChild(top);
+    // 期限時刻・リマインドは見出しに影響しないよう tooltip に集約
+    const tip = [t.title];
+    if (t.due_at)    tip.push('期限 ' + fmtWhen(t.due_at));
+    if (t.remind_at) tip.push('🔔 ' + fmtWhen(t.remind_at));
+    title.title = tip.join('\n');
+    if (t.remind_at && !t.is_done) card.classList.add('has-remind');
+    card.appendChild(title);
 
-    const meta = document.createElement('div');
-    meta.className = 'fs-task-meta';
-    const prio = document.createElement('span');
-    prio.className = 'fs-badge prio-' + t.priority;
-    prio.textContent = ['低', '中', '高'][t.priority] || '中';
-    meta.appendChild(prio);
-    if (t.due_at) {
-      const due = document.createElement('span');
-      due.className = 'fs-badge due' + (t.is_overdue ? ' over' : t.is_due_soon ? ' soon' : '');
-      due.textContent = hhmm(t.due_at);
-      meta.appendChild(due);
-    }
-    if (t.remind_at && !t.is_done) {
-      const rm = document.createElement('span');
-      rm.className = 'fs-badge remind';
-      rm.textContent = '🔔' + hhmm(t.remind_at);
-      meta.appendChild(rm);
-    }
-    card.appendChild(meta);
+    // カード全体クリックで編集モーダル（チェックボックスは stopPropagation 済み）
+    card.addEventListener('click', () => openTaskModal(t));
     return card;
   }
 
@@ -277,69 +261,34 @@
     if (i >= 0) tasks[i] = u; else tasks.push(u);
   }
 
-  // ── 付箋カード ─────────────────────────────
+  // ── 付箋カード（見出しのみ。クリックで編集モーダル） ──
+  function noteHeading(n) {
+    const first = (n.body || '').split('\n').find(l => l.trim()) || '';
+    return first.trim() || '(空の付箋)';
+  }
+
   function noteCard(n) {
     const card = document.createElement('div');
     card.className = 'fs-note' + (n.pinned ? ' pinned' : '');
     card.style.setProperty('--note-bg', TONE_COLOR[n.tone] || TONE_COLOR.yellow);
+    card.draggable = true;
+    card.addEventListener('dragstart', ev => onDragStart(ev, 'note', n.id));
+    card.addEventListener('dragend', onDragEnd);
 
-    const grip = document.createElement('div');
-    grip.className = 'fs-note-grip';
-    grip.textContent = '⠿';
-    grip.title = 'ドラッグで移動';
-    grip.draggable = true;
-    grip.addEventListener('dragstart', ev => onDragStart(ev, 'note', n.id));
-    grip.addEventListener('dragend', onDragEnd);
-    card.appendChild(grip);
+    if (n.pinned) {
+      const pin = document.createElement('span');
+      pin.className = 'fs-note-pinmark';
+      pin.textContent = '📌';
+      card.appendChild(pin);
+    }
 
-    const body = document.createElement('textarea');
-    body.className = 'fs-note-body';
-    body.value = n.body;
-    body.placeholder = 'メモ...';
-    body.dataset.noteFocus = n.id;
-    let saveTimer = null;
-    body.addEventListener('input', () => {
-      clearTimeout(saveTimer);
-      saveTimer = setTimeout(() => saveNote({ id: n.id, body: body.value }), 500);
-    });
-    card.appendChild(body);
+    const head = document.createElement('div');
+    head.className = 'fs-note-head';
+    head.textContent = noteHeading(n);
+    head.title = n.body || '';
+    card.appendChild(head);
 
-    const bar = document.createElement('div');
-    bar.className = 'fs-note-bar';
-
-    const pin = document.createElement('button');
-    pin.className = 'fs-note-pin' + (n.pinned ? ' on' : '');
-    pin.textContent = '📌';
-    pin.title = 'ピン留め';
-    pin.addEventListener('click', () => saveNote({ id: n.id, pinned: !n.pinned }));
-    bar.appendChild(pin);
-
-    const toneBtn = document.createElement('button');
-    toneBtn.className = 'fs-note-tone';
-    toneBtn.textContent = '🎨';
-    toneBtn.title = '色を変える';
-    const tones = document.createElement('div');
-    tones.className = 'fs-note-tones';
-    TONE_KEYS.forEach(k => {
-      const sw = document.createElement('button');
-      sw.className = 'fs-tone tone-' + k;
-      sw.addEventListener('click', () => saveNote({ id: n.id, tone: k }));
-      tones.appendChild(sw);
-    });
-    toneBtn.addEventListener('click', () => tones.classList.toggle('open'));
-    bar.appendChild(toneBtn);
-    bar.appendChild(tones);
-
-    const del = document.createElement('button');
-    del.className = 'fs-note-del';
-    del.textContent = '🗑';
-    del.title = '削除';
-    del.style.marginLeft = 'auto';
-    del.addEventListener('click', () => {
-      if (confirm('この付箋を削除しますか？')) deleteNote(n);
-    });
-    bar.appendChild(del);
-    card.appendChild(bar);
+    card.addEventListener('click', () => openNoteModal(n));
     return card;
   }
 
@@ -348,24 +297,21 @@
     const i = notes.findIndex(x => x.id === saved.id);
     if (i >= 0) notes[i] = saved; else notes.push(saved);
     render();
+    return saved;
   }
 
-  async function deleteNote(n) {
-    await post('/fusen/api/note/delete/', { id: n.id });
-    notes = notes.filter(x => x.id !== n.id);
+  async function deleteNote(id) {
+    await post('/fusen/api/note/delete/', { id });
+    notes = notes.filter(x => x.id !== id);
     render();
   }
 
+  // 新規付箋: 空で作成し、そのまま広い入力エリア（モーダル）を開く
   async function addNote(day) {
     const saved = await post('/fusen/api/note/save/', { body: '', tone: 'yellow', date: day || '' });
     notes.push(saved);
     render();
-    // 追加した付箋にフォーカス
-    requestAnimationFrame(() => {
-      const sel = `[data-note-focus="${saved.id}"]`;
-      const el = document.querySelector(sel);
-      if (el) el.focus();
-    });
+    openNoteModal(saved);
   }
 
   // ── ドラッグ&ドロップ ─────────────────────
@@ -551,6 +497,62 @@
   document.querySelectorAll('#fs-f-tone .fs-tone').forEach(el => {
     el.addEventListener('click', () => setModalTone(el.dataset.tone));
   });
+
+  // ── 付箋モーダル ───────────────────────────
+  const noteModal = document.getElementById('fs-note-modal');
+  let editingNoteId = null;
+  let noteModalTone = 'yellow';
+
+  function setNoteTone(tone) {
+    noteModalTone = tone;
+    document.querySelectorAll('#fs-nm-tone .fs-tone').forEach(el => {
+      el.classList.toggle('selected', el.dataset.tone === tone);
+    });
+  }
+
+  function openNoteModal(n) {
+    editingNoteId = n.id;
+    document.getElementById('fs-nm-body').value    = n.body || '';
+    document.getElementById('fs-nm-date').value    = n.date || '';
+    document.getElementById('fs-nm-pinned').checked = !!n.pinned;
+    setNoteTone(n.tone || 'yellow');
+    noteModal.hidden = false;
+    const ta = document.getElementById('fs-nm-body');
+    ta.focus();
+    ta.setSelectionRange(ta.value.length, ta.value.length);
+  }
+
+  function closeNoteModal() { noteModal.hidden = true; editingNoteId = null; }
+
+  async function saveNoteModal() {
+    if (editingNoteId == null) return;
+    await saveNote({
+      id:     editingNoteId,
+      body:   document.getElementById('fs-nm-body').value,
+      date:   document.getElementById('fs-nm-date').value,
+      pinned: document.getElementById('fs-nm-pinned').checked,
+      tone:   noteModalTone,
+    });
+    closeNoteModal();
+  }
+
+  async function deleteNoteModal() {
+    if (editingNoteId == null) return;
+    if (!confirm('この付箋を削除しますか？')) return;
+    const id = editingNoteId;
+    closeNoteModal();
+    await deleteNote(id);
+  }
+
+  document.querySelectorAll('#fs-nm-tone .fs-tone').forEach(el => {
+    el.addEventListener('click', () => setNoteTone(el.dataset.tone));
+  });
+  document.getElementById('fs-nm-save').addEventListener('click', saveNoteModal);
+  document.getElementById('fs-nm-cancel').addEventListener('click', closeNoteModal);
+  document.getElementById('fs-nm-close').addEventListener('click', closeNoteModal);
+  document.getElementById('fs-nm-delete').addEventListener('click', deleteNoteModal);
+  noteModal.addEventListener('click', ev => { if (ev.target === noteModal) closeNoteModal(); });
+  document.addEventListener('keydown', ev => { if (ev.key === 'Escape' && !noteModal.hidden) closeNoteModal(); });
 
   // ── 週ナビゲーション ───────────────────────
   function recenterToday() {

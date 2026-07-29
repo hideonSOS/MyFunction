@@ -114,25 +114,24 @@
   min-height: 20px;
 }
 .fs-inbox-body > .fs-task,
-.fs-inbox-body > .fs-note { width: 200px; }
+.fs-inbox-body > .fs-note { width: 180px; }
 .fs-inbox-hint { font-size: 11px; color: var(--text-dim); padding: 4px 0; }
 
-/* ── カレンダー ───────────────────────────── */
+/* ── カレンダー（全日程が横スクロールなしで収まる） ── */
 .fs-cal-wrap {
-  overflow-x: auto;
-  overflow-y: hidden;
+  overflow: visible;
   padding-bottom: 10px;
 }
 .fs-calendar {
   display: flex;
-  gap: 10px;
+  gap: 6px;
   align-items: stretch;
   min-height: 60vh;
 }
 
 .fs-col {
-  flex: 0 0 190px;
-  width: 190px;
+  flex: 1 1 0;      /* 全列で幅を等分 → 何日分でも収まる */
+  min-width: 0;
   display: flex;
   flex-direction: column;
   border: 1px solid var(--border);
@@ -160,11 +159,12 @@
 
 .fs-col-add {
   display: flex;
-  gap: 4px;
+  flex-wrap: wrap;
+  gap: 3px;
   margin-top: 6px;
 }
 .fs-col-add button {
-  flex: 1;
+  flex: 1 1 40%;
   font-family: inherit;
   font-size: 10px;
   padding: 3px 0;
@@ -174,15 +174,16 @@
   color: var(--text-dim);
   cursor: pointer;
   transition: all 0.15s;
+  white-space: nowrap;
 }
 .fs-col-add button:hover { color: var(--green); border-color: #00ff8844; }
 
 .fs-col-body {
   flex: 1;
-  padding: 8px;
+  padding: 6px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
   overflow-y: auto;
 }
 
@@ -215,13 +216,16 @@ body.fs-dragging .fs-col-body { min-height: 40px; }
 .fs-add-task, .fs-add-note { margin-left: auto; color: var(--green); border-color: #00ff8844; }
 .fs-add-task:hover, .fs-add-note:hover { border-color: var(--green); color: var(--green); box-shadow: var(--glow-g); }
 
-/* ── タスクカード（カレンダー用・縦積み） ─── */
+/* ── タスクカード（見出しのみ・1行） ───────── */
 .fs-task {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   border: 1px solid var(--border);
   border-left: 3px solid var(--tone-c, var(--cyan-dim));
   border-radius: 4px;
   background: var(--bg3);
-  padding: 7px 8px;
+  padding: 5px 6px;
   transition: border-color 0.15s, background 0.15s;
   cursor: grab;
 }
@@ -229,15 +233,13 @@ body.fs-dragging .fs-col-body { min-height: 40px; }
 .fs-task:active { cursor: grabbing; }
 .fs-task.done { opacity: 0.5; }
 .fs-task.overdue { border-left-color: var(--pink); box-shadow: inset 0 0 12px #ff006e11; }
-
-.fs-task-top { display: flex; align-items: flex-start; gap: 8px; }
+.fs-task.has-remind { border-right: 2px solid var(--orange); }
 
 /* チェックボックス */
 .fs-check {
   flex-shrink: 0;
-  width: 17px;
-  height: 17px;
-  margin-top: 1px;
+  width: 16px;
+  height: 16px;
   border: 1px solid var(--cyan-dim);
   border-radius: 3px;
   background: transparent;
@@ -251,7 +253,7 @@ body.fs-dragging .fs-col-body { min-height: 40px; }
   content: '✓';
   position: absolute; inset: 0;
   display: flex; align-items: center; justify-content: center;
-  color: #04121a; font-size: 12px; font-weight: bold;
+  color: #04121a; font-size: 11px; font-weight: bold;
 }
 .fs-check.doing { border-color: var(--yellow); }
 .fs-check.doing::after {
@@ -261,105 +263,57 @@ body.fs-dragging .fs-col-body { min-height: 40px; }
   color: var(--yellow); font-size: 9px;
 }
 
+/* 見出し（1行・省略表示） */
 .fs-task-title {
   flex: 1;
   min-width: 0;
-  font-size: 13px;
-  line-height: 1.35;
+  font-size: 12px;
+  line-height: 1.3;
   color: var(--text);
-  word-break: break-word;
   cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .fs-task.done .fs-task-title { text-decoration: line-through; }
 
-.fs-task-meta {
-  display: flex;
-  gap: 5px;
-  flex-wrap: wrap;
-  margin-top: 5px;
+.fs-task-time {
+  flex-shrink: 0;
   font-size: 10px;
   color: var(--text-dim);
 }
+.fs-task-time.soon { color: var(--yellow); }
+.fs-task-time.over { color: var(--pink); }
 
-.fs-badge {
-  padding: 1px 6px;
-  border-radius: 10px;
-  border: 1px solid var(--border);
-  letter-spacing: 1px;
-  white-space: nowrap;
-}
-.fs-badge.due      { color: var(--text); }
-.fs-badge.due.soon { color: var(--yellow); border-color: #ffe60055; }
-.fs-badge.due.over { color: var(--pink);   border-color: #ff006e55; }
-.fs-badge.remind   { color: var(--orange); border-color: #ff990044; }
-.fs-badge.prio-2   { color: var(--pink);   border-color: #ff006e55; }
-.fs-badge.prio-1   { color: var(--cyan);   border-color: var(--cyan-dim); }
-.fs-badge.prio-0   { color: var(--text-dim); }
-
-/* ── 付箋カード（カレンダー用・コンパクト） ── */
+/* ── 付箋カード（見出しのみ） ─────────────── */
 .fs-note {
   position: relative;
-  padding: 6px 8px 24px 20px;
+  padding: 6px 8px;
   border-radius: 4px;
   border: 1px solid #00000033;
   background: var(--note-bg, #f5e17a);
   box-shadow: 0 2px 6px #00000055;
   color: #10141c;
+  cursor: grab;
 }
+.fs-note:active { cursor: grabbing; }
 .fs-note.pinned { box-shadow: 0 0 0 1px var(--cyan), 0 2px 8px #00f5ff44; }
 
-.fs-note-grip {
+.fs-note-pinmark {
   position: absolute;
-  left: 4px; top: 4px;
-  font-size: 12px;
-  line-height: 1;
-  color: #00000055;
-  cursor: grab;
-  user-select: none;
+  top: 2px; right: 3px;
+  font-size: 10px;
 }
-.fs-note-grip:active { cursor: grabbing; }
 
-.fs-note-body {
-  border: 0;
-  background: transparent;
-  resize: vertical;
-  font-family: 'Share Tech Mono', monospace;
+.fs-note-head {
   font-size: 12px;
-  line-height: 1.45;
+  line-height: 1.35;
   color: #10141c;
-  outline: none;
-  width: 100%;
-  min-height: 48px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding-right: 10px;
 }
-.fs-note-body::placeholder { color: #00000055; }
-
-.fs-note-bar {
-  position: absolute;
-  left: 6px; right: 6px; bottom: 4px;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-.fs-note-pin, .fs-note-del, .fs-note-tone {
-  border: 0;
-  background: transparent;
-  cursor: pointer;
-  font-size: 12px;
-  line-height: 1;
-  padding: 2px;
-  color: #00000077;
-  border-radius: 3px;
-}
-.fs-note-pin:hover, .fs-note-del:hover, .fs-note-tone:hover { color: #000; background: #00000015; }
-.fs-note-pin.on { color: #0a5; }
-
-.fs-note-tones {
-  display: none;
-  gap: 3px;
-  margin-left: auto;
-}
-.fs-note-tones.open { display: flex; }
-.fs-note-tones .fs-tone { width: 14px; height: 14px; }
 
 /* ── 色見本（トーン） ─────────────────────── */
 .fs-tone-pick { display: flex; gap: 6px; }
@@ -438,6 +392,21 @@ body.fs-dragging .fs-col-body { min-height: 40px; }
 .fs-field-row { display: flex; gap: 12px; }
 @media (max-width: 520px) { .fs-field-row { flex-direction: column; } }
 
+/* トグル（ピン留め） */
+.fs-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 9px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg3);
+  font-size: 13px;
+  color: var(--text);
+  cursor: pointer;
+}
+.fs-toggle input { width: 16px; height: 16px; accent-color: var(--cyan); cursor: pointer; }
+
 .fs-remind-quick {
   display: flex;
   gap: 6px;
@@ -471,7 +440,9 @@ body.fs-dragging .fs-col-body { min-height: 40px; }
 @media (max-width: 640px) {
   #fusen { padding: 14px 10px 50px; }
   .fs-title { font-size: 17px; letter-spacing: 2px; }
-  .fs-col { flex: 0 0 160px; width: 160px; }
+  /* 狭い画面では列を固定幅にして横スクロールへ切り替える */
+  .fs-cal-wrap { overflow-x: auto; }
+  .fs-col { flex: 0 0 150px; }
   .fs-inbox-body > .fs-task,
-  .fs-inbox-body > .fs-note { width: 160px; }
+  .fs-inbox-body > .fs-note { width: 150px; }
 }
