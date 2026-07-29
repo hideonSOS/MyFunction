@@ -419,10 +419,14 @@
     render();
   }
 
-  // ── タスクモーダル ─────────────────────────
-  const modal = document.getElementById('fs-modal');
-  let editingId = null;
+  // ── タスクモーダル（閲覧 / 編集） ───────────
+  const modal    = document.getElementById('fs-modal');
+  const taskBox  = document.getElementById('fs-tm-box');
+  let currentTask = null;    // 表示中のタスク（新規は null）
   let modalTone = 'blue';
+
+  const STATUS_LABEL   = { todo: '未着手', doing: '進行中', done: '完了' };
+  const PRIORITY_LABEL = ['低', '中', '高'];
 
   function setModalTone(tone) {
     modalTone = tone;
@@ -431,31 +435,81 @@
     });
   }
 
-  function openTaskModal(t, presetDay) {
-    editingId = t ? t.id : null;
-    document.getElementById('fs-modal-title').textContent = t ? 'タスクを編集' : '新しいタスク';
+  function setTaskMode(mode) {
+    taskBox.classList.toggle('mode-view', mode === 'view');
+    taskBox.classList.toggle('mode-edit', mode === 'edit');
+  }
+
+  // 閲覧モードの表示を組み立てる
+  function fillTaskView(t) {
+    document.getElementById('fs-modal-title').textContent = 'タスク';
+    document.getElementById('fs-tm-vtitle').textContent = t.title;
+
+    const badges = document.getElementById('fs-tm-vbadges');
+    badges.innerHTML = '';
+    const add = (cls, text) => {
+      const s = document.createElement('span');
+      s.className = 'fs-badge ' + cls;
+      s.textContent = text;
+      badges.appendChild(s);
+    };
+    add('prio-' + t.priority, '優先度: ' + (PRIORITY_LABEL[t.priority] || '中'));
+    add('', '状態: ' + (STATUS_LABEL[t.status] || '未着手'));
+    if (t.due_at) {
+      add('due' + (t.is_overdue ? ' over' : t.is_due_soon ? ' soon' : ''), '期限 ' + fmtWhen(t.due_at));
+    }
+    if (t.remind_at) add('remind', '🔔 ' + fmtWhen(t.remind_at));
+
+    const detail = document.getElementById('fs-tm-vdetail');
+    detail.textContent = t.detail || '(詳細なし)';
+    detail.classList.toggle('empty', !t.detail);
+  }
+
+  // 編集フォームに値を流し込む
+  function fillTaskEdit(t, presetDay) {
     document.getElementById('fs-f-title').value    = t ? t.title : '';
     document.getElementById('fs-f-detail').value   = t ? t.detail : '';
-    // 新規で日付指定があれば、その日の 09:00 を期限の初期値にする
     let due = t && t.due_at ? t.due_at : '';
-    if (!t && presetDay) due = presetDay + 'T09:00';
+    if (!t && presetDay) due = presetDay + 'T09:00';   // 新規で日付指定なら 09:00
     document.getElementById('fs-f-due').value      = due;
     document.getElementById('fs-f-remind').value   = t && t.remind_at ? t.remind_at : '';
     document.getElementById('fs-f-priority').value = t ? String(t.priority) : '1';
     document.getElementById('fs-f-status').value   = t ? t.status : 'todo';
     setModalTone(t ? t.tone : 'blue');
+  }
+
+  // t あり＝閲覧モードで開く / t なし＝新規（編集モード）
+  function openTaskModal(t, presetDay) {
+    currentTask = t || null;
     document.getElementById('fs-modal-delete').hidden = !t;
+    fillTaskEdit(t, presetDay);
+    if (t) {
+      fillTaskView(t);
+      document.getElementById('fs-modal-title').textContent = 'タスク';
+      setTaskMode('view');
+    } else {
+      document.getElementById('fs-modal-title').textContent = '新しいタスク';
+      setTaskMode('edit');
+      document.getElementById('fs-f-title').focus();
+    }
     modal.hidden = false;
+  }
+
+  function enterTaskEdit() {
+    if (!currentTask) return;
+    fillTaskEdit(currentTask);
+    document.getElementById('fs-modal-title').textContent = 'タスクを編集';
+    setTaskMode('edit');
     document.getElementById('fs-f-title').focus();
   }
 
-  function closeModal() { modal.hidden = true; editingId = null; }
+  function closeModal() { modal.hidden = true; currentTask = null; }
 
   async function saveModal() {
     const title = document.getElementById('fs-f-title').value.trim();
     if (!title) { document.getElementById('fs-f-title').focus(); return; }
     const payload = {
-      id:        editingId,
+      id:        currentTask ? currentTask.id : null,
       title,
       detail:    document.getElementById('fs-f-detail').value,
       due_at:    document.getElementById('fs-f-due').value,
@@ -467,16 +521,21 @@
     const saved = await post('/fusen/api/task/save/', payload);
     replaceTask(saved);
     dismissedReminders.delete(saved.id);
-    closeModal();
     render();
+    // 保存後は閲覧モードに戻す（続けて確認できる）
+    currentTask = saved;
+    document.getElementById('fs-modal-delete').hidden = false;
+    fillTaskView(saved);
+    setTaskMode('view');
   }
 
   async function deleteTask() {
-    if (editingId == null) return;
+    if (!currentTask) return;
     if (!confirm('このタスクを削除しますか？')) return;
-    await post('/fusen/api/task/delete/', { id: editingId });
-    tasks = tasks.filter(x => x.id !== editingId);
+    const id = currentTask.id;
     closeModal();
+    await post('/fusen/api/task/delete/', { id });
+    tasks = tasks.filter(x => x.id !== id);
     render();
   }
 
@@ -497,6 +556,14 @@
 
   document.querySelectorAll('#fs-f-tone .fs-tone').forEach(el => {
     el.addEventListener('click', () => setModalTone(el.dataset.tone));
+  });
+
+  document.getElementById('fs-tm-edit').addEventListener('click', enterTaskEdit);
+  document.getElementById('fs-tm-close2').addEventListener('click', closeModal);
+  document.getElementById('fs-modal-cancel').addEventListener('click', () => {
+    // 既存タスクの編集を破棄して閲覧へ。新規なら閉じる
+    if (currentTask) { fillTaskView(currentTask); setTaskMode('view'); }
+    else closeModal();
   });
 
   // ── 付箋モーダル（閲覧 / 編集） ─────────────
@@ -616,7 +683,6 @@
   document.getElementById('fs-add-task').addEventListener('click', () => openTaskModal(null, null));
   document.getElementById('fs-add-note').addEventListener('click', () => addNote(dateKey(localMidnight(new Date()))));
   document.getElementById('fs-modal-save').addEventListener('click', saveModal);
-  document.getElementById('fs-modal-cancel').addEventListener('click', closeModal);
   document.getElementById('fs-modal-close').addEventListener('click', closeModal);
   document.getElementById('fs-modal-delete').addEventListener('click', deleteTask);
   modal.addEventListener('click', ev => { if (ev.target === modal) closeModal(); });

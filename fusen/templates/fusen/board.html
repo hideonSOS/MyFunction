@@ -43,12 +43,21 @@
 
 <!-- ── タスク編集モーダル ─────────────────── -->
 <div id="fs-modal" class="fs-modal" hidden>
-  <div class="fs-modal-box">
+  <div class="fs-modal-box" id="fs-tm-box">
     <div class="fs-modal-head">
       <span id="fs-modal-title">タスク</span>
       <button class="fs-modal-close" id="fs-modal-close" type="button">×</button>
     </div>
-    <div class="fs-modal-body">
+
+    <!-- 閲覧モード -->
+    <div class="fs-modal-body fs-tm-view">
+      <div class="fs-tm-view-title" id="fs-tm-vtitle"></div>
+      <div class="fs-tm-view-badges" id="fs-tm-vbadges"></div>
+      <div class="fs-tm-view-detail" id="fs-tm-vdetail"></div>
+    </div>
+
+    <!-- 編集モード -->
+    <div class="fs-modal-body fs-tm-edit">
       <label class="fs-field">
         <span>タイトル</span>
         <input type="text" id="fs-f-title" maxlength="200" placeholder="やること">
@@ -104,6 +113,10 @@
     <div class="fs-modal-foot">
       <button class="fs-btn fs-danger" id="fs-modal-delete" type="button" hidden>削除</button>
       <span class="fs-spacer"></span>
+      <!-- 閲覧モードのボタン -->
+      <button class="fs-btn" id="fs-tm-close2" type="button">閉じる</button>
+      <button class="fs-btn fs-primary" id="fs-tm-edit" type="button">編集</button>
+      <!-- 編集モードのボタン -->
       <button class="fs-btn" id="fs-modal-cancel" type="button">キャンセル</button>
       <button class="fs-btn fs-primary" id="fs-modal-save" type="button">保存</button>
     </div>

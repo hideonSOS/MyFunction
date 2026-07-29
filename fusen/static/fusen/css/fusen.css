@@ -436,6 +436,39 @@ body.fs-dragging .fs-col-body { min-height: 40px; }
 }
 .fs-spacer { flex: 1; }
 
+/* ── タスクモーダル（閲覧 / 編集の出し分け） ── */
+.fs-tm-view-title {
+  font-size: 18px;
+  letter-spacing: 1px;
+  color: var(--cyan);
+  word-break: break-word;
+}
+.fs-tm-view-badges { display: flex; gap: 6px; flex-wrap: wrap; }
+.fs-tm-view-badges .fs-badge { font-size: 12px; padding: 2px 9px; }
+.fs-tm-view-detail {
+  min-height: 90px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg3);
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.fs-tm-view-detail.empty { color: var(--text-dim); }
+
+#fs-tm-box .fs-tm-view,
+#fs-tm-box .fs-tm-edit { display: none; }
+#fs-tm-box.mode-view .fs-tm-view { display: flex; flex-direction: column; gap: 12px; }
+#fs-tm-box.mode-edit .fs-tm-edit { display: flex; flex-direction: column; gap: 12px; }
+
+#fs-tm-box.mode-view #fs-modal-cancel,
+#fs-tm-box.mode-view #fs-modal-save { display: none; }
+#fs-tm-box.mode-edit #fs-tm-close2,
+#fs-tm-box.mode-edit #fs-tm-edit { display: none; }
+
 /* ── 付箋モーダル（閲覧 / 編集の出し分け） ──── */
 /* 中身の入力欄・閲覧欄はともに縦幅を大きく（従来の約3倍） */
 #fs-nm-body { min-height: 330px; resize: vertical; }
