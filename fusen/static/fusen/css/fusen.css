@@ -129,16 +129,16 @@
 
 .fs-tl-row { display: flex; }
 
-/* 左の時刻ガター幅を全行でそろえる */
+/* 左の時刻ガター幅を全行でそろえる（7日ぶん詰めるため細め） */
 .fs-tl-gutter-cell,
-.fs-tl-gutter { flex: 0 0 54px; width: 54px; }
+.fs-tl-gutter { flex: 0 0 42px; width: 42px; }
 
 /* ヘッダー行 */
 .fs-tl-headrow { border-bottom: 1px solid var(--border); }
 .fs-tl-dayhead {
   flex: 1 1 0;
   min-width: 0;
-  padding: 6px 8px;
+  padding: 5px 5px;
   border-left: 1px solid var(--border);
   color: var(--text);
 }
@@ -148,12 +148,12 @@
 .fs-tl-dayhead-label b { font-size: 15px; }
 .fs-tl-dayhead-label span { font-size: 12px; opacity: 0.8; }
 
-.fs-tl-dayadd { display: flex; gap: 4px; margin-top: 5px; }
+.fs-tl-dayadd { display: flex; flex-wrap: wrap; gap: 3px; margin-top: 4px; }
 .fs-tl-dayadd button {
-  flex: 1;
+  flex: 1 1 40%;
   font-family: inherit;
-  font-size: 10px;
-  padding: 3px 0;
+  font-size: 9px;
+  padding: 2px 0;
   border: 1px solid var(--border);
   border-radius: 3px;
   background: transparent;
@@ -180,20 +180,18 @@
 }
 .fs-tl-allday-cell.today { background: #00f5ff08; }
 
-/* 時間軸グリッド（縦スクロール） */
+/* 時間軸グリッド（高さは JS が画面に収まるよう算出。スクロールなし） */
 .fs-tl-grid {
   display: flex;
-  max-height: 62vh;
-  overflow-y: auto;
+  overflow: hidden;
 }
 .fs-tl-gutter { position: relative; }
 .fs-tl-hourlabel {
+  position: absolute;
+  right: 5px;
+  transform: translateY(-6px);   /* 時間線に合わせる */
   font-size: 10px;
   color: var(--text-dim);
-  text-align: right;
-  padding-right: 6px;
-  box-sizing: border-box;
-  border-top: 1px solid transparent;
 }
 
 .fs-tl-daycol {
@@ -219,13 +217,15 @@
   z-index: 3;
 }
 
-/* 時間軸上のブロック（絶対配置） */
+/* 時間軸上のブロック（絶対配置。高さは JS が指定） */
 .fs-tl-block {
   position: absolute;
-  height: 30px;
   overflow: hidden;
   z-index: 2;
+  padding: 2px 5px;
+  font-size: 11px;
 }
+.fs-tl-block .fs-check { width: 13px; height: 13px; }
 
 /* ドロップ対象のハイライト */
 .fs-drop-over { outline: 2px dashed var(--cyan); outline-offset: -3px; }

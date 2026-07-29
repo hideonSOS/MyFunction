@@ -12,12 +12,15 @@
   };
   const TONE_KEYS = Object.keys(TONE_COLOR);
   const DOW = ['日', '月', '火', '水', '木', '金', '土'];
-  const SPAN        = 3;   // 表示日数（当日±1）
-  const DAYS_BEFORE = 1;   // 当日より前
+  const SPAN        = 7;   // 表示日数（週・当日±3）
+  const DAYS_BEFORE = 3;   // 当日より前
   const START_HOUR  = 7;   // 時間軸の開始
   const END_HOUR    = 22;  // 時間軸の終了
-  const HOUR_H      = 44;  // 1時間あたりの高さ(px)
-  const ITEM_H      = 30;  // 時間軸ブロックの高さ(px)
+  const HOURS       = END_HOUR - START_HOUR;
+  // 1時間あたりの高さ・ブロック高さは画面に収まるよう毎回算出する
+  let HOUR_H = 34;
+  let ITEM_H = 22;
+  let GRID_H = HOURS * HOUR_H;
 
   // 状態
   let notes = [];
@@ -119,10 +122,18 @@
     if (!n.time) return null;
     return parseInt(n.time.slice(0, 2), 10) * 60 + parseInt(n.time.slice(3), 10);
   }
-  const GRID_H = (END_HOUR - START_HOUR) * HOUR_H;
   function topForMinutes(m) {
     let top = (m - START_HOUR * 60) / 60 * HOUR_H;
     return Math.max(0, Math.min(GRID_H - ITEM_H, top));
+  }
+
+  // グリッドが縦スクロールなしで収まるよう 1時間の高さを決める。
+  // gridTop = グリッド上端の画面Y。残り高さを時間数で割る
+  function fitHourHeight(gridTop) {
+    const avail = window.innerHeight - gridTop - 14;   // 下の余白
+    HOUR_H = Math.max(18, Math.min(40, Math.floor(avail / HOURS)));
+    ITEM_H = Math.max(15, Math.min(HOUR_H - 2, 24));
+    GRID_H = HOURS * HOUR_H;
   }
 
   function renderWindow() {
@@ -194,14 +205,19 @@
     });
     cal.appendChild(adRow);
 
+    // ヘッダー＋終日帯までをレイアウトさせ、グリッド上端Yから 1時間の高さを算出
+    // （縦スクロールなしで 7:00〜22:00 が収まるようにする）
+    fitHourHeight(adRow.getBoundingClientRect().bottom);
+
     // ── 時間軸グリッド ──
     const grid = el('div', 'fs-tl-grid');
 
-    // 左の時刻ガター
+    // 左の時刻ガター（ラベルは絶対配置。高さを日カラムと揃える）
     const gutter = el('div', 'fs-tl-gutter');
+    gutter.style.height = GRID_H + 'px';
     for (let h = START_HOUR; h <= END_HOUR; h++) {
       const hr = el('div', 'fs-tl-hourlabel', `${pad(h)}:00`);
-      hr.style.height = HOUR_H + 'px';
+      hr.style.top = ((h - START_HOUR) * HOUR_H) + 'px';
       gutter.appendChild(hr);
     }
     grid.appendChild(gutter);
@@ -234,6 +250,7 @@
         const card = x.kind === 'task' ? taskCard(x.item) : noteCard(x.item);
         card.classList.add('fs-tl-block');
         card.style.top    = x._top + 'px';
+        card.style.height = ITEM_H + 'px';
         card.style.left   = `calc(${(x._lane * 100 / x._laneCount).toFixed(3)}% + 2px)`;
         card.style.width  = `calc(${(100 / x._laneCount).toFixed(3)}% - 4px)`;
         col.appendChild(card);
@@ -243,11 +260,6 @@
     });
 
     cal.appendChild(grid);
-
-    // 8時あたりが見えるよう少しスクロール
-    requestAnimationFrame(() => {
-      grid.scrollTop = Math.max(0, (8 - START_HOUR) * HOUR_H - 8);
-    });
   }
 
   // 時間指定アイテムをレーンに割り付け（重なり回避）
@@ -775,6 +787,13 @@
   document.getElementById('fs-modal-delete').addEventListener('click', deleteTask);
   modal.addEventListener('click', ev => { if (ev.target === modal) closeModal(); });
   document.addEventListener('keydown', ev => { if (ev.key === 'Escape' && !modal.hidden) closeModal(); });
+
+  // 画面サイズ変更で高さを再計算（縦スクロールを避ける）
+  let resizeTimer = null;
+  window.addEventListener('resize', () => {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(renderWindow, 150);
+  });
 
   // 1分ごとに再取得（リマインド時刻の跨ぎに対応）
   setInterval(loadState, 60000);
