@@ -24,6 +24,7 @@ class Note(models.Model):
     pinned   = models.BooleanField(default=False)
     archived = models.BooleanField(default=False)
     date     = models.DateField(null=True, blank=True)  # カレンダー上の配置日（未設定=未分類）
+    time     = models.TimeField(null=True, blank=True)  # 時間軸上の配置時刻（未設定=終日）
     order    = models.IntegerField(default=0)          # ボード内の並び順
     created  = models.DateTimeField(auto_now_add=True)
     updated  = models.DateTimeField(auto_now=True)
@@ -66,7 +67,8 @@ class Task(models.Model):
     status    = models.CharField(max_length=8, choices=STATUS_CHOICES, default=STATUS_TODO)
     priority  = models.IntegerField(choices=PRIORITY_CHOICES, default=1)
 
-    due_at    = models.DateTimeField(null=True, blank=True)   # 期限
+    due_at    = models.DateTimeField(null=True, blank=True)   # 期限（日付＋時刻）
+    all_day   = models.BooleanField(default=False)            # 終日（時間軸に載せず終日帯へ）
     remind_at = models.DateTimeField(null=True, blank=True)   # 思い出すタイミング
     reminded  = models.BooleanField(default=False)            # リマインド済みフラグ
 

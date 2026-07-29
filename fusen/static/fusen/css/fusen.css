@@ -117,54 +117,40 @@
 .fs-inbox-body > .fs-note { width: 180px; }
 .fs-inbox-hint { font-size: 11px; color: var(--text-dim); padding: 4px 0; }
 
-/* ── カレンダー（全日程が横スクロールなしで収まる） ── */
-.fs-cal-wrap {
-  overflow: visible;
-  padding-bottom: 10px;
-}
-.fs-calendar {
-  display: flex;
-  gap: 6px;
-  align-items: stretch;
-  min-height: 60vh;
-}
+/* ── タイムライン（縦の時間軸 7:00〜22:00） ──── */
+.fs-cal-wrap { overflow: visible; padding-bottom: 10px; }
 
-.fs-col {
-  flex: 1 1 0;      /* 全列で幅を等分 → 何日分でも収まる */
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
+.fs-timeline {
   border: 1px solid var(--border);
   border-radius: 6px;
   background: var(--bg2);
-}
-.fs-col.sat .fs-col-head { color: #6fb7ff; }
-.fs-col.sun .fs-col-head { color: #ff6b8a; }
-.fs-col.today {
-  border-color: var(--cyan);
-  box-shadow: 0 0 0 1px var(--cyan), 0 0 16px #00f5ff33;
+  overflow: hidden;
 }
 
-.fs-col-head {
-  padding: 8px 10px;
-  border-bottom: 1px solid var(--border);
+.fs-tl-row { display: flex; }
+
+/* 左の時刻ガター幅を全行でそろえる */
+.fs-tl-gutter-cell,
+.fs-tl-gutter { flex: 0 0 54px; width: 54px; }
+
+/* ヘッダー行 */
+.fs-tl-headrow { border-bottom: 1px solid var(--border); }
+.fs-tl-dayhead {
+  flex: 1 1 0;
+  min-width: 0;
+  padding: 6px 8px;
+  border-left: 1px solid var(--border);
   color: var(--text);
 }
-.fs-col.today .fs-col-head {
-  background: #00f5ff11;
-  color: var(--cyan);
-}
-.fs-col-date b { font-size: 15px; }
-.fs-col-dow { font-size: 12px; opacity: 0.8; }
+.fs-tl-dayhead.today { background: #00f5ff11; color: var(--cyan); }
+.fs-tl-dayhead.sat { color: #6fb7ff; }
+.fs-tl-dayhead.sun { color: #ff6b8a; }
+.fs-tl-dayhead-label b { font-size: 15px; }
+.fs-tl-dayhead-label span { font-size: 12px; opacity: 0.8; }
 
-.fs-col-add {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 3px;
-  margin-top: 6px;
-}
-.fs-col-add button {
-  flex: 1 1 40%;
+.fs-tl-dayadd { display: flex; gap: 4px; margin-top: 5px; }
+.fs-tl-dayadd button {
+  flex: 1;
   font-family: inherit;
   font-size: 10px;
   padding: 3px 0;
@@ -173,24 +159,78 @@
   background: transparent;
   color: var(--text-dim);
   cursor: pointer;
-  transition: all 0.15s;
   white-space: nowrap;
 }
-.fs-col-add button:hover { color: var(--green); border-color: #00ff8844; }
+.fs-tl-dayadd button:hover { color: var(--green); border-color: #00ff8844; }
 
-.fs-col-body {
-  flex: 1;
-  padding: 6px;
+/* 終日帯 */
+.fs-tl-alldayrow { border-bottom: 1px solid var(--border); min-height: 42px; }
+.fs-tl-allday-label {
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; color: var(--text-dim);
+}
+.fs-tl-allday-cell {
+  flex: 1 1 0;
+  min-width: 0;
+  padding: 4px;
+  border-left: 1px solid var(--border);
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
+}
+.fs-tl-allday-cell.today { background: #00f5ff08; }
+
+/* 時間軸グリッド（縦スクロール） */
+.fs-tl-grid {
+  display: flex;
+  max-height: 62vh;
   overflow-y: auto;
+}
+.fs-tl-gutter { position: relative; }
+.fs-tl-hourlabel {
+  font-size: 10px;
+  color: var(--text-dim);
+  text-align: right;
+  padding-right: 6px;
+  box-sizing: border-box;
+  border-top: 1px solid transparent;
+}
+
+.fs-tl-daycol {
+  position: relative;
+  flex: 1 1 0;
+  min-width: 0;
+  border-left: 1px solid var(--border);
+}
+.fs-tl-daycol.today { background: #00f5ff06; }
+
+.fs-tl-hourline {
+  position: absolute;
+  left: 0; right: 0;
+  border-top: 1px solid var(--border);
+  pointer-events: none;
+}
+.fs-tl-nowline {
+  position: absolute;
+  left: 0; right: 0;
+  border-top: 2px solid var(--pink);
+  box-shadow: 0 0 6px var(--pink);
+  pointer-events: none;
+  z-index: 3;
+}
+
+/* 時間軸上のブロック（絶対配置） */
+.fs-tl-block {
+  position: absolute;
+  height: 30px;
+  overflow: hidden;
+  z-index: 2;
 }
 
 /* ドロップ対象のハイライト */
 .fs-drop-over { outline: 2px dashed var(--cyan); outline-offset: -3px; }
-.fs-drop-over.fs-col { background: #00f5ff0c; }
-body.fs-dragging .fs-col-body { min-height: 40px; }
+.fs-drop-over.fs-tl-daycol,
+.fs-drop-over.fs-tl-allday-cell { background: #00f5ff0c; }
 
 /* ── ボタン ───────────────────────────────── */
 .fs-btn {
@@ -515,9 +555,10 @@ body.fs-dragging .fs-col-body { min-height: 40px; }
 @media (max-width: 640px) {
   #fusen { padding: 14px 10px 50px; }
   .fs-title { font-size: 17px; letter-spacing: 2px; }
-  /* 狭い画面では列を固定幅にして横スクロールへ切り替える */
-  .fs-cal-wrap { overflow-x: auto; }
-  .fs-col { flex: 0 0 150px; }
   .fs-inbox-body > .fs-task,
   .fs-inbox-body > .fs-note { width: 150px; }
+  /* 狭い画面では時刻ガターと日列を詰める */
+  .fs-tl-gutter-cell, .fs-tl-gutter { flex: 0 0 40px; width: 40px; }
+  .fs-tl-hourlabel { font-size: 9px; padding-right: 3px; }
+  .fs-tl-dayadd button { font-size: 9px; }
 }

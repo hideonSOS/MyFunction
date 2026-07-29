@@ -28,6 +28,7 @@ def note_dict(n):
         'tone':     n.tone,
         'pinned':   n.pinned,
         'date':     n.date.strftime('%Y-%m-%d') if n.date else None,
+        'time':     n.time.strftime('%H:%M') if n.time else None,
         'order':    n.order,
         'updated':  _dt(n.updated),
     }
@@ -42,6 +43,7 @@ def task_dict(t):
         'status':     t.status,
         'priority':   t.priority,
         'due_at':     _dt(t.due_at),
+        'all_day':    t.all_day,
         'remind_at':  _dt(t.remind_at),
         'reminded':   t.reminded,
         'is_done':    t.is_done,
@@ -68,6 +70,16 @@ def _parse_date(value):
     if not value:
         return None
     return parse_date(value)
+
+
+def _parse_time(value):
+    """'HH:MM' を time に。空・不正なら None"""
+    if not value:
+        return None
+    try:
+        return datetime.strptime(value, '%H:%M').time()
+    except (TypeError, ValueError):
+        return None
 
 
 def _combine_local(d, t):
@@ -128,6 +140,8 @@ def api_note_save(request):
         note.pinned = bool(data['pinned'])
     if 'date' in data:
         note.date = _parse_date(data['date'])
+    if 'time' in data:
+        note.time = _parse_time(data['time'])
     if 'order' in data:
         try:
             note.order = int(data['order'])
@@ -182,6 +196,7 @@ def api_task_save(request):
         'status':    status,
         'priority':  priority,
         'due_at':    _parse_dt(data.get('due_at')),
+        'all_day':   bool(data.get('all_day', False)),
         'remind_at': _parse_dt(data.get('remind_at')),
     }
     if fields['tone'] not in dict(TONE_CHOICES):
@@ -217,8 +232,11 @@ def api_task_save(request):
 @login_required
 @require_http_methods(['POST'])
 def api_task_move(request):
-    """タスクの期限日を変更（ドラッグ移動用）。時刻は保持、無ければ 09:00。
-    date が空なら期限を外す（未分類へ）"""
+    """タスクの日付・時刻・終日をまとめて変更（ドラッグ移動用）。
+      date 空          → 期限を外す（未分類へ）
+      all_day 真       → その日の終日（時刻は 00:00 保持、all_day=True）
+      time 指定/既存   → 時間軸に配置（all_day=False）
+    """
     try:
         data = json.loads(request.body)
         task_id = int(data['id'])
@@ -232,9 +250,17 @@ def api_task_move(request):
     new_date = _parse_date(data.get('date'))
     if new_date is None:
         task.due_at = None
-    else:
-        keep_time = timezone.localtime(task.due_at).time() if task.due_at else dtime(9, 0)
+        task.all_day = False
+    elif data.get('all_day'):
+        keep_time = timezone.localtime(task.due_at).time() if task.due_at else dtime(0, 0)
         task.due_at = _combine_local(new_date, keep_time)
+        task.all_day = True
+    else:
+        new_time = _parse_time(data.get('time'))
+        if new_time is None:
+            new_time = timezone.localtime(task.due_at).time() if task.due_at else dtime(9, 0)
+        task.due_at = _combine_local(new_date, new_time)
+        task.all_day = False
     task.save()
     return JsonResponse(task_dict(task))
 

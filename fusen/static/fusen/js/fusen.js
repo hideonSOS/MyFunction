@@ -12,9 +12,12 @@
   };
   const TONE_KEYS = Object.keys(TONE_COLOR);
   const DOW = ['日', '月', '火', '水', '木', '金', '土'];
-  const DAYS_BEFORE = 5;   // 当日より前
-  const DAYS_AFTER  = 5;   // 当日より後（合計 11 日）
-  const SPAN = DAYS_BEFORE + DAYS_AFTER + 1;
+  const SPAN        = 3;   // 表示日数（当日±1）
+  const DAYS_BEFORE = 1;   // 当日より前
+  const START_HOUR  = 7;   // 時間軸の開始
+  const END_HOUR    = 22;  // 時間軸の終了
+  const HOUR_H      = 44;  // 1時間あたりの高さ(px)
+  const ITEM_H      = 30;  // 時間軸ブロックの高さ(px)
 
   // 状態
   let notes = [];
@@ -106,96 +109,168 @@
     renderWindow();
   }
 
+  // 時刻ユーティリティ（分-of-day）
+  function taskMinutes(t) {
+    if (!t.due_at) return null;
+    const hm = t.due_at.slice(11, 16);   // 'HH:MM'
+    return parseInt(hm.slice(0, 2), 10) * 60 + parseInt(hm.slice(3), 10);
+  }
+  function noteMinutes(n) {
+    if (!n.time) return null;
+    return parseInt(n.time.slice(0, 2), 10) * 60 + parseInt(n.time.slice(3), 10);
+  }
+  const GRID_H = (END_HOUR - START_HOUR) * HOUR_H;
+  function topForMinutes(m) {
+    let top = (m - START_HOUR * 60) / 60 * HOUR_H;
+    return Math.max(0, Math.min(GRID_H - ITEM_H, top));
+  }
+
   function renderWindow() {
     const cal = document.getElementById('fs-calendar');
     cal.innerHTML = '';
+    cal.className = 'fs-timeline';
 
-    const today = localMidnight(new Date());
-    const todayKey = dateKey(today);
+    const todayKey = dateKey(localMidnight(new Date()));
+    const days = [];
+    for (let i = 0; i < SPAN; i++) days.push(addDays(winStart, i));
 
     // 期間ラベル
-    const last = addDays(winStart, SPAN - 1);
     const fmt = d => `${d.getFullYear()}/${pad(d.getMonth() + 1)}/${pad(d.getDate())}`;
-    document.getElementById('fs-range').textContent = `${fmt(winStart)} 〜 ${fmt(last)}`;
+    document.getElementById('fs-range').textContent = `${fmt(days[0])} 〜 ${fmt(days[SPAN - 1])}`;
 
-    // バケツ分け
-    const tasksByDay = {};
-    const untasked = [];
+    // バケツ分け: inbox / 各日の終日 / 各日の時間指定
+    const allday = {}, timed = {}, inboxT = [], inboxN = [];
+    days.forEach(d => { const k = dateKey(d); allday[k] = []; timed[k] = []; });
+
     tasks.forEach(t => {
       const k = taskDay(t);
-      if (k) (tasksByDay[k] = tasksByDay[k] || []).push(t);
-      else untasked.push(t);
+      if (!k) { inboxT.push(t); return; }
+      if (!(k in allday)) return;   // 表示範囲外
+      if (t.all_day || taskMinutes(t) === null) allday[k].push({ kind: 'task', item: t });
+      else timed[k].push({ kind: 'task', item: t, minutes: taskMinutes(t) });
     });
-    const notesByDay = {};
-    const unnoted = [];
     notes.forEach(n => {
       const k = noteDay(n);
-      if (k) (notesByDay[k] = notesByDay[k] || []).push(n);
-      else unnoted.push(n);
+      if (!k) { inboxN.push(n); return; }
+      if (!(k in allday)) return;
+      if (noteMinutes(n) === null) allday[k].push({ kind: 'note', item: n });
+      else timed[k].push({ kind: 'note', item: n, minutes: noteMinutes(n) });
     });
 
-    // 未分類
-    renderInbox(untasked, unnoted);
+    renderInbox(inboxT, inboxN);
+
+    // ── ヘッダー行（左隅 + 各日見出し） ──
+    const headRow = document.createElement('div');
+    headRow.className = 'fs-tl-row fs-tl-headrow';
+    headRow.appendChild(el('div', 'fs-tl-gutter-cell'));
+    days.forEach(d => {
+      const key = dateKey(d), dow = d.getDay();
+      const cell = el('div', 'fs-tl-dayhead'
+        + (key === todayKey ? ' today' : '')
+        + (dow === 0 ? ' sun' : dow === 6 ? ' sat' : ''));
+      const label = el('div', 'fs-tl-dayhead-label');
+      label.innerHTML = `<b>${d.getMonth() + 1}/${d.getDate()}</b> <span>${DOW[dow]}</span>`;
+      cell.appendChild(label);
+      const add = el('div', 'fs-tl-dayadd');
+      const bT = el('button', null, '＋タスク'); bT.addEventListener('click', () => openTaskModal(null, key));
+      const bN = el('button', null, '＋付箋');  bN.addEventListener('click', () => addNote(key));
+      add.appendChild(bT); add.appendChild(bN);
+      cell.appendChild(add);
+      headRow.appendChild(cell);
+    });
+    cal.appendChild(headRow);
+
+    // ── 終日帯 ──
+    const adRow = el('div', 'fs-tl-row fs-tl-alldayrow');
+    const adLabel = el('div', 'fs-tl-gutter-cell fs-tl-allday-label', '終日');
+    adRow.appendChild(adLabel);
+    days.forEach(d => {
+      const key = dateKey(d);
+      const cell = el('div', 'fs-tl-allday-cell' + (key === todayKey ? ' today' : ''));
+      cell.dataset.day = key;
+      allday[key].forEach(x => cell.appendChild(x.kind === 'task' ? taskCard(x.item) : noteCard(x.item)));
+      setDropTarget(cell, { date: key, allDay: true });
+      adRow.appendChild(cell);
+    });
+    cal.appendChild(adRow);
+
+    // ── 時間軸グリッド ──
+    const grid = el('div', 'fs-tl-grid');
+
+    // 左の時刻ガター
+    const gutter = el('div', 'fs-tl-gutter');
+    for (let h = START_HOUR; h <= END_HOUR; h++) {
+      const hr = el('div', 'fs-tl-hourlabel', `${pad(h)}:00`);
+      hr.style.height = HOUR_H + 'px';
+      gutter.appendChild(hr);
+    }
+    grid.appendChild(gutter);
 
     // 各日カラム
-    let todayCol = null;
-    for (let i = 0; i < SPAN; i++) {
-      const d = addDays(winStart, i);
+    days.forEach(d => {
       const key = dateKey(d);
-      const col = dayColumn(d, key, key === todayKey,
-        tasksByDay[key] || [], notesByDay[key] || []);
-      cal.appendChild(col);
-      if (key === todayKey) todayCol = col;
-    }
-
-    // 今日の列を中央にスクロール
-    if (todayCol) {
-      requestAnimationFrame(() => {
-        todayCol.scrollIntoView({ behavior: 'auto', inline: 'center', block: 'nearest' });
+      const col = el('div', 'fs-tl-daycol' + (key === todayKey ? ' today' : ''));
+      col.dataset.day = key;
+      col.style.height = GRID_H + 'px';
+      // 時間線
+      for (let h = START_HOUR; h <= END_HOUR; h++) {
+        const line = el('div', 'fs-tl-hourline');
+        line.style.top = ((h - START_HOUR) * HOUR_H) + 'px';
+        col.appendChild(line);
+      }
+      // 現在時刻ライン
+      if (key === todayKey) {
+        const now = new Date();
+        const nowMin = now.getHours() * 60 + now.getMinutes();
+        if (nowMin >= START_HOUR * 60 && nowMin <= END_HOUR * 60) {
+          const nl = el('div', 'fs-tl-nowline');
+          nl.style.top = ((nowMin - START_HOUR * 60) / 60 * HOUR_H) + 'px';
+          col.appendChild(nl);
+        }
+      }
+      // 時間指定アイテム（レーン割り）
+      layoutLanes(timed[key]);
+      timed[key].forEach(x => {
+        const card = x.kind === 'task' ? taskCard(x.item) : noteCard(x.item);
+        card.classList.add('fs-tl-block');
+        card.style.top    = x._top + 'px';
+        card.style.left   = `calc(${(x._lane * 100 / x._laneCount).toFixed(3)}% + 2px)`;
+        card.style.width  = `calc(${(100 / x._laneCount).toFixed(3)}% - 4px)`;
+        col.appendChild(card);
       });
-    }
+      setDropTarget(col, { date: key, grid: true });
+      grid.appendChild(col);
+    });
+
+    cal.appendChild(grid);
+
+    // 8時あたりが見えるよう少しスクロール
+    requestAnimationFrame(() => {
+      grid.scrollTop = Math.max(0, (8 - START_HOUR) * HOUR_H - 8);
+    });
   }
 
-  function dayColumn(d, key, isToday, dayTasks, dayNotes) {
-    const dow = d.getDay();
-    const col = document.createElement('div');
-    col.className = 'fs-col'
-      + (isToday ? ' today' : '')
-      + (dow === 0 ? ' sun' : dow === 6 ? ' sat' : '');
-    col.dataset.day = key;
+  // 時間指定アイテムをレーンに割り付け（重なり回避）
+  function layoutLanes(list) {
+    list.sort((a, b) => a.minutes - b.minutes);
+    const laneEnd = [];
+    list.forEach(x => {
+      const top = topForMinutes(x.minutes);
+      let lane = laneEnd.findIndex(end => end <= top);
+      if (lane === -1) { lane = laneEnd.length; laneEnd.push(0); }
+      laneEnd[lane] = top + ITEM_H;
+      x._lane = lane; x._top = top;
+    });
+    const laneCount = Math.max(1, laneEnd.length);
+    list.forEach(x => { x._laneCount = laneCount; });
+  }
 
-    // ヘッダー
-    const head = document.createElement('div');
-    head.className = 'fs-col-head';
-    const label = document.createElement('div');
-    label.className = 'fs-col-date';
-    label.innerHTML = `<b>${d.getMonth() + 1}/${d.getDate()}</b> <span class="fs-col-dow">${DOW[dow]}</span>`;
-    head.appendChild(label);
-
-    const add = document.createElement('div');
-    add.className = 'fs-col-add';
-    const addT = document.createElement('button');
-    addT.textContent = '＋タスク';
-    addT.title = 'この日にタスクを追加';
-    addT.addEventListener('click', () => openTaskModal(null, key));
-    const addN = document.createElement('button');
-    addN.textContent = '＋付箋';
-    addN.title = 'この日に付箋を追加';
-    addN.addEventListener('click', () => addNote(key));
-    add.appendChild(addT);
-    add.appendChild(addN);
-    head.appendChild(add);
-    col.appendChild(head);
-
-    // 本文
-    const body = document.createElement('div');
-    body.className = 'fs-col-body';
-    dayTasks.forEach(t => body.appendChild(taskCard(t)));
-    dayNotes.forEach(n => body.appendChild(noteCard(n)));
-    col.appendChild(body);
-
-    setDropTarget(col, key);
-    return col;
+  // 小さなDOM生成ヘルパー
+  function el(tag, cls, text) {
+    const e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (text != null) e.textContent = text;
+    return e;
   }
 
   function renderInbox(untasked, unnoted) {
@@ -205,14 +280,12 @@
     unnoted.forEach(n => box.appendChild(noteCard(n)));
     const total = untasked.length + unnoted.length;
     document.getElementById('fs-inbox-count').textContent = total ? `(${total})` : '';
-    const empty = total === 0;
-    if (empty) {
-      const hint = document.createElement('div');
-      hint.className = 'fs-inbox-hint';
-      hint.textContent = '日付のないタスク・付箋がここに入ります（ここへドラッグで日付を外す）';
+    if (total === 0) {
+      const hint = el('div', 'fs-inbox-hint',
+        '日付のないタスク・付箋がここに入ります（ここへドラッグで日付・時刻を外す）');
       box.appendChild(hint);
     }
-    setDropTarget(document.getElementById('fs-inbox'), '');
+    setDropTarget(document.getElementById('fs-inbox'), { date: '' });
   }
 
   // ── タスクカード（見出しのみ。クリックで編集モーダル） ──
@@ -331,7 +404,8 @@
     document.querySelectorAll('.fs-drop-over').forEach(e => e.classList.remove('fs-drop-over'));
   }
 
-  function setDropTarget(el, dayKey) {
+  // target: { date, allDay?, grid?, date:'' で未分類 }
+  function setDropTarget(el, target) {
     el.addEventListener('dragover', ev => {
       ev.preventDefault();
       ev.dataTransfer.dropEffect = 'move';
@@ -348,24 +422,33 @@
         try { payload = JSON.parse(ev.dataTransfer.getData('text/plain')); } catch (e) { return; }
       }
       if (!payload) return;
-      await moveItem(payload, dayKey);
+      // グリッドへのドロップは Y 位置から時刻を算出（15分刻み）
+      let time = null;
+      if (target.grid) {
+        const rect = el.getBoundingClientRect();
+        const y = ev.clientY - rect.top + el.scrollTop;
+        let min = START_HOUR * 60 + Math.round((y / HOUR_H) * 60 / 15) * 15;
+        min = Math.max(START_HOUR * 60, Math.min(END_HOUR * 60, min));
+        time = pad(Math.floor(min / 60)) + ':' + pad(min % 60);
+      }
+      await moveItem(payload, target, time);
     });
   }
 
-  async function moveItem(payload, dayKey) {
+  async function moveItem(payload, target, time) {
+    const date = target.date;
     if (payload.kind === 'task') {
-      const cur = tasks.find(t => t.id === payload.id);
-      if (cur && taskDay(cur) === (dayKey || null)) return;   // 同じ日なら無視
-      const updated = await post('/fusen/api/task/move/', { id: payload.id, date: dayKey });
+      const updated = await post('/fusen/api/task/move/', {
+        id: payload.id, date, time, all_day: !!target.allDay,
+      });
       replaceTask(updated);
       dismissedReminders.delete(updated.id);
+      render();
     } else {
-      const cur = notes.find(n => n.id === payload.id);
-      if (cur && noteDay(cur) === (dayKey || null)) return;
-      await saveNote({ id: payload.id, date: dayKey });
-      return;   // saveNote 内で render 済み
+      // 付箋: 未分類=date&time空 / 終日=date のみ / グリッド=date+time
+      await saveNote({ id: payload.id, date, time: time || '' });
+      // saveNote 内で render 済み
     }
-    render();
   }
 
   // ── 思い出しバナー ─────────────────────────
@@ -456,7 +539,8 @@
     add('prio-' + t.priority, '優先度: ' + (PRIORITY_LABEL[t.priority] || '中'));
     add('', '状態: ' + (STATUS_LABEL[t.status] || '未着手'));
     if (t.due_at) {
-      add('due' + (t.is_overdue ? ' over' : t.is_due_soon ? ' soon' : ''), '期限 ' + fmtWhen(t.due_at));
+      const when = t.all_day ? (t.due_at.slice(0, 10) + ' 終日') : fmtWhen(t.due_at);
+      add('due' + (t.is_overdue ? ' over' : t.is_due_soon ? ' soon' : ''), '期限 ' + when);
     }
     if (t.remind_at) add('remind', '🔔 ' + fmtWhen(t.remind_at));
 
@@ -475,6 +559,7 @@
     document.getElementById('fs-f-remind').value   = t && t.remind_at ? t.remind_at : '';
     document.getElementById('fs-f-priority').value = t ? String(t.priority) : '1';
     document.getElementById('fs-f-status').value   = t ? t.status : 'todo';
+    document.getElementById('fs-f-allday').checked = !!(t && t.all_day);
     setModalTone(t ? t.tone : 'blue');
   }
 
@@ -516,6 +601,7 @@
       remind_at: document.getElementById('fs-f-remind').value,
       priority:  parseInt(document.getElementById('fs-f-priority').value, 10),
       status:    document.getElementById('fs-f-status').value,
+      all_day:   document.getElementById('fs-f-allday').checked,
       tone:      modalTone,
     };
     const saved = await post('/fusen/api/task/save/', payload);
@@ -590,7 +676,7 @@
     vb.textContent = body || '(中身なし)';
     vb.classList.toggle('empty', !body);
     const meta = [];
-    if (n.date)   meta.push('日付 ' + n.date);
+    if (n.date)   meta.push('日付 ' + n.date + (n.time ? ' ' + n.time : ' 終日'));
     if (n.pinned) meta.push('📌 ピン留め');
     document.getElementById('fs-nm-vmeta').textContent = meta.join('　');
   }
@@ -600,6 +686,7 @@
     document.getElementById('fs-nm-title').value   = n.title || '';
     document.getElementById('fs-nm-body').value    = n.body || '';
     document.getElementById('fs-nm-date').value    = n.date || '';
+    document.getElementById('fs-nm-time').value    = n.time || '';
     document.getElementById('fs-nm-pinned').checked = !!n.pinned;
     setNoteTone(n.tone || 'yellow');
   }
@@ -638,6 +725,7 @@
       title:  document.getElementById('fs-nm-title').value,
       body:   document.getElementById('fs-nm-body').value,
       date:   document.getElementById('fs-nm-date').value,
+      time:   document.getElementById('fs-nm-time').value,
       pinned: document.getElementById('fs-nm-pinned').checked,
       tone:   noteModalTone,
     });
@@ -675,8 +763,8 @@
     winStart = addDays(localMidnight(new Date()), -DAYS_BEFORE);
   }
 
-  document.getElementById('fs-prev').addEventListener('click', () => { winStart = addDays(winStart, -7); renderWindow(); });
-  document.getElementById('fs-next').addEventListener('click', () => { winStart = addDays(winStart, 7); renderWindow(); });
+  document.getElementById('fs-prev').addEventListener('click', () => { winStart = addDays(winStart, -SPAN); renderWindow(); });
+  document.getElementById('fs-next').addEventListener('click', () => { winStart = addDays(winStart, SPAN); renderWindow(); });
   document.getElementById('fs-today').addEventListener('click', () => { recenterToday(); renderWindow(); });
 
   // ── イベント配線 ───────────────────────────
