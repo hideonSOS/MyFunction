@@ -1,6 +1,12 @@
 from django.contrib import admin
 
-from .models import Note, Task
+from .models import Note, Task, Attachment
+
+
+class AttachmentInline(admin.TabularInline):
+    model = Attachment
+    extra = 0
+    readonly_fields = ('name', 'content_type', 'size', 'uploaded')
 
 
 @admin.register(Note)
@@ -8,6 +14,7 @@ class NoteAdmin(admin.ModelAdmin):
     list_display  = ('__str__', 'user', 'tone', 'pinned', 'archived', 'updated')
     list_filter   = ('tone', 'pinned', 'archived', 'user')
     search_fields = ('body',)
+    inlines       = [AttachmentInline]
 
 
 @admin.register(Task)

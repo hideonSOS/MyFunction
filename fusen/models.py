@@ -1,5 +1,7 @@
 from django.conf import settings
 from django.db import models
+from django.db.models.signals import post_delete
+from django.dispatch import receiver
 from django.utils import timezone
 
 
@@ -38,6 +40,45 @@ class Note(models.Model):
             return self.title.strip()[:20]
         head = (self.body or '').strip().splitlines()[0] if self.body.strip() else '(空の付箋)'
         return head[:20]
+
+
+def note_attachment_path(instance, filename):
+    """付箋ごとにフォルダ分けして保存する（media/fusen/note/<id>/<file>）"""
+    return f'fusen/note/{instance.note_id}/{filename}'
+
+
+class Attachment(models.Model):
+    """付箋に添付するファイル（スクリーンショット等の画像・PDF）"""
+    note         = models.ForeignKey(Note, on_delete=models.CASCADE,
+                                     related_name='attachments')
+    file         = models.FileField(upload_to=note_attachment_path)
+    name         = models.CharField(max_length=255)  # 元のファイル名
+    content_type = models.CharField(max_length=100, blank=True)
+    size         = models.PositiveIntegerField(default=0)
+    order        = models.IntegerField(default=0)     # 付箋内の表示順
+    uploaded     = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['order', 'uploaded', 'id']
+
+    def __str__(self):
+        return self.name
+
+    @property
+    def is_image(self):
+        return self.content_type.startswith('image/')
+
+    @property
+    def is_pdf(self):
+        return self.content_type == 'application/pdf'
+
+
+@receiver(post_delete, sender=Attachment)
+def _delete_attachment_file(sender, instance, **kwargs):
+    """レコード削除時に実ファイルもディスクから消す
+    （付箋の削除でカスケードされた場合も含む）"""
+    if instance.file:
+        instance.file.delete(save=False)
 
 
 class Task(models.Model):

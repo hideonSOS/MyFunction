@@ -8,6 +8,7 @@ __pycache__/
 db.sqlite3
 *.log
 logs/
+media/
 
 # 認証情報（Git管理外・SCPで直接サーバーへ転送）
 token.json

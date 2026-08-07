@@ -10,6 +10,9 @@ urlpatterns = [
 
     path('api/note/save/',      views.api_note_save,     name='api_note_save'),
     path('api/note/delete/',    views.api_note_delete,   name='api_note_delete'),
+    path('api/note/upload/',         views.api_note_upload,         name='api_note_upload'),
+    path('api/note/attach/delete/',  views.api_note_attach_delete,  name='api_note_attach_delete'),
+    path('api/note/attach/reorder/', views.api_note_attach_reorder, name='api_note_attach_reorder'),
 
     path('api/task/save/',      views.api_task_save,     name='api_task_save'),
     path('api/task/move/',      views.api_task_move,     name='api_task_move'),

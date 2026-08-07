@@ -9,7 +9,11 @@ from django.utils import timezone
 from django.utils.dateparse import parse_datetime, parse_date
 from django.views.decorators.http import require_http_methods
 
-from .models import Note, Task, TONE_CHOICES
+from .models import Note, Task, Attachment, TONE_CHOICES
+
+# アップロード許可（画像全般 と PDF のみ）／サイズ上限
+# 注意: 本番は nginx の client_max_body_size も同じ値に揃えること（deploy/nginx.conf）
+MAX_UPLOAD_SIZE = 50 * 1024 * 1024   # 50MB
 
 
 # ── リッチテキスト本文の軽量サニタイズ ─────────────────
@@ -41,6 +45,18 @@ def _dt(value):
     return timezone.localtime(value).strftime('%Y-%m-%dT%H:%M')
 
 
+def attachment_dict(a):
+    return {
+        'id':           a.id,
+        'name':         a.name,
+        'url':          a.file.url,
+        'content_type': a.content_type,
+        'size':         a.size,
+        'is_image':     a.is_image,
+        'is_pdf':       a.is_pdf,
+    }
+
+
 def note_dict(n):
     return {
         'id':       n.id,
@@ -52,6 +68,7 @@ def note_dict(n):
         'time':     n.time.strftime('%H:%M') if n.time else None,
         'order':    n.order,
         'updated':  _dt(n.updated),
+        'attachments': [attachment_dict(a) for a in n.attachments.all()],
     }
 
 
@@ -122,7 +139,8 @@ def board(request):
 
 @login_required
 def api_state(request):
-    notes = Note.objects.filter(user=request.user, archived=False)
+    notes = (Note.objects.filter(user=request.user, archived=False)
+             .prefetch_related('attachments'))
     tasks = Task.objects.filter(user=request.user)
     return JsonResponse({
         'notes': [note_dict(n) for n in notes],
@@ -182,6 +200,79 @@ def api_note_delete(request):
     except (KeyError, ValueError, json.JSONDecodeError):
         return JsonResponse({'error': 'invalid'}, status=400)
     Note.objects.filter(user=request.user, id=note_id).delete()
+    return JsonResponse({'ok': True})
+
+
+# ── 付箋の添付ファイル API ────────────────────────────
+
+@login_required
+@require_http_methods(['POST'])
+def api_note_upload(request):
+    """付箋に画像・PDF を添付する（multipart/form-data）。
+    フィールド: note_id, file"""
+    note = Note.objects.filter(user=request.user, id=request.POST.get('note_id')).first()
+    if not note:
+        return JsonResponse({'error': 'not found'}, status=404)
+
+    f = request.FILES.get('file')
+    if not f:
+        return JsonResponse({'error': 'no file'}, status=400)
+
+    ct = (f.content_type or '').lower()
+    if not (ct.startswith('image/') or ct == 'application/pdf'):
+        return JsonResponse({'error': '画像または PDF のみアップロードできます'}, status=400)
+    if f.size > MAX_UPLOAD_SIZE:
+        mb = MAX_UPLOAD_SIZE // (1024 * 1024)
+        return JsonResponse({'error': f'ファイルが大きすぎます（上限{mb}MB）'}, status=400)
+
+    # 新しい添付は末尾に並べる
+    last = note.attachments.order_by('-order').first()
+    next_order = (last.order + 1) if last else 0
+    att = Attachment(note=note, file=f, name=(f.name or 'file')[:255],
+                     content_type=ct, size=f.size, order=next_order)
+    att.save()
+    return JsonResponse(attachment_dict(att))
+
+
+@login_required
+@require_http_methods(['POST'])
+def api_note_attach_delete(request):
+    try:
+        data = json.loads(request.body)
+        att_id = int(data['id'])
+    except (KeyError, ValueError, json.JSONDecodeError):
+        return JsonResponse({'error': 'invalid'}, status=400)
+    # 本人の付箋の添付だけを削除できる（post_delete で実ファイルも消える）
+    att = Attachment.objects.filter(note__user=request.user, id=att_id).first()
+    if att:
+        att.delete()
+    return JsonResponse({'ok': True})
+
+
+@login_required
+@require_http_methods(['POST'])
+def api_note_attach_reorder(request):
+    """付箋内の添付の並び順を更新する。payload: {note_id, ids: [...]}"""
+    try:
+        data = json.loads(request.body)
+        note_id = int(data['note_id'])
+        ids = [int(x) for x in data['ids']]
+    except (KeyError, TypeError, ValueError, json.JSONDecodeError):
+        return JsonResponse({'error': 'invalid'}, status=400)
+
+    note = Note.objects.filter(user=request.user, id=note_id).first()
+    if not note:
+        return JsonResponse({'error': 'not found'}, status=404)
+
+    # 本人の付箋に属する添付だけを、渡された順で 0,1,2... に振り直す
+    owned = {a.id: a for a in note.attachments.all()}
+    order = 0
+    for aid in ids:
+        att = owned.get(aid)
+        if att:
+            att.order = order
+            att.save(update_fields=['order'])
+            order += 1
     return JsonResponse({'ok': True})
 
 

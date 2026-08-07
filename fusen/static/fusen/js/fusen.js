@@ -382,6 +382,14 @@
     head.title = n.title || noteHeading(n);
     card.appendChild(head);
 
+    if (n.attachments && n.attachments.length) {
+      const clip = document.createElement('span');
+      clip.className = 'fs-note-clip';
+      clip.textContent = '📎' + n.attachments.length;
+      clip.title = `添付 ${n.attachments.length} 件`;
+      card.appendChild(clip);
+    }
+
     card.addEventListener('click', () => openNoteModal(n));
     return card;
   }
@@ -740,6 +748,7 @@
     if (n.date)   meta.push('日付 ' + n.date + (n.time ? ' ' + n.time : ' 終日'));
     if (n.pinned) meta.push('📌 ピン留め');
     document.getElementById('fs-nm-vmeta').textContent = meta.join('　');
+    renderNoteFiles();
   }
 
   // 編集フォームに値を流し込む
@@ -833,6 +842,288 @@
   document.getElementById('fs-nm-delete').addEventListener('click', deleteNoteModal);
   noteModal.addEventListener('click', ev => { if (ev.target === noteModal) closeNoteModal(); });
   document.addEventListener('keydown', ev => { if (ev.key === 'Escape' && !noteModal.hidden) closeNoteModal(); });
+
+  // ── 添付ファイル（画像・PDF） ─────────────────
+  function fmtSize(bytes) {
+    if (!bytes) return '';
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return Math.round(bytes / 1024) + ' KB';
+    return (bytes / 1024 / 1024).toFixed(1) + ' MB';
+  }
+
+  // 1つの添付をタイル表示。editable=true で操作バー（順序・削除）付き。
+  // 画像はフォーム全幅で表示し、クリックで原寸ライトボックス。
+  function attachmentTile(a, editable) {
+    const tile = el('div', 'fs-file' + (a.is_image ? ' is-image' : ' is-doc'));
+
+    if (editable) {
+      const bar = el('div', 'fs-file-bar');
+      const up = el('button', 'fs-file-move', '▲');
+      up.type = 'button'; up.title = '上へ';
+      up.addEventListener('click', ev => { ev.stopPropagation(); moveAttachment(a.id, -1); });
+      const down = el('button', 'fs-file-move', '▼');
+      down.type = 'button'; down.title = '下へ';
+      down.addEventListener('click', ev => { ev.stopPropagation(); moveAttachment(a.id, 1); });
+      const cap = el('span', 'fs-file-cap', a.is_image ? a.name : `${a.name}（${fmtSize(a.size)}）`);
+      cap.title = a.name;
+      const del = el('button', 'fs-file-del', '×');
+      del.type = 'button'; del.title = '削除';
+      del.addEventListener('click', async ev => {
+        ev.stopPropagation();
+        if (!confirm('この添付を削除しますか？')) return;
+        await post('/fusen/api/note/attach/delete/', { id: a.id });
+        if (currentNote) {
+          currentNote.attachments = (currentNote.attachments || []).filter(x => x.id !== a.id);
+          syncNoteInList();
+          renderNoteFiles();
+        }
+      });
+      bar.appendChild(up); bar.appendChild(down); bar.appendChild(cap); bar.appendChild(del);
+      tile.appendChild(bar);
+    }
+
+    if (a.is_image) {
+      const img = document.createElement('img');
+      img.className = 'fs-file-img';
+      img.src = a.url; img.alt = a.name; img.loading = 'lazy';
+      // 閲覧・編集どちらでも画像を掴んで並べ替え可（ドラッグ時は click が
+      // 発火しないので「クリックで拡大」と両立する）
+      img.draggable = true;
+      img.classList.add('fs-file-img-drag');
+      img.addEventListener('click', () => openLightbox(a.url));
+      tile.appendChild(img);
+    } else {
+      const doc = el('a', 'fs-file-doc');
+      doc.href = a.url; doc.target = '_blank'; doc.rel = 'noopener';
+      doc.draggable = false;   // リンクの既定ドラッグを止め、タイルの並べ替えを優先
+      doc.appendChild(el('span', 'fs-file-ico', '📄'));
+      doc.appendChild(el('span', 'fs-file-docname', a.name));
+      tile.appendChild(doc);
+    }
+
+    makeTileDraggable(tile, a);
+    return tile;
+  }
+
+  // ── 添付の並べ替え ──────────────────────────
+  // ▲▼ ボタン用（1つ上/下へ入れ替え）
+  function moveAttachment(id, dir) {
+    if (!currentNote) return;
+    const atts = currentNote.attachments || [];
+    const i = atts.findIndex(x => x.id === id);
+    const j = i + dir;
+    if (i < 0 || j < 0 || j >= atts.length) return;
+    [atts[i], atts[j]] = [atts[j], atts[i]];
+    syncNoteInList();
+    renderNoteFiles();
+    persistAttachOrder();
+  }
+
+  // ドラッグ&ドロップ用
+  let fileDragId = null;
+  function clearDropMarks() {
+    document.querySelectorAll('.fs-drop-before, .fs-drop-after')
+      .forEach(e => e.classList.remove('fs-drop-before', 'fs-drop-after'));
+  }
+  function makeTileDraggable(tile, a) {
+    tile.draggable = true;
+    tile.addEventListener('dragstart', ev => {
+      fileDragId = a.id;
+      ev.dataTransfer.effectAllowed = 'move';
+      ev.dataTransfer.setData('text/plain', String(a.id));
+      tile.classList.add('fs-file-dragging');
+    });
+    tile.addEventListener('dragend', () => {
+      fileDragId = null;
+      tile.classList.remove('fs-file-dragging');
+      clearDropMarks();
+    });
+    tile.addEventListener('dragover', ev => {
+      if (fileDragId == null || fileDragId === a.id) return;
+      ev.preventDefault();
+      ev.dataTransfer.dropEffect = 'move';   // ＋(コピー)ではなく移動カーソルにする
+      // 挿入位置（上半分=前 / 下半分=後）をガイド線で示す
+      const rect = tile.getBoundingClientRect();
+      const after = ev.clientY > rect.top + rect.height / 2;
+      tile.classList.toggle('fs-drop-after', after);
+      tile.classList.toggle('fs-drop-before', !after);
+    });
+    tile.addEventListener('dragleave', ev => {
+      if (!tile.contains(ev.relatedTarget)) {
+        tile.classList.remove('fs-drop-before', 'fs-drop-after');
+      }
+    });
+    tile.addEventListener('drop', ev => {
+      if (fileDragId == null || fileDragId === a.id) return;
+      ev.preventDefault();
+      const rect = tile.getBoundingClientRect();
+      const after = ev.clientY > rect.top + rect.height / 2;
+      clearDropMarks();
+      dropAttachment(fileDragId, a.id, after);
+      fileDragId = null;
+    });
+  }
+
+  function dropAttachment(dragId, targetId, after) {
+    if (!currentNote) return;
+    const atts = currentNote.attachments || [];
+    const from = atts.findIndex(x => x.id === dragId);
+    if (from < 0) return;
+    const [moved] = atts.splice(from, 1);
+    let to = atts.findIndex(x => x.id === targetId);
+    if (to < 0) to = atts.length;
+    atts.splice(after ? to + 1 : to, 0, moved);
+    syncNoteInList();
+    renderNoteFiles();
+    persistAttachOrder();
+  }
+
+  async function persistAttachOrder() {
+    if (!currentNote) return;
+    try {
+      await post('/fusen/api/note/attach/reorder/', {
+        note_id: currentNote.id,
+        ids: (currentNote.attachments || []).map(a => a.id),
+      });
+    } catch (e) { /* 並び順の保存失敗は次回読込で復帰 */ }
+  }
+
+  // 閲覧・編集それぞれの添付一覧を描画（currentNote を元に）
+  function renderNoteFiles() {
+    const atts = (currentNote && currentNote.attachments) || [];
+    const vbox = document.getElementById('fs-nm-vfiles');
+    const ebox = document.getElementById('fs-nm-efiles');
+    vbox.innerHTML = ''; ebox.innerHTML = '';
+    atts.forEach(a => {
+      vbox.appendChild(attachmentTile(a, false));
+      ebox.appendChild(attachmentTile(a, true));
+    });
+    vbox.hidden = atts.length === 0;
+    if (atts.length === 0) ebox.appendChild(el('div', 'fs-files-empty', 'まだ添付はありません'));
+  }
+
+  // 一覧データ(notes)側の付箋にも添付を反映（カード再描画用）
+  function syncNoteInList() {
+    if (!currentNote) return;
+    const i = notes.findIndex(x => x.id === currentNote.id);
+    if (i >= 0) notes[i] = currentNote;
+  }
+
+  async function uploadFiles(fileList) {
+    if (!currentNote || !fileList || !fileList.length) return;
+    for (const f of fileList) {
+      const fd = new FormData();
+      fd.append('note_id', currentNote.id);
+      fd.append('file', f);
+      try {
+        const res = await fetch('/fusen/api/note/upload/', {
+          method: 'POST', headers: { 'X-CSRFToken': CSRF }, body: fd,
+        });
+        const data = await res.json();
+        if (!res.ok) { alert(data.error || 'アップロードに失敗しました'); continue; }
+        currentNote.attachments = currentNote.attachments || [];
+        currentNote.attachments.push(data);
+        renderNoteFiles();
+      } catch (e) {
+        alert('アップロードに失敗しました');
+      }
+    }
+    syncNoteInList();
+  }
+
+  // 画像ライトボックス
+  const lightbox = document.getElementById('fs-lightbox');
+  function openLightbox(url) {
+    document.getElementById('fs-lb-img').src = url;
+    lightbox.hidden = false;
+  }
+  function closeLightbox() {
+    lightbox.hidden = true;
+    document.getElementById('fs-lb-img').src = '';
+  }
+  document.getElementById('fs-lb-close').addEventListener('click', closeLightbox);
+  lightbox.addEventListener('click', ev => { if (ev.target === lightbox) closeLightbox(); });
+  document.addEventListener('keydown', ev => { if (ev.key === 'Escape' && !lightbox.hidden) closeLightbox(); });
+
+  // アップロードUI配線
+  document.getElementById('fs-nm-upload-btn').addEventListener('click', () => {
+    document.getElementById('fs-nm-file-input').click();
+  });
+  document.getElementById('fs-nm-file-input').addEventListener('change', ev => {
+    uploadFiles(ev.target.files);
+    ev.target.value = '';   // 同じファイルを続けて選べるように
+  });
+  // src（data: / blob: / http）から画像を取り込んで添付にする
+  async function uploadFromSrc(src) {
+    if (!currentNote || !src) return;
+    try {
+      const res = await fetch(src);
+      const blob = await res.blob();
+      if (!blob.type.startsWith('image/')) { alert('画像として取り込めませんでした'); return; }
+      const ext = (blob.type.split('/')[1] || 'png').split('+')[0];
+      const file = new File([blob], 'paste.' + ext, { type: blob.type });
+      uploadFiles([file]);
+    } catch (e) {
+      alert('画像の取り込みに失敗しました（コピー元によっては取り込めないことがあります）');
+    }
+  }
+
+  // エディタ内に埋め込まれた <img> を添付へ移し、本文から取り除く。
+  // skip に含まれる要素（貼り付け前から在った img）は対象外にする。
+  async function migrateEmbeddedImages(editor, skip) {
+    const targets = [];
+    editor.querySelectorAll('img').forEach(img => {
+      if (!skip || !skip.has(img)) targets.push(img);
+    });
+    for (const img of targets) {
+      const src = img.getAttribute('src');
+      img.remove();
+      if (src) await uploadFromSrc(src);
+    }
+  }
+
+  // 本文エディタへ画像を貼り付け → 本文に埋め込まず添付として取り込む
+  const noteEditor = document.getElementById('fs-nm-body');
+  noteEditor.addEventListener('paste', ev => {
+    const dt = ev.clipboardData;
+
+    // 1) 画像がファイルとして来る場合（スクリーンショット等：Chrome など）
+    const imgs = [];
+    if (dt) {
+      if (dt.files && dt.files.length) {
+        for (const f of dt.files) if (f.type.startsWith('image/')) imgs.push(f);
+      }
+      if (!imgs.length && dt.items) {
+        for (const it of dt.items) {
+          if (it.kind === 'file' && it.type.startsWith('image/')) {
+            const f = it.getAsFile();
+            if (f) imgs.push(f);
+          }
+        }
+      }
+    }
+    if (imgs.length) { ev.preventDefault(); uploadFiles(imgs); return; }
+
+    // 2) HTML内に <img>（他アプリ/ブラウザからのコピー）が含まれる場合は
+    //    本文への埋め込みを止めて、その画像を添付として取り込む
+    const html = dt && dt.getData && dt.getData('text/html');
+    if (html && /<img\b/i.test(html)) {
+      ev.preventDefault();
+      const m = html.match(/<img[^>]+src\s*=\s*["']([^"']+)["']/i);
+      if (m) uploadFromSrc(m[1]);
+      else alert('画像を取り込めませんでした');
+      return;
+    }
+
+    // 3) フォールバック（Firefox など）：上記で捕捉できず、ブラウザが
+    //    paste 後に <img> を直接挿入するケース。挿入直後に検出して添付へ移す。
+    const before = new Set(noteEditor.querySelectorAll('img'));
+    setTimeout(() => migrateEmbeddedImages(noteEditor, before), 0);
+  });
+
+  // 添付の並べ替え中に画像を本文へ落としても埋め込まない（誤ドロップ防止）
+  noteEditor.addEventListener('dragover', ev => { if (fileDragId != null) ev.preventDefault(); });
+  noteEditor.addEventListener('drop',     ev => { if (fileDragId != null) ev.preventDefault(); });
 
   // ── リッチテキスト エディタ（付箋・タスク共通） ──
   const FORE_COLORS = [
