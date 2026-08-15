@@ -90,7 +90,7 @@ async function clearSheet(sheetIndex, workCells, eventCells, updateSum) {
 
 function applyEventColor(cell) {
   const t = cell.textContent;
-  if (['公開FM', '本社'].includes(t)) cell.style.color = '#ffffff';
+  if (['公開FM', 'FM臨時', '本社'].includes(t)) cell.style.color = '#ffffff';
   else if (t === '公休')              cell.style.color = '#ff9900';
   else if (t === '有給')              cell.style.color = '#ffe066';
   else                                cell.style.color = '';
@@ -238,7 +238,7 @@ function createSection(dateList, workCells, sumCells, eventCells, updateSum, she
     [tr1, tr2, tr3, tr4][i].appendChild(td);
   });
 
-  const EVENT_ORDER = ['', '公開FM', '本社', '公休', '有給'];
+  const EVENT_ORDER = ['', '公開FM', 'FM臨時', '本社', '公休', '有給'];
 
   dateList.forEach((date, localIndex) => {
     const dayIndex = localIndex + dayOffset;
