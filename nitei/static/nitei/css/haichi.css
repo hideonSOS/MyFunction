@@ -249,8 +249,22 @@
 
 #hc-table .hc-race.on:hover { background: #b88a00; }
 
-/* ── 配置セル ─────────────────────────────── */
-#hc-table .hc-cell { width: 120px; }
+/* ── 配置セル（クリックで氏名を切り替え） ───────── */
+#hc-table .hc-cell {
+  width: 120px;
+  text-align: center;
+  vertical-align: middle;
+  color: #00e5ff;
+  font-family: 'Courier New', monospace;
+  font-size: 18px;
+  letter-spacing: 5px;
+  text-indent: 5px;          /* letter-spacing 分の右ズレを打ち消して中央に */
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.15s;
+}
+#hc-table .hc-cell:hover { background: #112244; }
+#hc-table .hc-cell.tinted:hover { background: rgba(var(--tint), 0.26); }
 
 .hc-cell-input {
   display: block;
@@ -285,6 +299,8 @@
 .tint-c8  { --tint: 125, 132, 255; }   /* インディゴ */
 .tint-c9  { --tint: 190, 110, 255; }   /* パープル */
 .tint-c10 { --tint: 255, 105, 190; }   /* ピンク   */
+.tint-c11 { --tint: 200, 150,  90; }   /* ブラウン */
+.tint-c12 { --tint: 150, 170, 190; }   /* スレート */
 
 /* 塗りはフラットな単色（グラデーション・内側発光なし） */
 #hc-table .hc-cell.tinted {
@@ -418,7 +434,7 @@
   #hc-table .hc-th-cell, #hc-table .hc-cell      { width: 62px; }
   .hc-time-input  { height: 20px; font-size: 11px; letter-spacing: 0; padding: 0 1px; }
   .hc-dur         { height: 20px; line-height: 20px; font-size: 11px; letter-spacing: 0; }
-  .hc-cell-input  { height: 54px; font-size: 11px; }
+  #hc-table .hc-cell { font-size: 13px; letter-spacing: 2px; text-indent: 2px; }
   .hc-head-input  { font-size: 10px; letter-spacing: 0; }
 }
 

@@ -24,9 +24,10 @@ LAYOUT_RACE_COUNT = 12
 LAYOUT_DEFAULT_HEADERS = ['ホワイトボード', '映像', 'JLC', '音声', '', '']
 LAYOUT_COL_COUNT = len(LAYOUT_DEFAULT_HEADERS)
 
-# 配置セルの背景色キー。実際の色は haichi.css の .tint-c1〜c10 で定義する
+# 配置セルの背景色キー。実際の色は haichi.css の .tint-c1〜c12 で定義する
 # （キーだけを保存し、色そのものは CSS 側に持たせて一元管理する）
-LAYOUT_COLOR_KEYS = ['c%d' % i for i in range(1, 11)]
+# 配置図の氏名（12名）に 1:1 で対応させるため 12 色。
+LAYOUT_COLOR_KEYS = ['c%d' % i for i in range(1, 13)]
 
 
 class Title(models.Model):

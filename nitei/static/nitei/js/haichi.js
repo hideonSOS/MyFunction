@@ -8,6 +8,17 @@
 
   const WEEKDAYS = ['日', '月', '火', '水', '木', '金', '土'];
 
+  // 配置セルに入れる氏名。先頭の '' はクリア。クリックで順に切り替わる（日程と同じ操作）
+  const NAMES = ['', '松山', '清水', '生田', '栗原', '芳松', '水野',
+                 '表木', '虎谷', '小林', '三室', '金山', '山田'];
+  // 氏名 → 背景色キー（条件付き書式のように自動で着色。色は haichi.css の .tint-c* ）
+  const NAME_COLOR = {
+    '松山': 'c1',  '清水': 'c2',  '生田': 'c3',  '栗原': 'c4',
+    '芳松': 'c5',  '水野': 'c6',  '表木': 'c7',  '虎谷': 'c8',
+    '小林': 'c9',  '三室': 'c10', '金山': 'c11', '山田': 'c12',
+  };
+  function cellColor(name) { return NAME_COLOR[name] || ''; }
+
   const dateInput = document.getElementById('date-input');
   const statusEl  = document.getElementById('hc-status');
   const weekdayEl = document.getElementById('hc-weekday');
@@ -120,13 +131,20 @@
       if (!row.start && !row.close && !row.highlight) continue;
       races.push({ race: r, start: row.start, close: row.close, highlight: row.highlight });
     }
+    // 背景色は氏名から自動決定する（条件付き書式）。保存データにも反映しておく
+    const colors = {};
+    Object.keys(state.cells).forEach(k => {
+      const col = cellColor(state.cells[k]);
+      if (col) colors[k] = col;
+    });
+
     // 送信中に日付が変わっても、この保存は「送信時点の日付」に対して行う
     const payload = {
       date:    state.date,
       headers: state.headers.slice(),
       races:   races,
       cells:   Object.assign({}, state.cells),
-      colors:  Object.assign({}, state.colors),
+      colors:  colors,
     };
 
     fetch(API_SAVE, {
@@ -200,31 +218,9 @@
         const key = r + '_' + c;
         const td = document.createElement('td');
         td.rowSpan = 3;
-        applyCellTint(td, key);
-
-        // 左上のカラーチップ。入力欄のクリックを奪わないよう小さく置く
-        const chip = document.createElement('button');
-        chip.type = 'button';
-        chip.className = 'hc-chip';
-        chip.title = '背景色を選ぶ';
-        chip.setAttribute('aria-label', '背景色を選ぶ');
-        chip.addEventListener('click', ev => {
-          ev.preventDefault();
-          ev.stopPropagation();
-          openPalette(chip, key);
-        });
-        td.appendChild(chip);
-
-        const input = document.createElement('input');
-        input.className = 'hc-cell-input';
-        input.value = state.cells[key] || '';
-        input.maxLength = 200;
-        input.addEventListener('input', () => {
-          const v = input.value;
-          if (v) state.cells[key] = v; else delete state.cells[key];
-          scheduleSave();
-        });
-        td.appendChild(input);
+        td.title = 'クリックで氏名を切り替え';
+        renderCellName(td, key);
+        td.addEventListener('click', () => cycleCell(td, key));
         tr1.appendChild(td);
       }
       tbody.appendChild(tr1);
@@ -271,108 +267,26 @@
     return td;
   }
 
-  // ── セル背景色 ─────────────────────────────
-  /** td に現在の色クラスを反映する */
-  function applyCellTint(td, key) {
-    const color = state.colors[key] || '';
+  // ── 配置セル（氏名クリック循環＋自動着色） ─────
+  /** セルに氏名を表示し、氏名に応じた背景色クラスを反映する */
+  function renderCellName(td, key) {
+    const name = state.cells[key] || '';
+    td.textContent = name;
+    const color = cellColor(name);
     td.className = 'hc-cell' + (color ? ' tinted tint-' + color : '');
     td.dataset.key = key;
   }
 
-  // パレット（1つを使い回す）
-  let palette      = null;
-  let paletteKey   = null;   // 編集中のセル
-  let paletteChip  = null;
-
-  function buildPalette() {
-    palette = document.createElement('div');
-    palette.id = 'hc-palette';
-
-    const grid = document.createElement('div');
-    grid.className = 'hc-pal-grid';
-    COLOR_KEYS.forEach(ck => {
-      const sw = document.createElement('button');
-      sw.type = 'button';
-      sw.className = 'hc-swatch tint-' + ck;
-      sw.dataset.color = ck;
-      sw.title = ck;
-      sw.addEventListener('click', () => pickColor(ck));
-      grid.appendChild(sw);
-    });
-    palette.appendChild(grid);
-
-    const clearBtn = document.createElement('button');
-    clearBtn.type = 'button';
-    clearBtn.className = 'hc-pal-clear';
-    clearBtn.textContent = '色なし';
-    clearBtn.addEventListener('click', () => pickColor(''));
-    palette.appendChild(clearBtn);
-
-    document.getElementById('haichi').appendChild(palette);
-  }
-
-  function openPalette(chip, key) {
-    if (!palette) buildPalette();
-    if (paletteKey === key && palette.classList.contains('open')) {
-      closePalette();
-      return;
-    }
-    paletteKey  = key;
-    paletteChip = chip;
-
-    // 現在の色を選択表示
-    const current = state.colors[key] || '';
-    palette.querySelectorAll('.hc-swatch').forEach(sw => {
-      sw.classList.toggle('selected', sw.dataset.color === current);
-    });
-
-    palette.classList.add('open');
-
-    // チップの真下へ。画面右端・下端からはみ出さないよう寄せる
-    const host = document.getElementById('haichi').getBoundingClientRect();
-    const rect = chip.getBoundingClientRect();
-    const pw   = palette.offsetWidth;
-    const ph   = palette.offsetHeight;
-
-    let left = rect.left - host.left;
-    let top  = rect.bottom - host.top + 4;
-    const maxLeft = host.width - pw - 4;
-    if (left > maxLeft) left = Math.max(0, maxLeft);
-    if (rect.bottom + ph > window.innerHeight) {
-      top = rect.top - host.top - ph - 4;
-    }
-    palette.style.left = left + 'px';
-    palette.style.top  = top + 'px';
-  }
-
-  function closePalette() {
-    if (palette) palette.classList.remove('open');
-    paletteKey = null;
-    paletteChip = null;
-  }
-
-  function pickColor(color) {
-    if (paletteKey === null) return;
-    const key = paletteKey;
-    if (color) state.colors[key] = color; else delete state.colors[key];
-
-    const td = table.querySelector('.hc-cell[data-key="' + key + '"]');
-    if (td) applyCellTint(td, key);
-
-    closePalette();
+  /** クリックで次の氏名へ（末尾の次は空＝クリアに戻る） */
+  function cycleCell(td, key) {
+    const cur = state.cells[key] || '';
+    let idx = NAMES.indexOf(cur);
+    if (idx < 0) idx = 0;   // 一覧にない旧データは次クリックで先頭へ
+    const next = NAMES[(idx + 1) % NAMES.length];
+    if (next) state.cells[key] = next; else delete state.cells[key];
+    renderCellName(td, key);
     scheduleSave();
   }
-
-  // パレット外クリック / Esc で閉じる
-  document.addEventListener('click', ev => {
-    if (!palette || !palette.classList.contains('open')) return;
-    if (palette.contains(ev.target) || ev.target === paletteChip) return;
-    closePalette();
-  });
-
-  document.addEventListener('keydown', ev => {
-    if (ev.key === 'Escape') closePalette();
-  });
 
   function refreshDuration(race) {
     const el = table.querySelector('.hc-dur[data-race="' + race + '"]');
@@ -407,7 +321,6 @@
         });
         state.cells  = Object.assign({}, data.cells  || {});
         state.colors = Object.assign({}, data.colors || {});
-        closePalette();
         render();
         setStatus(data.exists ? '読み込み完了' : '新規（未入力）', '');
       })
