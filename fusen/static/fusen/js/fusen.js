@@ -14,19 +14,22 @@
   const DOW = ['日', '月', '火', '水', '木', '金', '土'];
   const SPAN        = 7;   // 表示日数（週・当日±3）
   const DAYS_BEFORE = 3;   // 当日より前
-  const START_HOUR  = 7;   // 時間軸の開始
-  const END_HOUR    = 22;  // 時間軸の終了
+  const START_HOUR  = 0;   // 時間軸の開始（0:00）
+  const END_HOUR    = 24;  // 時間軸の終了（24:00）
   const HOURS       = END_HOUR - START_HOUR;
-  // 1時間あたりの高さ・ブロック高さは画面に収まるよう毎回算出する
-  let HOUR_H = 34;
-  let ITEM_H = 22;
-  let GRID_H = HOURS * HOUR_H;
+  // Google カレンダー風：1時間の高さは固定し、全時間帯はスクロールで見る
+  const HOUR_H = 44;                 // 1時間の高さ(px)
+  const ITEM_H = 22;                 // ブロックの高さ(px)
+  const GRID_H = HOURS * HOUR_H;     // グリッド全高(px)
+  const SNAP_MIN = 15;               // ドロップ時刻のスナップ（分）
+  const DEFAULT_SCROLL_HOUR = 7;     // 初期表示で上端に来る時刻
 
   // 状態
   let notes = [];
   let tasks = [];
   let dismissedReminders = new Set();
-  let winStart = null;   // 表示ウィンドウの左端の日付
+  let winStart = null;       // 表示ウィンドウの左端の日付
+  let timelineScroll = null; // タイムラインの縦スクロール位置（再描画で維持）
 
   // ── 通信 ───────────────────────────────────
   async function post(url, body) {
@@ -127,15 +130,6 @@
     return Math.max(0, Math.min(GRID_H - ITEM_H, top));
   }
 
-  // グリッドが縦スクロールなしで収まるよう 1時間の高さを決める。
-  // gridTop = グリッド上端の画面Y。残り高さを時間数で割る
-  function fitHourHeight(gridTop) {
-    const avail = window.innerHeight - gridTop - 14;   // 下の余白
-    HOUR_H = Math.max(18, Math.min(40, Math.floor(avail / HOURS)));
-    ITEM_H = Math.max(15, Math.min(HOUR_H - 2, 24));
-    GRID_H = HOURS * HOUR_H;
-  }
-
   function renderWindow() {
     const cal = document.getElementById('fs-calendar');
     cal.innerHTML = '';
@@ -170,6 +164,9 @@
 
     renderInbox(inboxT, inboxN);
 
+    // ── 上部固定ブロック（ヘッダー＋終日帯。スクロール時も残る） ──
+    const stickyTop = el('div', 'fs-tl-stickytop');
+
     // ── ヘッダー行（左隅 + 各日見出し） ──
     const headRow = document.createElement('div');
     headRow.className = 'fs-tl-row fs-tl-headrow';
@@ -189,7 +186,7 @@
       cell.appendChild(add);
       headRow.appendChild(cell);
     });
-    cal.appendChild(headRow);
+    stickyTop.appendChild(headRow);
 
     // ── 終日帯 ──
     const adRow = el('div', 'fs-tl-row fs-tl-alldayrow');
@@ -203,11 +200,8 @@
       setDropTarget(cell, { date: key, allDay: true });
       adRow.appendChild(cell);
     });
-    cal.appendChild(adRow);
-
-    // ヘッダー＋終日帯までをレイアウトさせ、グリッド上端Yから 1時間の高さを算出
-    // （縦スクロールなしで 7:00〜22:00 が収まるようにする）
-    fitHourHeight(adRow.getBoundingClientRect().bottom);
+    stickyTop.appendChild(adRow);
+    cal.appendChild(stickyTop);
 
     // ── 時間軸グリッド ──
     const grid = el('div', 'fs-tl-grid');
@@ -260,6 +254,14 @@
     });
 
     cal.appendChild(grid);
+
+    // タイムラインをスクロール領域にして高さを画面に合わせる。
+    // 全時間帯(0-24h)はスクロールで見られるようにし、既定は 7:00 を上端に。
+    const calTop = cal.getBoundingClientRect().top;
+    cal.style.maxHeight = Math.max(300, window.innerHeight - calTop - 16) + 'px';
+    cal.scrollTop = (timelineScroll != null)
+      ? timelineScroll
+      : DEFAULT_SCROLL_HOUR * HOUR_H;
   }
 
   // 時間指定アイテムをレーンに割り付け（重なり回避）
@@ -420,9 +422,15 @@
   let dragData = null;
 
   function onDragStart(ev, kind, id) {
-    dragData = { kind, id };
+    // 掴んだ位置（カード上端からのオフセット）を記録し、精密に落とせるようにする
+    let offsetY = 0;
+    const src = ev.currentTarget;
+    if (src && src.getBoundingClientRect) {
+      offsetY = ev.clientY - src.getBoundingClientRect().top;
+    }
+    dragData = { kind, id, offsetY };
     ev.dataTransfer.effectAllowed = 'move';
-    ev.dataTransfer.setData('text/plain', JSON.stringify(dragData));
+    ev.dataTransfer.setData('text/plain', JSON.stringify({ kind, id }));
     document.body.classList.add('fs-dragging');
   }
 
@@ -430,33 +438,60 @@
     dragData = null;
     document.body.classList.remove('fs-dragging');
     document.querySelectorAll('.fs-drop-over').forEach(e => e.classList.remove('fs-drop-over'));
+    hideDropIndicator();
   }
 
-  // target: { date, allDay?, grid?, date:'' で未分類 }
-  function setDropTarget(el, target) {
-    el.addEventListener('dragover', ev => {
+  // グリッド列内の Y から「カード上端が来る時刻(分)」を掴み位置補正＋15分スナップで返す
+  function gridSnappedMinutes(col, ev) {
+    const rect = col.getBoundingClientRect();
+    const grab = (dragData && dragData.offsetY) || 0;
+    const yTop = ev.clientY - rect.top - grab;
+    const min = Math.round((yTop / HOUR_H) * 60 / SNAP_MIN) * SNAP_MIN;
+    return Math.max(0, Math.min(24 * 60 - SNAP_MIN, min));   // 0:00〜23:45
+  }
+
+  // ドロップ位置のガイド線（Google カレンダー風の吸着表示）
+  let dropIndicator = null;
+  function showDropIndicator(col, min) {
+    if (!dropIndicator) {
+      dropIndicator = el('div', 'fs-tl-dropline');
+      dropIndicator.appendChild(el('span', 'fs-tl-dropline-label'));
+    }
+    dropIndicator.style.top = ((min / 60) * HOUR_H) + 'px';
+    dropIndicator.firstChild.textContent = pad(Math.floor(min / 60)) + ':' + pad(min % 60);
+    if (dropIndicator.parentNode !== col) col.appendChild(dropIndicator);
+  }
+  function hideDropIndicator() {
+    if (dropIndicator && dropIndicator.parentNode) {
+      dropIndicator.parentNode.removeChild(dropIndicator);
+    }
+  }
+
+  // target: { date, allDay?, grid?, date:'' で未分類 }。cell はドロップ先 DOM
+  function setDropTarget(cell, target) {
+    cell.addEventListener('dragover', ev => {
       ev.preventDefault();
       ev.dataTransfer.dropEffect = 'move';
-      el.classList.add('fs-drop-over');
+      cell.classList.add('fs-drop-over');
+      if (target.grid) showDropIndicator(cell, gridSnappedMinutes(cell, ev));
     });
-    el.addEventListener('dragleave', ev => {
-      if (ev.target === el) el.classList.remove('fs-drop-over');
+    cell.addEventListener('dragleave', ev => {
+      if (ev.target === cell) cell.classList.remove('fs-drop-over');
+      if (target.grid && !cell.contains(ev.relatedTarget)) hideDropIndicator();
     });
-    el.addEventListener('drop', async ev => {
+    cell.addEventListener('drop', async ev => {
       ev.preventDefault();
-      el.classList.remove('fs-drop-over');
+      cell.classList.remove('fs-drop-over');
+      hideDropIndicator();
       let payload = dragData;
       if (!payload) {
         try { payload = JSON.parse(ev.dataTransfer.getData('text/plain')); } catch (e) { return; }
       }
       if (!payload) return;
-      // グリッドへのドロップは Y 位置から時刻を算出（15分刻み）
+      // グリッドへのドロップは Y 位置から時刻を算出（掴み位置補正＋15分スナップ）
       let time = null;
       if (target.grid) {
-        const rect = el.getBoundingClientRect();
-        const y = ev.clientY - rect.top + el.scrollTop;
-        let min = START_HOUR * 60 + Math.round((y / HOUR_H) * 60 / 15) * 15;
-        min = Math.max(START_HOUR * 60, Math.min(END_HOUR * 60, min));
+        const min = gridSnappedMinutes(cell, ev);
         time = pad(Math.floor(min / 60)) + ':' + pad(min % 60);
       }
       await moveItem(payload, target, time);
@@ -1249,7 +1284,12 @@
   modal.addEventListener('click', ev => { if (ev.target === modal) closeModal(); });
   document.addEventListener('keydown', ev => { if (ev.key === 'Escape' && !modal.hidden) closeModal(); });
 
-  // 画面サイズ変更で高さを再計算（縦スクロールを避ける）
+  // タイムラインの縦スクロール位置を保持（再描画で維持するため）
+  document.getElementById('fs-calendar').addEventListener('scroll', ev => {
+    timelineScroll = ev.target.scrollTop;
+  });
+
+  // 画面サイズ変更で表示高さを再計算
   let resizeTimer = null;
   window.addEventListener('resize', () => {
     clearTimeout(resizeTimer);

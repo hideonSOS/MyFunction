@@ -124,7 +124,17 @@
   border: 1px solid var(--border);
   border-radius: 6px;
   background: var(--bg2);
-  overflow: hidden;
+  overflow-y: auto;          /* 全時間帯はスクロールで表示（高さは JS 指定） */
+  overflow-x: hidden;
+  scrollbar-width: thin;
+}
+
+/* ヘッダー＋終日帯はスクロールしても上部に固定 */
+.fs-tl-stickytop {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: var(--bg2);
 }
 
 .fs-tl-row { display: flex; }
@@ -180,10 +190,9 @@
 }
 .fs-tl-allday-cell.today { background: #00f5ff08; }
 
-/* 時間軸グリッド（高さは JS が画面に収まるよう算出。スクロールなし） */
+/* 時間軸グリッド（全高は 24h 固定。親 .fs-timeline がスクロールする） */
 .fs-tl-grid {
   display: flex;
-  overflow: hidden;
 }
 .fs-tl-gutter { position: relative; }
 .fs-tl-hourlabel {
@@ -231,6 +240,27 @@
 .fs-drop-over { outline: 2px dashed var(--cyan); outline-offset: -3px; }
 .fs-drop-over.fs-tl-daycol,
 .fs-drop-over.fs-tl-allday-cell { background: #00f5ff0c; }
+
+/* ドロップ位置のガイド線（Google カレンダー風） */
+.fs-tl-dropline {
+  position: absolute;
+  left: 0; right: 0;
+  border-top: 2px solid var(--cyan);
+  box-shadow: 0 0 6px var(--cyan);
+  pointer-events: none;
+  z-index: 6;
+}
+.fs-tl-dropline-label {
+  position: absolute;
+  left: 2px;
+  top: -8px;
+  padding: 0 4px;
+  font-size: 10px;
+  line-height: 15px;
+  color: var(--bg2);
+  background: var(--cyan);
+  border-radius: 3px;
+}
 
 /* ── ボタン ───────────────────────────────── */
 .fs-btn {
