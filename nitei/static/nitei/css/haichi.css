@@ -193,27 +193,27 @@
   box-shadow: inset 3px 0 0 #ff6060;
 }
 
-.hc-time-input {
+/* クリックでタイムピッカーを開く時刻表示セル */
+.hc-time-disp {
   display: block;
   box-sizing: border-box;
   width: 100%;
   height: 22px;
+  line-height: 22px;
   padding: 0 4px;
-  border: 0;
-  background: transparent;
   font-family: 'Courier New', monospace;
   font-size: 13px;
   letter-spacing: 1px;
   text-align: center;
-  outline: none;
-  cursor: text;
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.15s;
 }
+.hc-time-disp:hover { background: #112244; }
+.hc-time-disp:empty::before { content: '--:--'; color: #ffffff22; }
 
-.row-start .hc-time-input { color: #40c8ff; }
-.row-close .hc-time-input { color: #ff8080; }
-
-.hc-time-input::placeholder { color: #ffffff22; }
-.hc-time-input:focus { background: #112244; box-shadow: inset 0 0 0 1px #00e5ffaa; }
+.row-start .hc-time-disp { color: #40c8ff; }
+.row-close .hc-time-disp { color: #ff8080; }
 
 .hc-dur {
   height: 22px;
@@ -432,7 +432,7 @@
   #hc-table .hc-th-time, #hc-table .hc-time-cell { width: 62px; height: 20px; }
   #hc-table .hc-th-race, #hc-table .hc-race      { width: 30px; font-size: 11px; }
   #hc-table .hc-th-cell, #hc-table .hc-cell      { width: 62px; }
-  .hc-time-input  { height: 20px; font-size: 11px; letter-spacing: 0; padding: 0 1px; }
+  .hc-time-disp   { height: 20px; line-height: 20px; font-size: 11px; letter-spacing: 0; padding: 0 1px; }
   .hc-dur         { height: 20px; line-height: 20px; font-size: 11px; letter-spacing: 0; }
   #hc-table .hc-cell { font-size: 13px; letter-spacing: 2px; text-indent: 2px; }
   .hc-head-input  { font-size: 10px; letter-spacing: 0; }
@@ -453,7 +453,8 @@
   #hc-table th, #hc-table td { background: #fff; color: #000; border-color: #666; }
   #hc-table thead th { border-bottom: 2px solid #000; }
 
-  .hc-head-input, .hc-time-input, .hc-cell-input { color: #000; }
+  .hc-head-input, .hc-time-disp { color: #000; }
+  #hc-time-picker { display: none !important; }
   .hc-dur { color: #000; }
   #hc-table .hc-race,
   #hc-table .hc-race.on { color: #000; text-shadow: none; box-shadow: none; background: #fff; }
@@ -471,4 +472,60 @@
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
+}
+
+/* ── タイムピッカー（HH:MM。クリックで開く） ───── */
+#hc-time-picker {
+  display: none;
+  position: absolute;
+  z-index: 9999;
+  background: #0d1526;
+  border: 1px solid #00e5ff55;
+  border-radius: 6px;
+  padding: 10px;
+  box-shadow: 0 4px 24px rgba(0, 229, 255, 0.25);
+}
+.hc-tp-header { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; }
+#hc-tp-input {
+  flex: 1;
+  min-width: 0;
+  background: #071020;
+  border: 1px solid #00e5ff55;
+  border-radius: 3px;
+  color: #00e5ff;
+  font-family: 'Courier New', monospace;
+  font-size: 16px;
+  padding: 6px 8px;
+  text-align: center;
+}
+#hc-tp-input:focus { outline: none; border-color: #00e5ff; }
+#hc-tp-input::-webkit-calendar-picker-indicator { filter: invert(1); cursor: pointer; }
+
+.hc-tp-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
+  max-height: 220px;
+  overflow-y: auto;
+}
+.hc-tp-time-btn, .hc-tp-clear, .hc-tp-close {
+  font-family: 'Courier New', monospace;
+  border: 1px solid #00e5ff44;
+  border-radius: 4px;
+  background: #0a1830;
+  color: #00e5ff;
+  cursor: pointer;
+}
+.hc-tp-time-btn { padding: 7px 2px; font-size: 12px; width: 100%; }
+.hc-tp-time-btn:hover { background: #12263f; border-color: #00e5ff88; }
+.hc-tp-clear, .hc-tp-close { flex-shrink: 0; padding: 6px 10px; font-size: 12px; }
+.hc-tp-close { color: #ff6060; border-color: #ff606055; }
+.hc-tp-close:hover { background: #300808; border-color: #ff6060; }
+
+@media (max-width: 767px) {
+  #hc-time-picker { padding: 12px; }
+  .hc-tp-grid { grid-template-columns: repeat(5, 1fr); max-height: none; }
+  .hc-tp-time-btn { padding: 14px 2px; font-size: 13px; }
+  #hc-tp-input { font-size: 18px; padding: 10px 8px; }
+  .hc-tp-clear, .hc-tp-close { padding: 10px 12px; font-size: 14px; }
 }

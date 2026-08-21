@@ -251,20 +251,122 @@
   function timeCell(race, field, cls) {
     const td = document.createElement('td');
     td.className = 'hc-time-cell ' + cls;
-    const input = document.createElement('input');
-    input.className = 'hc-time-input';
-    input.value = state.races[race][field] || '';
-    input.placeholder = '--:--';
-    input.title = field === 'start' ? '発売開始' : '締め切り時間';
-    input.addEventListener('change', () => {
-      const v = normalizeTime(input.value);
-      input.value = v;
-      state.races[race][field] = v;
-      refreshDuration(race);
-      scheduleSave();
+    const disp = document.createElement('div');
+    disp.className = 'hc-time-disp';
+    disp.textContent = state.races[race][field] || '';
+    disp.title = (field === 'start' ? '発売開始' : '締め切り時間') + '（クリックで時刻を選択）';
+    disp.addEventListener('click', ev => {
+      ev.stopPropagation();
+      openPicker(disp, val => {
+        state.races[race][field] = val;
+        refreshDuration(race);
+        scheduleSave();
+      });
     });
-    td.appendChild(input);
+    td.appendChild(disp);
     return td;
+  }
+
+  // ── タイムピッカー（HH:MM。日程と同じ操作感） ─────
+  let _pickTarget = null;   // 反映先の表示要素
+  let _pickSave   = null;   // 選択時のコールバック
+
+  function buildTimePicker() {
+    const panel = document.createElement('div');
+    panel.id = 'hc-time-picker';
+
+    const header = document.createElement('div');
+    header.className = 'hc-tp-header';
+
+    const inp = document.createElement('input');
+    inp.type = 'time';
+    inp.id   = 'hc-tp-input';
+    inp.step = '900';   // 15分刻み
+    inp.addEventListener('change', () => { if (inp.value) selectTime(inp.value); });
+
+    const clr = document.createElement('button');
+    clr.type = 'button';
+    clr.className = 'hc-tp-clear';
+    clr.textContent = 'クリア';
+    clr.addEventListener('click', e => { e.stopPropagation(); selectTime(''); });
+
+    const cls = document.createElement('button');
+    cls.type = 'button';
+    cls.className = 'hc-tp-close';
+    cls.textContent = '×';
+    cls.addEventListener('click', e => { e.stopPropagation(); closePicker(); });
+
+    header.appendChild(inp);
+    header.appendChild(clr);
+    header.appendChild(cls);
+    panel.appendChild(header);
+
+    // 時刻ボタン（08:00〜23:30、30分刻み。細かい時刻は上の入力欄で）
+    const grid = document.createElement('div');
+    grid.className = 'hc-tp-grid';
+    for (let h = 8; h <= 23; h++) {
+      for (const m of [0, 30]) {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'hc-tp-time-btn';
+        b.textContent = String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0');
+        b.addEventListener('click', e => { e.stopPropagation(); selectTime(b.textContent); });
+        grid.appendChild(b);
+      }
+    }
+    panel.appendChild(grid);
+
+    document.body.appendChild(panel);
+
+    // パネル外クリックで閉じる（キャプチャ相で判定）
+    document.addEventListener('click', e => {
+      if (_pickTarget && !panel.contains(e.target) && e.target !== _pickTarget) closePicker();
+    }, true);
+
+    return panel;
+  }
+
+  function openPicker(disp, saveCb) {
+    let panel = document.getElementById('hc-time-picker');
+    if (!panel) panel = buildTimePicker();
+    _pickTarget = disp;
+    _pickSave   = saveCb;
+    panel.querySelector('#hc-tp-input').value = disp.textContent || '';
+    panel.style.display = 'block';
+
+    if (window.innerWidth < 768) {
+      // モバイル: ボトムシート
+      Object.assign(panel.style, {
+        left: '0', right: '0', bottom: '0', top: 'auto',
+        width: '100%', borderRadius: '12px 12px 0 0', boxSizing: 'border-box',
+      });
+    } else {
+      // デスクトップ: セル直下
+      const rect = disp.getBoundingClientRect();
+      const pw = 264;
+      let left = rect.left + window.scrollX;
+      let top  = rect.bottom + window.scrollY + 4;
+      if (left + pw > window.innerWidth) left = Math.max(0, window.innerWidth - pw - 8);
+      Object.assign(panel.style, {
+        left: left + 'px', top: top + 'px', bottom: 'auto', right: 'auto',
+        width: pw + 'px', borderRadius: '6px', boxSizing: 'content-box',
+      });
+    }
+  }
+
+  function selectTime(value) {
+    if (_pickTarget) {
+      _pickTarget.textContent = value;
+      if (_pickSave) _pickSave(value);
+    }
+    closePicker();
+  }
+
+  function closePicker() {
+    const panel = document.getElementById('hc-time-picker');
+    if (panel) panel.style.display = 'none';
+    _pickTarget = null;
+    _pickSave   = null;
   }
 
   // ── 配置セル（氏名クリック循環＋自動着色） ─────
@@ -321,6 +423,7 @@
         });
         state.cells  = Object.assign({}, data.cells  || {});
         state.colors = Object.assign({}, data.colors || {});
+        closePicker();
         render();
         setStatus(data.exists ? '読み込み完了' : '新規（未入力）', '');
       })
