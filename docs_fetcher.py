@@ -303,6 +303,8 @@ def main():
     options = Options()
     options.add_argument('--headless')
     options.add_argument('--disable-gpu')
+    options.add_argument('--no-sandbox')            # root実行でもChromeを起動可能に
+    options.add_argument('--disable-dev-shm-usage')  # /dev/shm不足によるクラッシュ回避（サーバー定番）
     options.add_argument('--window-size=1920,1080')
     driver = webdriver.Chrome(options=options)
 
