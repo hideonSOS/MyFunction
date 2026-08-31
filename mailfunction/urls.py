@@ -8,6 +8,7 @@ urlpatterns = [
     path('fetch/',                                  views.fetch_mails,         name='fetch_mails'),
     path('log/',                                    views.log_view,            name='log_view'),
     path('search/',                                 views.search,              name='search'),
+    path('senders/',                                views.senders,             name='senders'),
     path('detail/<str:mail_id>/',                   views.mail_detail,         name='mail_detail'),
     path('attachment/<str:mail_id>/<str:attachment_id>/', views.attachment_download, name='attachment_download'),
     path('contacts/',                               views.contacts,            name='contacts'),

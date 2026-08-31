@@ -128,13 +128,28 @@ def oauth_callback(request):
 # ── サーバーサイド検索 ────────────────────────────────
 @login_required
 def search(request):
-    query = request.GET.get('q', '').strip().lower()
-    label = request.GET.get('label', '').strip()
+    query  = request.GET.get('q', '').strip().lower()
+    label  = request.GET.get('label', '').strip()
+    sender = request.GET.get('sender', '').strip().lower()   # 差出人アドレスで絞り込み
+    unread = request.GET.get('unread', '') == '1'            # 未読のみ
+    try:
+        days = int(request.GET.get('days') or 0)             # 直近N日
+    except ValueError:
+        days = 0
 
     mails = _load_mails()
 
     if label:
         mails = [m for m in mails if label in m.get('labels', [])]
+    if sender:
+        mails = [m for m in mails if sender in m.get('from', '').lower()]
+    if unread:
+        mails = [m for m in mails if 'UNREAD' in m.get('labels', [])]
+    if days > 0:
+        # _parse_date は JST の naive datetime を返すので、それに合わせて比較する
+        cutoff = datetime.now(JST).replace(tzinfo=None) - timedelta(days=days)
+        mails = [m for m in mails
+                 if (d := _parse_date(m.get('date', ''))) and d >= cutoff]
     if query:
         mails = [m for m in mails if
                  query in m.get('subject', '').lower() or
@@ -153,6 +168,35 @@ def search(request):
     } for m in mails[:500]]
 
     return JsonResponse({'mails': result, 'matched': len(mails)})
+
+
+# ── 上位差出人（クイックフィルタ用） ───────────────────
+@login_required
+def senders(request):
+    """受信メール（SENT以外）の差出人を集計し、件数の多い順に返す"""
+    from collections import Counter
+
+    counts = Counter()
+    names  = {}
+    for m in _load_mails():
+        if 'SENT' in m.get('labels', []):
+            continue
+        raw = m.get('from', '')
+        if not raw:
+            continue
+        # "表示名 <addr@example.com>" からアドレスを取り出す（無ければ全体）
+        addr = raw.rsplit('<', 1)[-1].rstrip('>').strip().lower()
+        if not addr:
+            continue
+        counts[addr] += 1
+        if addr not in names:
+            # 表示名の前後に残る引用符・バックスラッシュを掃除
+            name = raw.rsplit('<', 1)[0].strip().strip('"\\').strip()
+            names[addr] = name or addr
+
+    top = [{'email': a, 'name': names[a], 'count': c}
+           for a, c in counts.most_common(15)]
+    return JsonResponse({'senders': top})
 
 
 # ── メール詳細（本文 + 添付一覧） ─────────────────────

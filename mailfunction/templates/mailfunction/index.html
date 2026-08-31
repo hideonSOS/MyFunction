@@ -249,6 +249,42 @@ tr.selected td:first-child { border-left: 2px solid var(--cyan); padding-left: 8
 /* ── オレンジボタン ── */
 .btn-orange { color: var(--orange); border-color: #ff990080; }
 .btn-orange:hover:not(:disabled) { background: #ff990018; box-shadow: 0 0 10px #ff9900aa; border-color: var(--orange); }
+/* ── クイックフィルタ・チップ ───────────────── */
+.chip-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 0 14px 10px 20px;
+}
+.chip {
+  display: inline-block;
+  padding: 2px 10px;
+  border: 1px solid var(--border);
+  border-radius: 11px;
+  font-size: 11px;
+  letter-spacing: 0.5px;
+  color: var(--text-dim);
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+  transition: all 0.15s;
+}
+.chip:hover { border-color: var(--cyan); color: var(--cyan); }
+.chip.active {
+  color: #061018;
+  background: var(--cyan);
+  border-color: var(--cyan);
+  font-weight: bold;
+}
+.chip-state.active { background: var(--green); border-color: var(--green); }
+.chip-sep {
+  width: 1px;
+  height: 16px;
+  background: var(--border);
+  margin: 0 4px;
+}
+.chip-loading { font-size: 11px; color: var(--text-dim); }
 </style>
 {% endblock %}
 
@@ -278,6 +314,14 @@ tr.selected td:first-child { border-left: 2px solid var(--cyan); padding-left: 8
           <button class="btn btn-cyan" id="sync-btn" onclick="fetchMails('update')">⟳ SYNC</button>
           <button class="btn btn-green" id="full-btn" onclick="confirmFullSync()">⟳ FULL</button>
           <span class="count-badge"><b id="count-num">{{ mails|length }}</b> / {{ total }}</span>
+        </div>
+        <!-- クイックフィルタ（未読・期間・主要差出人） -->
+        <div class="chip-bar" id="chip-bar">
+          <span class="chip chip-state" id="chip-unread" onclick="toggleUnread()">未読のみ</span>
+          <span class="chip chip-state" id="chip-d7"  onclick="setDays(7)">7日以内</span>
+          <span class="chip chip-state" id="chip-d30" onclick="setDays(30)">30日以内</span>
+          <span class="chip-sep"></span>
+          <span id="sender-chips"><span class="chip-loading">差出人を集計中...</span></span>
         </div>
       </div>
 
@@ -682,8 +726,11 @@ function scrollLogBottom() {
 }
 
 // ── フィルタ（サーバーサイド検索） ───────────────────────
-var currentLabel = '';
-var searchTimer  = null;
+var currentLabel  = '';
+var currentSender = '';   // 差出人チップ（メールアドレス）
+var unreadOnly    = false;
+var currentDays   = 0;    // 0=期間指定なし
+var searchTimer   = null;
 
 function setLabelFilter(label) {
   currentLabel = (currentLabel === label && label !== '') ? '' : label;
@@ -691,6 +738,49 @@ function setLabelFilter(label) {
   document.getElementById('lbtn-in').classList.toggle('active',   currentLabel === 'INBOX');
   document.getElementById('lbtn-sent').classList.toggle('active', currentLabel === 'SENT');
   doSearch();
+}
+
+function toggleUnread() {
+  unreadOnly = !unreadOnly;
+  document.getElementById('chip-unread').classList.toggle('active', unreadOnly);
+  doSearch();
+}
+
+function setDays(d) {
+  currentDays = (currentDays === d) ? 0 : d;   // 同じチップの再クリックで解除
+  document.getElementById('chip-d7').classList.toggle('active',  currentDays === 7);
+  document.getElementById('chip-d30').classList.toggle('active', currentDays === 30);
+  doSearch();
+}
+
+function setSenderFilter(email) {
+  currentSender = (currentSender === email) ? '' : email;   // 再クリックで解除
+  var chips = document.querySelectorAll('.chip-sender');
+  chips.forEach(function(c) {
+    c.classList.toggle('active', c.dataset.email === currentSender);
+  });
+  doSearch();
+}
+
+function loadSenders() {
+  fetch('/mailfunction/senders/')
+    .then(r => r.json())
+    .then(data => {
+      var box = document.getElementById('sender-chips');
+      box.innerHTML = '';
+      (data.senders || []).forEach(function(s) {
+        var chip = document.createElement('span');
+        chip.className = 'chip chip-sender';
+        chip.dataset.email = s.email;
+        chip.title = s.email + '（' + s.count + '件）';
+        chip.textContent = s.name + ' ' + s.count;
+        chip.onclick = function() { setSenderFilter(s.email); };
+        box.appendChild(chip);
+      });
+    })
+    .catch(function() {
+      document.getElementById('sender-chips').innerHTML = '';
+    });
 }
 
 function applyFilter() {
@@ -701,7 +791,10 @@ function applyFilter() {
 
 function doSearch() {
   var query = document.getElementById('query-input').value.trim();
-  var params = new URLSearchParams({ q: query, label: currentLabel });
+  var params = new URLSearchParams({
+    q: query, label: currentLabel, sender: currentSender,
+    unread: unreadOnly ? '1' : '', days: currentDays ? String(currentDays) : '',
+  });
   fetch('/mailfunction/search/?' + params)
     .then(r => r.json())
     .then(data => {
@@ -743,6 +836,7 @@ function esc(s) {
 
 // ── ページロード：進行中ジョブを自動再接続 ─────────────
 window.addEventListener('load', function() {
+  loadSenders();   // 主要差出人チップを構築
   var saved = localStorage.getItem(JOB_KEY);
   if (saved) {
     try {
