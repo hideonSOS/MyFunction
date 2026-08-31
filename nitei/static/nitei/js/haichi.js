@@ -445,6 +445,32 @@
          String(d.getDate()).padStart(2, '0'));
   });
 
+  // ── PDF印刷（最大3日をA3横に並べる印刷ページを開く） ──
+  const pdfPanel = document.getElementById('pdf-panel');
+
+  document.getElementById('pdf-btn').addEventListener('click', () => {
+    if (!pdfPanel.hidden) { pdfPanel.hidden = true; return; }
+    // 初期値: 表示中の日 + 翌日 + 翌々日
+    document.getElementById('pdf-d1').value = state.date;
+    document.getElementById('pdf-d2').value = shiftDate(state.date, 1);
+    document.getElementById('pdf-d3').value = shiftDate(state.date, 2);
+    pdfPanel.hidden = false;
+  });
+
+  document.getElementById('pdf-cancel').addEventListener('click', () => {
+    pdfPanel.hidden = true;
+  });
+
+  document.getElementById('pdf-open').addEventListener('click', () => {
+    flushSave();   // 未保存の入力を書き込んでから印刷ページを開く
+    const dates = ['pdf-d1', 'pdf-d2', 'pdf-d3']
+      .map(id => document.getElementById(id).value)
+      .filter(Boolean);
+    if (!dates.length) { alert('日付を1つ以上選んでください'); return; }
+    pdfPanel.hidden = true;
+    window.open('/nitei/haichi/print/?dates=' + dates.join(','), '_blank');
+  });
+
   document.getElementById('clear-btn').addEventListener('click', () => {
     if (!confirm(state.date + ' の配置図をすべて消去します。よろしいですか？')) return;
     clearTimeout(saveTimer);

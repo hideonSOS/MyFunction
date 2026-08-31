@@ -25,7 +25,22 @@
     <span id="hc-weekday"></span>
     <span class="hc-spacer"></span>
     <span id="hc-status">読み込み中...</span>
+    <button class="hc-btn" id="pdf-btn" type="button">🖨 PDF印刷</button>
     <button class="hc-btn hc-danger" id="clear-btn" type="button">この日をクリア</button>
+  </div>
+
+  <!-- PDF印刷: 日付選択パネル（最大3日をA3横に並べて印刷） -->
+  <div id="pdf-panel" class="hc-pdf-panel" hidden>
+    <div class="hc-pdf-title">印刷する日付（最大3日 / A3横に並びます）</div>
+    <div class="hc-pdf-dates">
+      <input type="date" id="pdf-d1">
+      <input type="date" id="pdf-d2">
+      <input type="date" id="pdf-d3">
+    </div>
+    <div class="hc-pdf-actions">
+      <button class="hc-btn" id="pdf-cancel" type="button">キャンセル</button>
+      <button class="hc-btn hc-primary" id="pdf-open" type="button">印刷画面を開く</button>
+    </div>
   </div>
 
   <div class="hc-wrap">

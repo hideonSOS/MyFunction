@@ -1,0 +1,29 @@
+{% load static %}<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>配置図 印刷</title>
+<link rel="stylesheet" href="{% static 'nitei/css/haichi_print.css' %}">
+</head>
+<body>
+
+<!-- 画面表示時のみのツールバー（印刷には出ない） -->
+<div class="pp-toolbar">
+  <span class="pp-title">配置図 印刷プレビュー（A3横）</span>
+  <span class="pp-hint">レイアウトを確認して「印刷 / PDF保存」→ 送信先で「PDFに保存」を選ぶとPDFになります</span>
+  <span class="pp-spacer"></span>
+  <button type="button" id="pp-print">🖨 印刷 / PDF保存</button>
+  <button type="button" id="pp-close">閉じる</button>
+</div>
+
+<div id="pp-sheet" class="pp-sheet">読み込み中...</div>
+
+<script>
+  const DATES_PARAM     = "{{ dates_param|escapejs }}";
+  const RACE_COUNT      = {{ race_count }};
+  const COL_COUNT       = {{ col_count }};
+  const DEFAULT_HEADERS = {{ default_headers|safe }};
+</script>
+<script src="{% static 'nitei/js/haichi_print.js' %}"></script>
+</body>
+</html>

@@ -1,0 +1,146 @@
+/* 配置図 印刷ページ（A3横・最大3日並び）。画面プレビューも紙と同じ白地で見せる */
+
+@page {
+  size: A3 landscape;
+  margin: 8mm;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: #e8e8e8;
+  font-family: 'Yu Gothic', 'Meiryo', sans-serif;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+/* ── 画面のみのツールバー ───────────────────── */
+.pp-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  background: #223;
+  color: #fff;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+.pp-title { font-weight: bold; }
+.pp-hint  { font-size: 12px; opacity: 0.8; }
+.pp-spacer { flex: 1; }
+.pp-toolbar button {
+  padding: 8px 18px;
+  font-size: 14px;
+  border: 1px solid #667;
+  border-radius: 4px;
+  background: #334;
+  color: #fff;
+  cursor: pointer;
+}
+.pp-toolbar button:hover { background: #445; }
+#pp-print { background: #1a6b3c; border-color: #2a8b52; font-weight: bold; }
+#pp-print:hover { background: #218548; }
+
+/* ── シート（3日横並び） ───────────────────── */
+.pp-sheet {
+  display: flex;
+  gap: 6mm;
+  justify-content: center;
+  align-items: flex-start;
+  background: #fff;
+  width: 404mm;              /* A3横(420) − 余白8mm×2 */
+  margin: 12px auto;
+  padding: 4mm;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.25);
+}
+
+.pp-day { flex: 1 1 0; min-width: 0; }
+
+.pp-day-head {
+  text-align: center;
+  font-size: 15pt;
+  font-weight: bold;
+  color: #000;
+  padding: 1mm 0 2mm;
+}
+.pp-day-head.sat { color: #0055cc; }
+.pp-day-head.sun { color: #cc0022; }
+
+/* ── テーブル ──────────────────────────────── */
+.pp-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.pp-table th, .pp-table td {
+  border: 0.4mm solid #444;
+  color: #000;
+  text-align: center;
+  vertical-align: middle;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.pp-table thead th {
+  font-size: 9pt;
+  padding: 1mm 0.5mm;
+  background: #f0f0f0;
+  border-bottom: 0.6mm solid #000;
+}
+
+.pp-th-time { width: 13mm; }
+.pp-th-race { width: 8mm; }
+
+/* 時刻列（発売開始=青 / 発売時間=緑 / 締め切り=赤） */
+.pp-time {
+  font-family: 'Courier New', monospace;
+  font-size: 8pt;
+  height: 5.2mm;
+  padding: 0 0.5mm;
+}
+.pp-start { color: #0060c0; }
+.pp-dur   { color: #007750; }
+.pp-close { color: #c00020; }
+
+/* レース番号 */
+.pp-race {
+  font-size: 10pt;
+  font-weight: bold;
+}
+.pp-race.on { background: #ffd34d; }
+
+/* 配置セル（氏名。色は氏名ごとの自動着色を反映） */
+.pp-cell {
+  font-size: 11pt;
+  font-weight: bold;
+  letter-spacing: 2px;
+}
+
+/* 氏名の背景色（白地なので画面よりやや濃いめの透過で出す） */
+.tint-c1  { background: rgba(255,  90,  90, 0.30); }
+.tint-c2  { background: rgba(255, 150,  55, 0.30); }
+.tint-c3  { background: rgba(255, 214,  70, 0.35); }
+.tint-c4  { background: rgba(168, 230,  75, 0.35); }
+.tint-c5  { background: rgba( 60, 222, 130, 0.30); }
+.tint-c6  { background: rgba( 55, 226, 212, 0.30); }
+.tint-c7  { background: rgba( 70, 170, 255, 0.30); }
+.tint-c8  { background: rgba(125, 132, 255, 0.30); }
+.tint-c9  { background: rgba(190, 110, 255, 0.28); }
+.tint-c10 { background: rgba(255, 105, 190, 0.28); }
+.tint-c11 { background: rgba(200, 150,  90, 0.32); }
+.tint-c12 { background: rgba(150, 170, 190, 0.35); }
+
+/* ── 印刷時 ─────────────────────────────────── */
+@media print {
+  body { background: #fff; }
+  .pp-toolbar { display: none !important; }
+  .pp-sheet {
+    width: auto;
+    margin: 0;
+    padding: 0;
+    box-shadow: none;
+  }
+}

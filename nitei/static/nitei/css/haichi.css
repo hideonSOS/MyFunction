@@ -474,6 +474,49 @@
   }
 }
 
+/* ── PDF印刷の日付選択パネル ───────────────── */
+.hc-pdf-panel {
+  margin: 0 0 12px;
+  padding: 12px 14px;
+  border: 1px solid #00e5ff55;
+  border-radius: 6px;
+  background: #0d1526;
+  box-shadow: 0 4px 24px rgba(0, 229, 255, 0.18);
+}
+.hc-pdf-panel[hidden] { display: none; }
+
+.hc-pdf-title {
+  font-size: 12px;
+  letter-spacing: 1px;
+  color: #00e5ff;
+  margin-bottom: 8px;
+}
+
+.hc-pdf-dates {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+.hc-pdf-dates input[type="date"] {
+  background: #071020;
+  border: 1px solid #00e5ff55;
+  border-radius: 3px;
+  color: #00e5ff;
+  font-family: 'Courier New', monospace;
+  font-size: 14px;
+  padding: 5px 8px;
+}
+.hc-pdf-dates input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1); cursor: pointer; }
+
+.hc-pdf-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+.hc-pdf-actions .hc-primary { color: #00ff88; border-color: #00ff8855; }
+.hc-pdf-actions .hc-primary:hover { background: #06301a; border-color: #00ff88; }
+
 /* ── タイムピッカー（HH:MM。クリックで開く） ───── */
 #hc-time-picker {
   display: none;

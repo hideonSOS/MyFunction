@@ -74,6 +74,17 @@ def haichi(request):
 
 
 @nitei_login_required
+def haichi_print(request):
+    """配置図の印刷ページ（最大3日分をA3横に並べ、ブラウザ印刷でPDF化）"""
+    return render(request, 'nitei/haichi_print.html', {
+        'dates_param':      request.GET.get('dates', ''),
+        'race_count':       LAYOUT_RACE_COUNT,
+        'col_count':        LAYOUT_COL_COUNT,
+        'default_headers':  json.dumps(LAYOUT_DEFAULT_HEADERS, ensure_ascii=False),
+    })
+
+
+@nitei_login_required
 def overview(request):
     return render(request, 'nitei/overview.html', {
         'persons_json': json.dumps(PERSONS, ensure_ascii=False),
