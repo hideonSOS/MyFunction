@@ -173,17 +173,22 @@
     render();
   }
 
-  // ── 追加 ─────────────────────────────────
+  // ── 追加（先に作成してモーダルを開く＝添付も最初から使える。付箋と同方式） ──
+  let addingNow = false;   // Enter連打の二重作成防止
   async function addItem() {
-    const titleEl = document.getElementById('td-new-title');
-    const title = titleEl.value.trim();
-    if (!title) { titleEl.focus(); return; }
-    const importance = parseInt(document.getElementById('td-new-imp').value, 10);
-    const saved = await saveItem({ title, importance });
-    if (saved) {
-      titleEl.value = '';
-      titleEl.focus();
-      await load();
+    if (addingNow) return;
+    addingNow = true;
+    try {
+      const titleEl = document.getElementById('td-new-title');
+      const importance = parseInt(document.getElementById('td-new-imp').value, 10);
+      const saved = await saveItem({ title: titleEl.value.trim() || '(無題)', importance });
+      if (saved) {
+        titleEl.value = '';
+        render();
+        openDraftModal(saved);
+      }
+    } finally {
+      addingNow = false;
     }
   }
 
@@ -244,26 +249,68 @@
     renderModalFiles();
   }
 
+  let draftMode = false;   // ＋追加直後の「新規」状態（キャンセル=作成取り消し）
+
+  function setDraftUi(on) {
+    draftMode = on;
+    document.getElementById('td-m-head').textContent = on ? '新しいToDo' : 'ToDo 詳細';
+    document.getElementById('td-m-delete').hidden = on;
+    document.getElementById('td-m-cancel').textContent = on ? '作成を取り消す' : 'キャンセル';
+  }
+
   function openModal(t, edit) {
     currentItem = t;
+    setDraftUi(false);
     fillView(t);
     fillEdit(t);
     setMode(edit ? 'edit' : 'view');
     modal.hidden = false;
   }
 
-  function closeModal() {
+  // 新規モード: 項目は作成済み。タイトル・詳細を併記入力し「保存」で確定。
+  // 作成済みなのでスクショ貼り付け・ファイル添付も最初から使える
+  function openDraftModal(t) {
+    currentItem = t;
+    setDraftUi(true);
+    fillView(t);
+    fillEdit(t);
+    // タイトルが仮の「(無題)」なら空欄にして入力を促す
+    if (t.title === '(無題)') document.getElementById('td-m-title').value = '';
+    setMode('edit');
+    modal.hidden = false;
+    document.getElementById('td-m-title').focus();
+  }
+
+  async function discardDraft() {
+    if (!currentItem) return;
+    const id = currentItem.id;
     modal.hidden = true;
     currentItem = null;
+    setDraftUi(false);
+    await post('/todo/api/delete/', { id });
+    items = items.filter(x => x.id !== id);
+    render();
+  }
+
+  function closeModal() {
+    // 新規のまま閉じた場合: 何も入れていない空の項目なら残さず消す
+    if (draftMode && currentItem) {
+      const t = currentItem;
+      const empty = t.title === '(無題)' && !(t.memo || '').trim()
+        && !(t.attachments && t.attachments.length);
+      if (empty) { discardDraft(); return; }
+    }
+    modal.hidden = true;
+    currentItem = null;
+    setDraftUi(false);
     render();   // モーダル中の変更（添付・チェック）を一覧に反映
   }
 
   async function saveModal() {
-    if (!currentItem) return;
     const title = document.getElementById('td-m-title').value.trim();
     if (!title) { document.getElementById('td-m-title').focus(); return; }
     const saved = await saveItem({
-      id:         currentItem.id,
+      id:         currentItem ? currentItem.id : null,
       title,
       memo:       editorGetHtml(document.getElementById('td-m-body')),
       importance: parseInt(document.getElementById('td-m-imp').value, 10),
@@ -271,7 +318,11 @@
       done:       document.getElementById('td-m-done').value === '1',
     });
     if (saved) {
+      // 保存後は通常の閲覧モードへ（新規状態も確定に変わる）
+      saved.attachments = currentItem ? (currentItem.attachments || []) : [];
       currentItem = saved;
+      replaceItem(saved);
+      setDraftUi(false);
       fillView(saved);
       setMode('view');
       render();
@@ -295,8 +346,18 @@
     setMode('edit');
     document.getElementById('td-m-title').focus();
   });
-  document.getElementById('td-m-cancel').addEventListener('click', () => {
+  document.getElementById('td-m-cancel').addEventListener('click', async () => {
+    if (draftMode) {
+      // 新規: 作成そのものを取り消す（添付があれば確認する）
+      const hasContent = currentItem && ((currentItem.attachments || []).length
+        || (currentItem.memo || '').trim() || currentItem.title !== '(無題)');
+      if (hasContent && !confirm('この新規ToDoの作成を取り消しますか？（添付も削除されます）')) return;
+      await discardDraft();
+      return;
+    }
+    // 既存の編集は破棄して閲覧へ
     if (currentItem) { fillView(currentItem); setMode('view'); }
+    else closeModal();
   });
   document.getElementById('td-m-save').addEventListener('click', saveModal);
   document.getElementById('td-m-close').addEventListener('click', closeModal);
@@ -375,7 +436,9 @@
       ebox.appendChild(attachmentTile(a, true));
     });
     vbox.hidden = atts.length === 0;
-    if (atts.length === 0) ebox.appendChild(el('div', 'fs-files-empty', 'まだ添付はありません'));
+    if (atts.length === 0) {
+      ebox.appendChild(el('div', 'fs-files-empty', 'まだ添付はありません'));
+    }
   }
 
   // 並べ替え（▲▼）
@@ -459,7 +522,11 @@
 
   // アップロード
   async function uploadFiles(fileList) {
-    if (!currentItem || !fileList || !fileList.length) return;
+    if (!fileList || !fileList.length) return;
+    if (!currentItem) {
+      alert('添付は先に「保存」してから追加してください');
+      return;
+    }
     for (const f of fileList) {
       const fd = new FormData();
       fd.append('item_id', currentItem.id);

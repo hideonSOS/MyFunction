@@ -26,7 +26,7 @@
       <option value="2">★2</option>
       <option value="1">★1 低</option>
     </select>
-    <input type="text" id="td-new-title" maxlength="200" placeholder="やること（Enterで追加）">
+    <input type="text" id="td-new-title" maxlength="200" placeholder="やること（Enter か ＋追加 で詳細入力へ）">
     <button class="td-btn td-primary" id="td-add-btn" type="button">＋ 追加</button>
     <span id="td-status"></span>
     <span class="td-spacer"></span>
@@ -47,7 +47,7 @@
 <div id="td-modal" class="fs-modal" hidden>
   <div class="fs-modal-box" id="td-mbox">
     <div class="fs-modal-head">
-      <span>ToDo 詳細</span>
+      <span id="td-m-head">ToDo 詳細</span>
       <button class="fs-modal-close" id="td-m-close" type="button">×</button>
     </div>
 
