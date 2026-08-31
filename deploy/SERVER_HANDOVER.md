@@ -1,4 +1,53 @@
-# サーバー反映 申し送り（付箋の添付機能）
+# サーバー反映 申し送り
+
+---
+
+# ② LINE予約通知（linenotify）の反映 ※2026-08-31 追加
+
+新アプリ `linenotify` を追加。指定日時にLINEへメッセージを自動送信する
+（ブロードキャスト＝友だち全員 / 登録済みグループ・ユーザー宛を選択可）。
+
+## サーバーで必要な作業
+
+### 1. 取得・マイグレーション・静的ファイル
+```bash
+cd /srv/MyFunction
+git pull
+./venv/bin/python manage.py migrate
+./venv/bin/python manage.py collectstatic --noinput
+sudo systemctl restart gunicorn
+```
+
+### 2. LINE認証情報の配置【必須・Git管理外】
+`/srv/MyFunction/line_credentials.json` を作成（.gitignore 済み。SCP等で配置）:
+```json
+{
+  "channel_access_token": "＜LINE Developersで発行した長期チャネルアクセストークン＞",
+  "channel_secret": "＜チャネルシークレット（Webhook利用時のみ必須）＞"
+}
+```
+※ 未配置でも画面は動くが送信は失敗する（画面に警告が出る）。
+
+### 3. 予約送信の cron 登録【必須】
+毎分、送信時刻を過ぎた予約を送るコマンドを実行する:
+```bash
+* * * * * cd /srv/MyFunction && ./venv/bin/python manage.py send_line_due >> logs/line_notify.log 2>&1
+```
+
+### 4. Webhook（グループ自動登録。任意）
+- LINE Developers の Webhook URL: `https://＜サーバー＞/line/webhook/`
+- **正規のSSL証明書（信頼されたCA発行）が必須**。自己署名証明書では LINE が接続を拒否する。
+  その場合は使わなくてよい（画面からIDを手動登録する運用。webhook.site で groupId を採取）。
+- nginx は `location /` で Django に渡っていれば追加設定不要。
+
+### 5. 動作確認
+1. `/line/` を開き、警告バナーが消えていること（トークン設定OK）
+2. 「接続テスト送信」→ ボットを友だち追加したLINEに届くこと
+3. 1〜2分後の時刻で予約 → その時刻に自動送信されること（cron確認）
+
+---
+
+# ① 付箋の添付機能の反映（反映済みなら読み飛ばし可）
 
 このコミットで **付箋（fusen）にファイル添付（画像・PDF）機能** を追加しました。
 本番サーバー側で以下の反映作業をお願いします。**特に nginx の項目は必須**（未対応だと 1MB を超えるアップロードが 413 で弾かれます）。

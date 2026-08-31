@@ -26,6 +26,7 @@ INSTALLED_APPS = [
     'nitei',
     'mailfunction',
     'fusen',
+    'linenotify',
 ]
 
 MIDDLEWARE = [

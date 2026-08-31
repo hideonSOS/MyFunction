@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}LINE通知{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'linenotify/css/linenotify.css' %}">
+{% endblock %}
+
+{% block content %}
+<div id="linenotify" data-csrf="{{ csrf_token }}">
+
+  <div class="ln-header">
+    <div class="ln-title">LINE NOTIFY</div>
+    <div class="ln-sub">L I N E 予 約 通 知 // 指定日時にメッセージを自動送信</div>
+  </div>
+
+  {% if not configured %}
+  <div class="ln-warn">
+    ⚠ LINE のチャネルアクセストークンが未設定です。
+    サーバーの <code>line_credentials.json</code> に
+    <code>{"channel_access_token": "..."}</code> を配置してください（設定するまで送信できません）。
+  </div>
+  {% endif %}
+
+  <div class="ln-toolbar">
+    <span id="ln-status"></span>
+    <span class="ln-spacer"></span>
+    <button class="ln-btn" id="ln-test" type="button">接続テスト送信</button>
+  </div>
+
+  <!-- 登録フォーム -->
+  <div class="ln-form">
+    <div class="ln-form-title" id="ln-form-title">新しい通知を予約</div>
+    <div class="ln-form-row">
+      <label>日付 <input type="date" id="ln-date"></label>
+      <label>時刻 <input type="time" id="ln-time" step="60"></label>
+      <label>送信先 <select id="ln-target"></select></label>
+    </div>
+    <label class="ln-form-msg">メッセージ
+      <textarea id="ln-message" maxlength="1000" rows="4"
+                placeholder="送信する本文（例：明日はA3配置図を持参してください）"></textarea>
+    </label>
+    <div class="ln-form-actions">
+      <button class="ln-btn" id="ln-cancel" type="button" hidden>編集をやめる</button>
+      <button class="ln-btn ln-primary" id="ln-save" type="button">予約する</button>
+    </div>
+  </div>
+
+  <!-- 一覧 -->
+  <div class="ln-list-wrap">
+    <div class="ln-list-title">予約一覧</div>
+    <div id="ln-list" class="ln-list">読み込み中...</div>
+  </div>
+
+  <!-- 送信先の管理 -->
+  <div class="ln-targets-wrap">
+    <div class="ln-list-title">送信先（グループ等）</div>
+    <div class="ln-targets-hint">
+      グループへ送るには、LINE公式アカウント（ボット）を<b>そのグループに招待</b>してください。
+      Webhook（LINE Developers で <code>https://サーバー/line/webhook/</code> を設定）が有効なら、
+      招待した時点でここに自動登録されます。IDが分かっている場合は手動登録も可能です。
+    </div>
+    <div id="ln-targets" class="ln-targets"></div>
+    <div class="ln-target-add">
+      <input type="text" id="ln-t-name" maxlength="100" placeholder="表示名（例：運営グループ）">
+      <input type="text" id="ln-t-id" maxlength="64" placeholder="ID（C…=グループ / U…=ユーザー）">
+      <button class="ln-btn" id="ln-t-add" type="button">手動登録</button>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'linenotify/js/linenotify.js' %}"></script>
+{% endblock %}

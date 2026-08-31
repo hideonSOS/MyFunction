@@ -1,0 +1,289 @@
+/* LINE予約通知 ── base.css のサイバー調に準拠 */
+
+#linenotify [hidden] { display: none !important; }
+
+#linenotify {
+  padding: 20px 24px 60px;
+  max-width: 900px;
+}
+
+/* ── ヘッダー ─────────────────────────────── */
+.ln-header { margin-bottom: 18px; }
+
+.ln-title {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 4px;
+  color: #06c755;                 /* LINEグリーン */
+  text-shadow: 0 0 10px #06c75588;
+}
+
+.ln-sub {
+  margin-top: 4px;
+  font-size: 11px;
+  letter-spacing: 2px;
+  color: var(--text-dim);
+}
+
+/* ── 警告（トークン未設定） ─────────────────── */
+.ln-warn {
+  margin-bottom: 14px;
+  padding: 10px 14px;
+  border: 1px solid var(--orange);
+  border-radius: 6px;
+  background: #1a0f00;
+  color: var(--orange);
+  font-size: 12px;
+  line-height: 1.7;
+}
+.ln-warn code { color: #ffe066; }
+
+/* ── ツールバー ─────────────────────────────── */
+.ln-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.ln-spacer { flex: 1; }
+
+#ln-status { font-size: 12px; letter-spacing: 1px; }
+#ln-status.ok  { color: var(--green); }
+#ln-status.err { color: var(--pink); }
+
+/* ── ボタン ─────────────────────────────────── */
+.ln-btn {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 12px;
+  letter-spacing: 1px;
+  padding: 6px 14px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.ln-btn:hover { border-color: var(--cyan); color: var(--cyan); }
+.ln-btn.ln-primary { color: #06c755; border-color: #06c75555; }
+.ln-btn.ln-primary:hover { background: #06301a; border-color: #06c755; }
+.ln-btn.ln-danger:hover { color: var(--pink); border-color: var(--pink); }
+.ln-btn.ln-mini { padding: 3px 9px; font-size: 11px; }
+
+/* ── 登録フォーム ───────────────────────────── */
+.ln-form {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg2);
+  padding: 14px 16px;
+  margin-bottom: 20px;
+}
+
+.ln-form-title {
+  font-size: 12px;
+  letter-spacing: 2px;
+  color: #06c755;
+  margin-bottom: 10px;
+}
+
+.ln-form-row {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+
+.ln-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 11px;
+  letter-spacing: 1px;
+  color: var(--text-dim);
+}
+
+.ln-form select {
+  background: #071020;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 13px;
+  padding: 6px 8px;
+  min-width: 220px;
+}
+
+.ln-form input[type="date"],
+.ln-form input[type="time"] {
+  background: #071020;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  color: var(--text);
+  font-family: 'Courier New', monospace;
+  font-size: 14px;
+  padding: 6px 8px;
+}
+.ln-form input::-webkit-calendar-picker-indicator { filter: invert(1); cursor: pointer; }
+
+.ln-form-msg { width: 100%; }
+.ln-form textarea {
+  width: 100%;
+  box-sizing: border-box;
+  background: #071020;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 13px;
+  line-height: 1.6;
+  padding: 8px 10px;
+  resize: vertical;
+}
+.ln-form textarea:focus,
+.ln-form input:focus { outline: none; border-color: #06c755aa; }
+
+.ln-form-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  margin-top: 10px;
+}
+
+/* ── 一覧 ───────────────────────────────────── */
+.ln-list-title {
+  font-size: 12px;
+  letter-spacing: 2px;
+  color: var(--text-dim);
+  margin-bottom: 8px;
+}
+
+.ln-empty {
+  padding: 18px;
+  font-size: 12px;
+  color: var(--text-dim);
+  border: 1px dashed var(--border);
+  border-radius: 6px;
+  text-align: center;
+}
+
+.ln-item {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg2);
+  padding: 10px 14px;
+  margin-bottom: 8px;
+}
+.ln-item.sent { opacity: 0.55; }
+
+.ln-when { flex: 0 0 90px; text-align: center; }
+.ln-when-date { font-size: 12px; color: var(--text-dim); letter-spacing: 1px; }
+.ln-when-time {
+  font-family: 'Courier New', monospace;
+  font-size: 20px;
+  color: #06c755;
+}
+
+.ln-body { flex: 1; min-width: 0; }
+.ln-msg {
+  font-size: 13px;
+  color: var(--text);
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.ln-meta { margin-top: 4px; display: flex; gap: 8px; flex-wrap: wrap; }
+
+.ln-badge {
+  font-size: 10px;
+  letter-spacing: 1px;
+  padding: 1px 8px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+}
+.ln-badge.ok   { color: var(--green);  border-color: #00ff8844; }
+.ln-badge.wait { color: var(--cyan);   border-color: #00f5ff44; }
+.ln-badge.err  { color: var(--pink);   border-color: #ff006e55; }
+.ln-badge.to   { color: #06c755;       border-color: #06c75555; }
+
+.ln-acts {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* ── 送信先の管理 ───────────────────────────── */
+.ln-targets-wrap { margin-top: 26px; }
+
+.ln-targets-hint {
+  font-size: 11px;
+  line-height: 1.8;
+  color: var(--text-dim);
+  margin-bottom: 10px;
+}
+.ln-targets-hint code { color: #7fd0ff; }
+.ln-targets-hint b { color: #06c755; }
+
+.ln-target-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg2);
+  padding: 8px 12px;
+  margin-bottom: 6px;
+}
+
+.ln-target-kind {
+  flex: 0 0 auto;
+  font-size: 10px;
+  letter-spacing: 1px;
+  padding: 1px 8px;
+  border-radius: 8px;
+  border: 1px solid #06c75555;
+  color: #06c755;
+}
+.ln-target-name { font-size: 13px; color: var(--text); }
+.ln-target-id {
+  flex: 1;
+  min-width: 0;
+  font-family: 'Courier New', monospace;
+  font-size: 11px;
+  color: var(--text-dim);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ln-target-add {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+.ln-target-add input {
+  background: #071020;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  color: var(--text);
+  font-size: 12px;
+  padding: 6px 8px;
+}
+#ln-t-name { width: 200px; }
+#ln-t-id   { flex: 1; min-width: 220px; font-family: 'Courier New', monospace; }
+.ln-target-add input:focus { outline: none; border-color: #06c755aa; }
+
+/* ── モバイル ───────────────────────────────── */
+@media (max-width: 640px) {
+  #linenotify { padding: 14px 10px 50px; }
+  .ln-title { font-size: 17px; letter-spacing: 2px; }
+  .ln-item { flex-wrap: wrap; }
+  .ln-when { flex: 0 0 auto; display: flex; gap: 8px; align-items: baseline; }
+  .ln-acts { flex-direction: row; width: 100%; justify-content: flex-end; }
+}

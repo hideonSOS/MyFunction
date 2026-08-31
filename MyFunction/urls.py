@@ -25,6 +25,7 @@ urlpatterns = [
     path('nitei/', include('nitei.urls')),
     path('fusen/', include('fusen.urls')),
     path('mailfunction/', include('mailfunction.urls')),
+    path('line/', include('linenotify.urls')),
     path('', include('ringi.urls')),
 ]
 
