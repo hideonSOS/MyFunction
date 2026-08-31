@@ -41,6 +41,19 @@
       <textarea id="ln-message" maxlength="1000" rows="4"
                 placeholder="送信する本文（例：明日はA3配置図を持参してください）"></textarea>
     </label>
+    <div class="ln-image-field">
+      <label>画像（任意・JPEG/PNG・上限10MB）
+        <input type="file" id="ln-image" accept="image/jpeg,image/png">
+      </label>
+      <div id="ln-image-current" class="ln-image-current" hidden>
+        <img id="ln-image-thumb" src="" alt="添付画像">
+        <button class="ln-btn ln-mini ln-danger" id="ln-image-remove" type="button">画像を外す</button>
+      </div>
+      <div class="ln-image-hint">
+        ※ LINEの画像は受信者の端末がサーバーへ取得しに来る方式です。表示にはサーバーが
+        外部から正規のHTTPS証明書で見えること（<code>public_base_url</code> 設定）が必要です。
+      </div>
+    </div>
     <div class="ln-form-actions">
       <button class="ln-btn" id="ln-cancel" type="button" hidden>編集をやめる</button>
       <button class="ln-btn ln-primary" id="ln-save" type="button">予約する</button>

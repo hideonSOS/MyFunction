@@ -23,9 +23,14 @@ sudo systemctl restart gunicorn
 ```json
 {
   "channel_access_token": "＜LINE Developersで発行した長期チャネルアクセストークン＞",
-  "channel_secret": "＜チャネルシークレット（Webhook利用時のみ必須）＞"
+  "channel_secret": "＜チャネルシークレット（Webhook利用時のみ必須）＞",
+  "public_base_url": "https://＜外部から到達できるホスト＞"
 }
 ```
+※ `public_base_url` は通知への添付画像を送る場合のみ必須。LINEの画像は
+「受信者の端末がこのURL配下の /media/ へ取得しに来る」方式のため、
+**外部到達可能かつ正規のHTTPS証明書**が必要（自己署名では端末に表示されない）。
+未設定の場合、画像付き通知は送信保留となりエラー表示される（テキストのみの通知は影響なし）。
 ※ 未配置でも画面は動くが送信は失敗する（画面に警告が出る）。
 
 ### 3. 予約送信の cron 登録【必須】
