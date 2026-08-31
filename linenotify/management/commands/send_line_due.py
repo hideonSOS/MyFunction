@@ -28,13 +28,18 @@ class Command(BaseCommand):
             return
 
         for n in due:
+            # 二重送信防止: 送信前に原子的に「送信済み」へ更新してクレームする。
+            # cron の実行が重なっても、更新できた1プロセスだけが送信する
+            claimed = LineNotification.objects.filter(id=n.id, sent=False).update(
+                sent=True, sent_at=timezone.now(), error='')
+            if not claimed:
+                continue   # 別プロセスが処理済み
+
             ok, err = line_api.send_to(n.target, n.message)
             if ok:
-                n.sent = True
-                n.sent_at = timezone.now()
-                n.error = ''
                 self.stdout.write(f'[{now:%Y-%m-%d %H:%M}] sent id={n.id} {n.message[:30]}')
             else:
-                n.error = err
+                # 失敗したら未送信へ戻して次回リトライ（エラーを記録）
+                LineNotification.objects.filter(id=n.id).update(
+                    sent=False, sent_at=None, error=err)
                 self.stderr.write(f'[{now:%Y-%m-%d %H:%M}] FAILED id={n.id} {err}')
-            n.save()

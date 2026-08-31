@@ -131,14 +131,18 @@ def api_send_now(request):
     if not n:
         return JsonResponse({'error': 'not found'}, status=404)
 
+    # 二重送信防止: 先に原子的にクレームする（ボタン連打・cronとの同時実行対策）
+    claimed = LineNotification.objects.filter(id=n.id, sent=False).update(
+        sent=True, sent_at=timezone.now(), error='')
+    if not claimed:
+        n.refresh_from_db()
+        return JsonResponse(_notif_dict(n))   # すでに送信済み
+
     ok, err = line_api.send_to(n.target, n.message)
-    if ok:
-        n.sent = True
-        n.sent_at = timezone.now()
-        n.error = ''
-    else:
-        n.error = err
-    n.save()
+    if not ok:
+        LineNotification.objects.filter(id=n.id).update(
+            sent=False, sent_at=None, error=err)
+    n.refresh_from_db()
     return JsonResponse(_notif_dict(n))
 
 
