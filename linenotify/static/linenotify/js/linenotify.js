@@ -123,14 +123,7 @@
       });
       row.appendChild(bRen);
 
-      const bDel = el('button', 'ln-btn ln-mini ln-danger', '削除');
-      bDel.addEventListener('click', async () => {
-        if (!confirm(`送信先「${t.name}」を削除しますか？\nこの宛先の予約は送信できなくなります。`)) return;
-        await post('/line/api/target/delete/', { id: t.id });
-        await load();
-      });
-      row.appendChild(bDel);
-
+      // 送信先の削除は誤操作防止のため画面からは不可（必要時はDjango管理画面で）
       box.appendChild(row);
     });
   }

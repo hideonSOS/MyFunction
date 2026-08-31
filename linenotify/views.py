@@ -197,17 +197,8 @@ def api_target_save(request):
     return JsonResponse(_target_dict(t))
 
 
-@login_required
-@require_http_methods(['POST'])
-def api_target_delete(request):
-    try:
-        data = json.loads(request.body)
-        target_pk = int(data['id'])
-    except (KeyError, ValueError, json.JSONDecodeError):
-        return JsonResponse({'error': 'invalid'}, status=400)
-    # 紐づく予約は target=NULL（ブロードキャスト）に戻る（on_delete=SET_NULL）
-    LineTarget.objects.filter(id=target_pk).delete()
-    return JsonResponse({'ok': True})
+# 注: 送信先の削除APIは誤操作防止のため撤去した。
+# 誤登録の修正が必要な場合は Django 管理画面（/admin/）から行う。
 
 
 # ── LINE Webhook（グループ自動登録） ─────────────
