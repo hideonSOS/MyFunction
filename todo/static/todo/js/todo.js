@@ -592,9 +592,14 @@
   document.getElementById('td-m-close').addEventListener('click', closeModal);
   document.getElementById('td-m-close2').addEventListener('click', closeModal);
   document.getElementById('td-m-delete').addEventListener('click', deleteModal);
-  modal.addEventListener('click', ev => { if (ev.target === modal) closeModal(); });
+  // ⚠️ 背景（オーバーレイ）クリックでは閉じない。入力途中の誤クリックで
+  // 内容が消える事故を防ぐため、閉じる操作は ×・閉じる・キャンセル・保存に限定する。
+  // Esc も編集中は無効（閲覧モードのときだけ閉じる）
   document.addEventListener('keydown', ev => {
-    if (ev.key === 'Escape' && !modal.hidden && lightbox.hidden) closeModal();
+    if (ev.key === 'Escape' && !modal.hidden && lightbox.hidden
+        && mbox.classList.contains('mode-view')) {
+      closeModal();
+    }
   });
 
   // ── 添付ファイル（付箋と同方式） ─────────────
