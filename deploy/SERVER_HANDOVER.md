@@ -2,6 +2,40 @@
 
 ---
 
+# ③ 稟議・メールの自動更新 cron ※2026-09-01 追加
+
+sync ボタンを押さなくても1日1回自動更新する。ボタンの実体と同じスクリプトを
+cron で直接実行するだけで、**コード変更・migrate・collectstatic は不要**。
+
+## crontab に追加（時刻はユーザー指定の深夜3時台）
+
+```
+# 稟議（デスクネッツ取得・毎日 3:00）
+0 3 * * * cd /srv/MyFunction && flock -n /tmp/ringi_fetch.lock ./venv/bin/python docs_fetcher.py >> logs/cron_ringi.log 2>&1
+# メール（Gmail取得・毎日 3:10）
+10 3 * * * cd /srv/MyFunction && flock -n /tmp/mail_fetch.lock ./venv/bin/python mailfunction/mail_fetcher.py >> logs/cron_mail.log 2>&1
+```
+
+## 注意点
+
+1. **実行ユーザーは、画面の sync ボタン実行時と同じユーザー**（gunicorn の実行ユーザー）に
+   すること。キャッシュファイル（docs_cache.json / mail_cache.json）の所有権が食い違うと、
+   以後ボタンからの sync が書き込めなくなる。
+2. `flock -n` は手動 sync や cron 同士の同時実行を防ぐ保険。
+3. 有効化の前に **1回手動で同コマンドを実行**して確認すること:
+   - ringi 側: サーバー上で Chrome / chromedriver が動く（Selenium使用）
+   - mail 側: token.json の Gmail 認証が有効
+4. 既存の send_line_due（毎分）の cron はそのまま維持。
+5. サーバーのタイムゾーンが JST か確認（UTC なら `0 18` / `10 18` に読み替え）。
+6. 2本を10分ずらしているのは、Selenium と Gmail 取得の負荷を重ねないため。
+
+## 動作確認
+
+翌日、画面の最終更新が3時台になっているか、または
+`logs/cron_ringi.log` / `logs/cron_mail.log` で確認。
+
+---
+
 # ② LINE予約通知（linenotify）の反映 ※2026-08-31 追加
 
 新アプリ `linenotify` を追加。指定日時にLINEへメッセージを自動送信する
