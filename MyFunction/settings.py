@@ -1,10 +1,30 @@
+import json
 from pathlib import Path
+
+from django.core.exceptions import ImproperlyConfigured
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = 'django-insecure-q)gcu0^yk^+avu_8sj2)cl9dl=uxxd^)%h^rm7&dg9!0*9_!2('
 
-DEBUG = True
+def _load_secrets():
+    """Git管理外の django_secrets.json を読む（line_credentials.json と同じ方式）。
+    形式: {"secret_key": "＜ランダムな値＞", "debug": false}"""
+    path = BASE_DIR / 'django_secrets.json'
+    try:
+        with open(path, encoding='utf-8') as f:
+            return json.load(f)
+    except (OSError, ValueError) as e:
+        raise ImproperlyConfigured(
+            f'{path} が読めません。django_secrets.json を作成してください。') from e
+
+
+_secrets = _load_secrets()
+
+SECRET_KEY = _secrets.get('secret_key') or ''
+if not SECRET_KEY:
+    raise ImproperlyConfigured('django_secrets.json に secret_key がありません。')
+
+DEBUG = bool(_secrets.get('debug', False))
 
 ALLOWED_HOSTS = ['*']
 

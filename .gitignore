@@ -16,6 +16,7 @@ mailfunction/token.json
 credentials.json
 mailfunction/static/mailfunction/js/credentials.json
 line_credentials.json
+django_secrets.json
 
 # キャッシュ・一時ファイル
 docs_cache.json
