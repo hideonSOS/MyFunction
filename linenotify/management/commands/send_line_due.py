@@ -28,19 +28,6 @@ class Command(BaseCommand):
             return
 
         for n in due:
-            # 添付画像がある場合は公開URLを組み立てる（設定不足はエラー記録して保留）
-            image_url = None
-            if n.image:
-                base = line_api.get_public_base()
-                if not base:
-                    err = '画像送信には line_credentials.json の public_base_url 設定が必要です'
-                    if n.error != err:
-                        n.error = err
-                        n.save(update_fields=['error'])
-                    self.stderr.write(f'[{now:%Y-%m-%d %H:%M}] HOLD id={n.id} {err}')
-                    continue
-                image_url = base + n.image.url
-
             # 二重送信防止: 送信前に原子的に「送信済み」へ更新してクレームする。
             # cron の実行が重なっても、更新できた1プロセスだけが送信する
             claimed = LineNotification.objects.filter(id=n.id, sent=False).update(
@@ -48,7 +35,7 @@ class Command(BaseCommand):
             if not claimed:
                 continue   # 別プロセスが処理済み
 
-            ok, err = line_api.send_to(n.target, n.message, image_url)
+            ok, err = line_api.send_to(n.target, n.message)
             if ok:
                 self.stdout.write(f'[{now:%Y-%m-%d %H:%M}] sent id={n.id} {n.message[:30]}')
             else:

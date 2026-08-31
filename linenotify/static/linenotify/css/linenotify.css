@@ -150,44 +150,6 @@
   margin-top: 10px;
 }
 
-/* ── 添付画像 ───────────────────────────────── */
-.ln-image-field { margin-top: 10px; }
-.ln-image-field input[type="file"] {
-  display: block;
-  margin-top: 4px;
-  font-size: 12px;
-  color: var(--text-dim);
-}
-.ln-image-current {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  margin-top: 8px;
-}
-.ln-image-current img {
-  max-width: 220px;
-  max-height: 140px;
-  border: 1px solid var(--border);
-  border-radius: 4px;
-}
-.ln-image-hint {
-  margin-top: 6px;
-  font-size: 10px;
-  line-height: 1.7;
-  color: var(--text-dim);
-}
-.ln-image-hint code { color: #7fd0ff; }
-
-/* 一覧のサムネイル */
-.ln-thumb {
-  display: block;
-  margin-top: 6px;
-  max-width: 180px;
-  max-height: 120px;
-  border: 1px solid var(--border);
-  border-radius: 4px;
-}
-
 /* ── 一覧 ───────────────────────────────────── */
 .ln-list-title {
   font-size: 12px;

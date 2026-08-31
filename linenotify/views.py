@@ -31,21 +31,10 @@ def _notif_dict(n):
         'message':     n.message,
         'target':      n.target.id if n.target else None,
         'target_name': n.target.name if n.target else 'ブロードキャスト',
-        'image':       n.image.url if n.image else None,   # 画面プレビュー用（相対URL）
         'sent':        n.sent,
         'sent_at':     timezone.localtime(n.sent_at).strftime('%Y-%m-%d %H:%M') if n.sent_at else None,
         'error':       n.error,
     }
-
-
-def _image_abs_url(n):
-    """LINEへ渡す画像の絶対URL。public_base_url 未設定なら (None, エラー文)"""
-    if not n.image:
-        return None, None
-    base = line_api.get_public_base()
-    if not base:
-        return None, '画像送信には line_credentials.json の public_base_url 設定が必要です'
-    return base + n.image.url, None
 
 
 @login_required
@@ -142,12 +131,6 @@ def api_send_now(request):
     if not n:
         return JsonResponse({'error': 'not found'}, status=404)
 
-    image_url, img_err = _image_abs_url(n)
-    if img_err:
-        n.error = img_err
-        n.save(update_fields=['error'])
-        return JsonResponse(_notif_dict(n))
-
     # 二重送信防止: 先に原子的にクレームする（ボタン連打・cronとの同時実行対策）
     claimed = LineNotification.objects.filter(id=n.id, sent=False).update(
         sent=True, sent_at=timezone.now(), error='')
@@ -155,7 +138,7 @@ def api_send_now(request):
         n.refresh_from_db()
         return JsonResponse(_notif_dict(n))   # すでに送信済み
 
-    ok, err = line_api.send_to(n.target, n.message, image_url)
+    ok, err = line_api.send_to(n.target, n.message)
     if not ok:
         LineNotification.objects.filter(id=n.id).update(
             sent=False, sent_at=None, error=err)
@@ -177,56 +160,6 @@ def api_test(request):
     name = target.name if target else 'ブロードキャスト'
     ok, err = line_api.send_to(target, f'MyFunction LINE通知のテスト送信です。（宛先: {name}）')
     return JsonResponse({'ok': ok, 'error': err})
-
-
-# ── 通知の添付画像 ────────────────────────────
-
-MAX_IMAGE_SIZE = 10 * 1024 * 1024   # LINEの画像メッセージ上限（10MB）
-
-@login_required
-@require_http_methods(['POST'])
-def api_image_upload(request):
-    """通知に画像を添付する（multipart: id, file）。JPEG/PNGのみ・上限10MB。
-    既存の画像があれば置き換える"""
-    n = LineNotification.objects.filter(id=request.POST.get('id')).first()
-    if not n:
-        return JsonResponse({'error': 'not found'}, status=404)
-    if n.sent:
-        return JsonResponse({'error': '送信済みの通知には添付できません'}, status=400)
-
-    f = request.FILES.get('file')
-    if not f:
-        return JsonResponse({'error': 'no file'}, status=400)
-
-    ct = (f.content_type or '').lower()
-    if ct not in ('image/jpeg', 'image/png'):
-        return JsonResponse({'error': 'LINEに送れる画像は JPEG / PNG のみです'}, status=400)
-    if f.size > MAX_IMAGE_SIZE:
-        return JsonResponse({'error': '画像が大きすぎます（LINEの上限10MB）'}, status=400)
-
-    if n.image:
-        n.image.delete(save=False)   # 置き換え時は旧ファイルを消す
-    n.image = f
-    n.save()
-    return JsonResponse(_notif_dict(n))
-
-
-@login_required
-@require_http_methods(['POST'])
-def api_image_delete(request):
-    try:
-        data = json.loads(request.body)
-        notif_id = int(data['id'])
-    except (KeyError, ValueError, json.JSONDecodeError):
-        return JsonResponse({'error': 'invalid'}, status=400)
-    n = LineNotification.objects.filter(id=notif_id).first()
-    if not n:
-        return JsonResponse({'error': 'not found'}, status=404)
-    if n.image:
-        n.image.delete(save=False)
-        n.image = None
-        n.save()
-    return JsonResponse(_notif_dict(n))
 
 
 # ── 送信先の管理 ──────────────────────────────

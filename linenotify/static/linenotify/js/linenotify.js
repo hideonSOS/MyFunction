@@ -69,15 +69,6 @@
 
       const body = el('div', 'ln-body');
       body.appendChild(el('div', 'ln-msg', n.message));
-      if (n.image) {
-        const a = document.createElement('a');
-        a.href = n.image; a.target = '_blank'; a.rel = 'noopener';
-        const img = document.createElement('img');
-        img.className = 'ln-thumb';
-        img.src = n.image; img.alt = '添付画像'; img.loading = 'lazy';
-        a.appendChild(img);
-        body.appendChild(a);
-      }
       const meta = el('div', 'ln-meta');
       meta.appendChild(el('span', 'ln-badge to', '→ ' + n.target_name));
       if (n.sent)       meta.appendChild(el('span', 'ln-badge ok', '送信済 ' + (n.sent_at || '')));
@@ -168,20 +159,12 @@
   }
 
   // ── フォーム ─────────────────────────────
-  function showCurrentImage(url) {
-    const box = document.getElementById('ln-image-current');
-    box.hidden = !url;
-    document.getElementById('ln-image-thumb').src = url || '';
-  }
-
   function resetForm() {
     editingId = null;
     document.getElementById('ln-form-title').textContent = '新しい通知を予約';
     document.getElementById('ln-save').textContent = '予約する';
     document.getElementById('ln-cancel').hidden = true;
     document.getElementById('ln-message').value = '';
-    document.getElementById('ln-image').value = '';
-    showCurrentImage(null);
     renderTargetSelect(null);
     initDefaultDatetime();
   }
@@ -194,30 +177,8 @@
     document.getElementById('ln-date').value = n.date;
     document.getElementById('ln-time').value = n.time;
     document.getElementById('ln-message').value = n.message;
-    document.getElementById('ln-image').value = '';
-    showCurrentImage(n.image);
     renderTargetSelect(n.target);
     document.getElementById('ln-message').focus();
-  }
-
-  // 選択されたファイルを通知に添付する（保存後に呼ぶ）
-  async function uploadImageIfAny(notifId) {
-    const input = document.getElementById('ln-image');
-    const f = input.files && input.files[0];
-    if (!f) return true;
-    const fd = new FormData();
-    fd.append('id', notifId);
-    fd.append('file', f);
-    const res = await fetch('/line/api/image/upload/', {
-      method: 'POST', headers: { 'X-CSRFToken': CSRF }, body: fd,
-    });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) {
-      setStatus('画像: ' + (data.error || 'アップロード失敗'), 'err');
-      return false;
-    }
-    input.value = '';
-    return true;
   }
 
   function initDefaultDatetime() {
@@ -246,27 +207,14 @@
       return;
     }
     try {
-      const saved = await post('/line/api/save/', payload);
-      const imgOk = await uploadImageIfAny(saved.id);
-      if (imgOk) setStatus(editingId ? '更新しました' : '予約しました', 'ok');
+      await post('/line/api/save/', payload);
+      setStatus(editingId ? '更新しました' : '予約しました', 'ok');
       resetForm();
       await load();
     } catch (e) {
       setStatus(e.message, 'err');
     }
   }
-
-  // 編集中の通知から画像を外す
-  document.getElementById('ln-image-remove').addEventListener('click', async () => {
-    if (!editingId) { showCurrentImage(null); return; }
-    if (!confirm('添付画像を削除しますか？')) return;
-    try {
-      await post('/line/api/image/delete/', { id: editingId });
-      showCurrentImage(null);
-      setStatus('画像を削除しました', 'ok');
-      await load();
-    } catch (e) { setStatus(e.message, 'err'); }
-  });
 
   async function sendNow(n) {
     if (!confirm(`この通知を今すぐ「${n.target_name}」へ送信しますか？\n\n` + n.message.slice(0, 60))) return;

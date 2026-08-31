@@ -1,6 +1,4 @@
 from django.db import models
-from django.db.models.signals import post_delete
-from django.dispatch import receiver
 
 
 class LineTarget(models.Model):
@@ -23,12 +21,8 @@ class LineTarget(models.Model):
         return f'{self.name} ({self.get_kind_display()})'
 
 
-def notification_image_path(instance, filename):
-    return f'line/notification/{instance.id}/{filename}'
-
-
 class LineNotification(models.Model):
-    """LINE予約通知。指定の日時になったらメッセージをLINEへ送る。
+    """LINE予約通知。指定の日時になったらメッセージをLINEへ送る（テキスト専用）。
     target 未設定ならブロードキャスト（友だち全員）、設定済みならその宛先へ"""
     date    = models.DateField()                       # 送信日
     time    = models.TimeField()                       # 送信時刻
@@ -36,8 +30,6 @@ class LineNotification(models.Model):
     target  = models.ForeignKey(LineTarget, null=True, blank=True,
                                 on_delete=models.SET_NULL,
                                 related_name='notifications')
-    # 添付画像（任意）。LINEには公開HTTPSのURLとして渡す（JPEG/PNGのみ）
-    image   = models.FileField(upload_to=notification_image_path, null=True, blank=True)
 
     sent    = models.BooleanField(default=False)       # 送信済みフラグ
     sent_at = models.DateTimeField(null=True, blank=True)
@@ -52,10 +44,3 @@ class LineNotification(models.Model):
     def __str__(self):
         state = '済' if self.sent else '予約'
         return f'[{state}] {self.date} {self.time} {self.message[:20]}'
-
-
-@receiver(post_delete, sender=LineNotification)
-def _delete_notification_image(sender, instance, **kwargs):
-    """通知の削除時に添付画像の実ファイルも消す"""
-    if instance.image:
-        instance.image.delete(save=False)

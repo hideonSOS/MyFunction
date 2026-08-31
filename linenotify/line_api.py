@@ -39,13 +39,6 @@ def get_secret():
     return (_load_creds().get('channel_secret') or '').strip()
 
 
-def get_public_base():
-    """画像URLの組み立てに使う公開ベースURL（例: https://example.com）。
-    LINEの画像は「受信者の端末がこのURLへ取りに来る」方式のため、
-    外部到達可能かつ正規のHTTPS証明書であることが必要"""
-    return (_load_creds().get('public_base_url') or '').strip().rstrip('/')
-
-
 def is_configured():
     return bool(get_token())
 
@@ -84,28 +77,18 @@ def send_broadcast(text):
                           {'messages': [{'type': 'text', 'text': text[:5000]}]})
 
 
-def _build_messages(text, image_url=None):
-    messages = [{'type': 'text', 'text': text[:5000]}]
-    if image_url:
-        messages.append({
-            'type': 'image',
-            'originalContentUrl': image_url,
-            'previewImageUrl': image_url,
-        })
-    return messages
-
-
-def send_push(to_id, text, image_url=None):
-    """指定の宛先（groupId / roomId / userId）へ送る。image_url があれば画像も"""
+def send_push(to_id, text):
+    """指定の宛先（groupId / roomId / userId）へ送る"""
     return _post_messages(API_BASE + '/message/push',
-                          {'to': to_id, 'messages': _build_messages(text, image_url)})
+                          {'to': to_id,
+                           'messages': [{'type': 'text', 'text': text[:5000]}]})
 
 
-def send_to(target, text, image_url=None):
+def send_to(target, text):
     """LineTarget へ送る。運用方針により宛先未指定（ブロードキャスト）は無効。"""
     if target is None:
         return False, 'ブロードキャストは現在無効です（送信先を指定してください）'
-    return send_push(target.target_id, text, image_url)
+    return send_push(target.target_id, text)
 
 
 def get_group_name(group_id):
