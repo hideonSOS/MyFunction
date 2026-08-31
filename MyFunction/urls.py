@@ -26,6 +26,7 @@ urlpatterns = [
     path('fusen/', include('fusen.urls')),
     path('mailfunction/', include('mailfunction.urls')),
     path('line/', include('linenotify.urls')),
+    path('todo/', include('todo.urls')),
     path('', include('ringi.urls')),
 ]
 

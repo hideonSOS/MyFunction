@@ -1,0 +1,159 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}進捗ToDo{% endblock %}
+
+{% block extra_head %}
+{# モーダル・リッチエディタ・添付・ライトボックスの見た目は付箋(fusen)と共通化 #}
+<link rel="stylesheet" href="{% static 'fusen/css/fusen.css' %}">
+<link rel="stylesheet" href="{% static 'todo/css/todo.css' %}">
+{% endblock %}
+
+{% block content %}
+<div id="todo" data-csrf="{{ csrf_token }}">
+
+  <div class="td-header">
+    <div class="td-title">PROGRESS TODO</div>
+    <div class="td-sub">進 捗 確 認 T o D o // 重要度順に、いま何％かを一目で</div>
+  </div>
+
+  <!-- 追加フォーム -->
+  <div class="td-add">
+    <select id="td-new-imp" title="重要度">
+      <option value="5">★5 最重要</option>
+      <option value="4">★4</option>
+      <option value="3" selected>★3</option>
+      <option value="2">★2</option>
+      <option value="1">★1 低</option>
+    </select>
+    <input type="text" id="td-new-title" maxlength="200" placeholder="やること（Enterで追加）">
+    <button class="td-btn td-primary" id="td-add-btn" type="button">＋ 追加</button>
+    <span id="td-status"></span>
+    <span class="td-spacer"></span>
+    <label class="td-toggle"><input type="checkbox" id="td-show-done"><span>完了も表示</span></label>
+  </div>
+
+  <!-- 一覧（重要度の降順） -->
+  <div id="td-list" class="td-list">読み込み中...</div>
+
+  <div class="td-note">
+    行をクリックすると詳細（メモ・添付）が開きます。重要度（★）・進捗（％）・完了は行内でも変更でき、すぐ自動保存されます。
+    並び順は 未完了 → 重要度が高い順。
+  </div>
+
+</div>
+
+<!-- ── 詳細モーダル（閲覧 / 編集。付箋と同じ操作感） ── -->
+<div id="td-modal" class="fs-modal" hidden>
+  <div class="fs-modal-box" id="td-mbox">
+    <div class="fs-modal-head">
+      <span>ToDo 詳細</span>
+      <button class="fs-modal-close" id="td-m-close" type="button">×</button>
+    </div>
+
+    <!-- 閲覧モード -->
+    <div class="fs-modal-body td-m-view">
+      <div class="td-m-vtitle" id="td-m-vtitle"></div>
+      <div class="td-m-vbadges" id="td-m-vbadges"></div>
+      <div class="td-m-vbody fs-rich" id="td-m-vbody"></div>
+      <div class="fs-files" id="td-m-vfiles"></div>
+    </div>
+
+    <!-- 編集モード -->
+    <div class="fs-modal-body td-m-edit">
+      <label class="fs-field">
+        <span>タイトル</span>
+        <input type="text" id="td-m-title" maxlength="200">
+      </label>
+      <div class="fs-field fs-field-grow">
+        <span>詳細（箇条書き・チェックリスト可）</span>
+        <div class="fs-rte-toolbar" id="td-rte-toolbar">
+          <button type="button" class="fs-rte-btn" data-cmd="bold" title="太字"><b>B</b></button>
+          <button type="button" class="fs-rte-btn" data-cmd="italic" title="斜体"><i>I</i></button>
+          <button type="button" class="fs-rte-btn" data-cmd="underline" title="下線"><u>U</u></button>
+          <button type="button" class="fs-rte-btn" data-cmd="strikeThrough" title="打ち消し"><s>S</s></button>
+          <span class="fs-rte-sep"></span>
+          <button type="button" class="fs-rte-btn" data-block="h2" title="見出し">見出し</button>
+          <button type="button" class="fs-rte-btn" data-block="blockquote" title="引用">❝</button>
+          <span class="fs-rte-sep"></span>
+          <button type="button" class="fs-rte-btn" data-cmd="insertUnorderedList" title="箇条書き">•</button>
+          <button type="button" class="fs-rte-btn" data-cmd="insertOrderedList" title="番号付き">1.</button>
+          <button type="button" class="fs-rte-btn" data-checklist="1" title="チェックリスト">☑</button>
+          <span class="fs-rte-sep"></span>
+          <div class="fs-rte-pop-wrap">
+            <button type="button" class="fs-rte-btn fs-rte-color-btn" data-pop="fore" title="文字色">A<span class="fs-rte-color-bar"></span></button>
+            <div class="fs-rte-pop"></div>
+          </div>
+          <div class="fs-rte-pop-wrap">
+            <button type="button" class="fs-rte-btn fs-rte-hl-btn" data-pop="hl" title="ハイライト">🖊</button>
+            <div class="fs-rte-pop"></div>
+          </div>
+          <span class="fs-rte-sep"></span>
+          <button type="button" class="fs-rte-btn" data-cmd="removeFormat" data-clearblock="1" title="書式クリア">⌫</button>
+        </div>
+        <div id="td-m-body" class="fs-rte fs-rich" contenteditable="true" data-placeholder="詳細メモ。画像はここに貼り付け（Ctrl+V）で添付されます"></div>
+      </div>
+      <div class="fs-field">
+        <span>添付ファイル（画像・PDF）</span>
+        <div class="fs-files fs-files-edit" id="td-m-efiles"></div>
+        <div class="fs-upload-row">
+          <button type="button" class="fs-btn" id="td-m-upload-btn">＋ ファイルを追加</button>
+          <span class="fs-upload-hint">画像は本文に貼り付け（Ctrl+V）も可 ／ 画像をドラッグで並べ替え ／ 上限50MB</span>
+        </div>
+        <input type="file" id="td-m-file-input" accept="image/*,application/pdf" multiple hidden>
+      </div>
+      <div class="fs-field-row">
+        <label class="fs-field">
+          <span>重要度</span>
+          <select id="td-m-imp">
+            <option value="5">★5 最重要</option>
+            <option value="4">★4</option>
+            <option value="3">★3</option>
+            <option value="2">★2</option>
+            <option value="1">★1 低</option>
+          </select>
+        </label>
+        <label class="fs-field">
+          <span>進捗（%）</span>
+          <select id="td-m-prog">
+            <option value="0">0%</option><option value="10">10%</option>
+            <option value="20">20%</option><option value="30">30%</option>
+            <option value="40">40%</option><option value="50">50%</option>
+            <option value="60">60%</option><option value="70">70%</option>
+            <option value="80">80%</option><option value="90">90%</option>
+            <option value="100">100%</option>
+          </select>
+        </label>
+        <label class="fs-field">
+          <span>状態</span>
+          <select id="td-m-done">
+            <option value="0">進行中</option>
+            <option value="1">完了</option>
+          </select>
+        </label>
+      </div>
+    </div>
+
+    <div class="fs-modal-foot">
+      <button class="fs-btn fs-danger" id="td-m-delete" type="button">削除</button>
+      <span class="fs-spacer"></span>
+      <!-- 閲覧モードのボタン -->
+      <button class="fs-btn" id="td-m-close2" type="button">閉じる</button>
+      <button class="fs-btn fs-primary" id="td-m-edit" type="button">編集</button>
+      <!-- 編集モードのボタン -->
+      <button class="fs-btn" id="td-m-cancel" type="button">キャンセル</button>
+      <button class="fs-btn fs-primary" id="td-m-save" type="button">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── 画像ライトボックス ───────────────────── -->
+<div id="td-lightbox" class="fs-lightbox" hidden>
+  <button class="fs-lb-close" id="td-lb-close" type="button">×</button>
+  <img id="td-lb-img" src="" alt="">
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'todo/js/todo.js' %}"></script>
+{% endblock %}

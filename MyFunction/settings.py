@@ -47,6 +47,7 @@ INSTALLED_APPS = [
     'mailfunction',
     'fusen',
     'linenotify',
+    'todo',
 ]
 
 MIDDLEWARE = [
