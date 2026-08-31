@@ -80,13 +80,13 @@
   function row(t) {
     const r = el('div', 'td-item' + (t.done ? ' done' : '') + ' imp-' + t.importance);
 
-    // ドラッグハンドル（見出しをつかんで直感的に並び替え）
+    // ドラッグハンドル（マウスでもタッチでも、押したまま動かして並び替え）
+    r.dataset.todoId = String(t.id);
     const grip = el('span', 'td-grip', '⠿');
     grip.title = 'ドラッグで並び替え';
     grip.addEventListener('click', ev => ev.stopPropagation());
-    grip.addEventListener('mousedown', () => { r.draggable = true; });
+    grip.addEventListener('pointerdown', ev => startRowDrag(ev, r, t));
     r.appendChild(grip);
-    makeRowDraggable(r, t);
 
     // 完了/戻す ボタン（チェックボックスより目立つ青ボタン）
     const doneBtn = el('button', 'td-done-btn' + (t.done ? ' is-done' : ''),
@@ -149,9 +149,23 @@
     prog.appendChild(pct);
     r.appendChild(prog);
 
-    // 更新日時
+    // 更新日時 ＋ タップで動かせる▲▼（スマホ・ドラッグを使わない操作向け）
     const meta = el('div', 'td-meta');
     meta.appendChild(el('span', 'td-updated', t.updated));
+    const mv = el('div', 'td-move');
+    const mkMove = (label, dir, tip) => {
+      const b = el('button', 'td-move-btn', label);
+      b.type = 'button';
+      b.title = tip;
+      b.addEventListener('click', ev => {
+        ev.stopPropagation();
+        moveByOffset(t.id, dir);
+      });
+      return b;
+    };
+    mv.appendChild(mkMove('▲', -1, '1つ上へ'));
+    mv.appendChild(mkMove('▼', 1, '1つ下へ'));
+    meta.appendChild(mv);
     r.appendChild(meta);
 
     r.style.setProperty('--p', t.progress);
@@ -222,8 +236,7 @@
     visible.forEach(t => box.appendChild(row(t)));
   }
 
-  // ── 行のドラッグ&ドロップ並び替え ─────────────
-  let rowDragId = null;
+  // ── 行の並び替え ─────────────────────────
   let justDragged = false;
 
   function clearRowDropMarks() {
@@ -231,54 +244,77 @@
       .forEach(e => e.classList.remove('td-drop-before', 'td-drop-after'));
   }
 
-  function makeRowDraggable(r, t) {
-    // draggable はハンドル mousedown 時のみ true（行クリック=モーダルと共存させるため）
-    r.addEventListener('dragstart', ev => {
-      rowDragId = t.id;
-      ev.dataTransfer.effectAllowed = 'move';
-      ev.dataTransfer.setData('text/plain', String(t.id));
-      r.classList.add('td-dragging');
-    });
-    r.addEventListener('dragend', () => {
-      rowDragId = null;
-      r.draggable = false;
+  // 表示中の並びを基準に dragId を targetId の前/後へ動かして手動順として保存
+  function moveTo(dragId, targetId, after) {
+    const view = currentVisible();
+    const from = view.findIndex(x => x.id === dragId);
+    if (from < 0) return;
+    const [moved] = view.splice(from, 1);
+    let to = view.findIndex(x => x.id === targetId);
+    if (to < 0) to = view.length;
+    view.splice(after ? to + 1 : to, 0, moved);
+    persistOrder(view);
+  }
+
+  // ▲▼ボタン: 1つ上/下と入れ替え（タップだけで動かせるスマホ向けの手段）
+  function moveByOffset(id, dir) {
+    const view = currentVisible();
+    const i = view.findIndex(x => x.id === id);
+    const j = i + dir;
+    if (i < 0 || j < 0 || j >= view.length) return;
+    [view[i], view[j]] = [view[j], view[i]];
+    persistOrder(view);
+  }
+
+  // ポインタ式ドラッグ（HTML5 DnDはタッチで動かないため Pointer Events で実装。
+  // マウス・タッチ・ペンすべて同じコードで動く）
+  function startRowDrag(ev, r, t) {
+    ev.preventDefault();
+    ev.stopPropagation();
+    const grip = ev.currentTarget;
+    try { grip.setPointerCapture(ev.pointerId); } catch (e) {}
+    r.classList.add('td-dragging');
+    let targetId = null;
+    let after = false;
+
+    const onMove = e => {
+      e.preventDefault();
+      // 指/カーソルの下にある別の行を探す
+      const els = document.elementsFromPoint(e.clientX, e.clientY);
+      const row = els.map(x => x.closest ? x.closest('.td-item') : null)
+                     .find(x => x && x !== r);
+      clearRowDropMarks();
+      targetId = null;
+      if (row) {
+        const rect = row.getBoundingClientRect();
+        after = e.clientY > rect.top + rect.height / 2;
+        row.classList.toggle('td-drop-after', after);
+        row.classList.toggle('td-drop-before', !after);
+        targetId = parseInt(row.dataset.todoId, 10);
+      }
+      // 画面の端に近づいたら自動スクロール（長いリストでも上下へ運べる）
+      const margin = 70;
+      if (e.clientY < margin) window.scrollBy(0, -14);
+      else if (e.clientY > window.innerHeight - margin) window.scrollBy(0, 14);
+    };
+    const finish = () => {
+      grip.removeEventListener('pointermove', onMove);
+      grip.removeEventListener('pointerup', onUp);
+      grip.removeEventListener('pointercancel', onCancel);
       r.classList.remove('td-dragging');
       clearRowDropMarks();
       justDragged = true;
       setTimeout(() => { justDragged = false; }, 100);
-    });
-    r.addEventListener('dragover', ev => {
-      if (rowDragId == null || rowDragId === t.id) return;
-      ev.preventDefault();
-      ev.dataTransfer.dropEffect = 'move';
-      const rect = r.getBoundingClientRect();
-      const after = ev.clientY > rect.top + rect.height / 2;
-      clearRowDropMarks();
-      r.classList.toggle('td-drop-after', after);
-      r.classList.toggle('td-drop-before', !after);
-    });
-    r.addEventListener('dragleave', ev => {
-      if (!r.contains(ev.relatedTarget)) {
-        r.classList.remove('td-drop-before', 'td-drop-after');
-      }
-    });
-    r.addEventListener('drop', ev => {
-      if (rowDragId == null || rowDragId === t.id) return;
-      ev.preventDefault();
-      const rect = r.getBoundingClientRect();
-      const after = ev.clientY > rect.top + rect.height / 2;
-      clearRowDropMarks();
-      // 現在の表示並び（ソート表示中ならその見た目）を基準に入れ替え、手動順として保存
-      const view = currentVisible();
-      const from = view.findIndex(x => x.id === rowDragId);
-      if (from < 0) return;
-      const [moved] = view.splice(from, 1);
-      let to = view.findIndex(x => x.id === t.id);
-      if (to < 0) to = view.length;
-      view.splice(after ? to + 1 : to, 0, moved);
-      persistOrder(view);
-      rowDragId = null;
-    });
+    };
+    const onUp = () => {
+      const dropId = targetId, dropAfter = after;
+      finish();
+      if (dropId != null && dropId !== t.id) moveTo(t.id, dropId, dropAfter);
+    };
+    const onCancel = () => finish();
+    grip.addEventListener('pointermove', onMove);
+    grip.addEventListener('pointerup', onUp);
+    grip.addEventListener('pointercancel', onCancel);
   }
 
   async function load() {

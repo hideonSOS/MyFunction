@@ -116,12 +116,17 @@
   pointer-events: none;
 }
 
-/* 重要度で左帯の色を変える */
+/* 重要度で枠の色を変える（左帯=原色、全周=同色を薄めたもの） */
 .td-item.imp-5 { --imp-c: #ff5555; }
 .td-item.imp-4 { --imp-c: #ff9900; }
 .td-item.imp-3 { --imp-c: #ffe066; }
 .td-item.imp-2 { --imp-c: #7fd0ff; }
 .td-item.imp-1 { --imp-c: #8fa3b8; }
+.td-item {
+  border-color: var(--imp-c, var(--border));
+  border-color: color-mix(in srgb, var(--imp-c, #29405c) 45%, transparent);
+  border-left-color: var(--imp-c, var(--border));
+}
 
 .td-item.done { opacity: 0.45; }
 .td-item.done .td-title-input { text-decoration: line-through; }
@@ -154,17 +159,34 @@
 }
 .td-done-btn.is-done:hover { color: var(--cyan); border-color: var(--cyan); }
 
-/* ドラッグハンドル */
+/* ドラッグハンドル（Pointer Events式。touch-action:none でスマホでも
+   スクロールに取られずにドラッグできる。指で押しやすいよう当たり判定を広めに） */
 .td-grip {
   flex: 0 0 auto;
-  margin-top: 5px;
+  margin-top: 1px;
   color: var(--text-dim);
-  font-size: 14px;
+  font-size: 15px;
   cursor: grab;
   user-select: none;
-  padding: 0 2px;
+  -webkit-user-select: none;
+  touch-action: none;
+  padding: 4px 6px;
 }
 .td-grip:hover { color: var(--cyan); }
+
+/* ▲▼ 移動ボタン（タップだけで1つずつ動かせる） */
+.td-move { display: flex; gap: 4px; }
+.td-move-btn {
+  font-size: 10px;
+  padding: 3px 8px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-dim);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.td-move-btn:hover { color: var(--cyan); border-color: var(--cyan); }
 .td-item.td-dragging { opacity: 0.4; }
 .td-item.td-drop-before { box-shadow: 0 -3px 0 0 var(--cyan, #00f5ff); }
 .td-item.td-drop-after  { box-shadow: 0  3px 0 0 var(--cyan, #00f5ff); }
@@ -214,7 +236,8 @@
 }
 
 .td-item { cursor: pointer; }
-.td-item:hover { border-color: #00f5ff55; }
+/* ホバーは枠色（=重要度カラー）を潰さず、少し明るくするだけ */
+.td-item:hover { filter: brightness(1.12); }
 
 .td-mid { flex: 1; min-width: 0; padding-top: 4px; }
 
