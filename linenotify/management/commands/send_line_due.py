@@ -17,6 +17,13 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         now = timezone.localtime()
+
+        # 送信済みの残骸を掃除（送信成功時は即削除されるが、旧データや
+        # 削除失敗分への保険。送信直後の並行プロセス分を消さないよう10分の猶予）
+        LineNotification.objects.filter(
+            sent=True, sent_at__lt=timezone.now() - timezone.timedelta(minutes=10)
+        ).delete()
+
         due = []
         for n in LineNotification.objects.filter(sent=False).select_related('target'):
             when = timezone.make_aware(
@@ -37,7 +44,9 @@ class Command(BaseCommand):
 
             ok, err = line_api.send_to(n.target, n.message)
             if ok:
-                self.stdout.write(f'[{now:%Y-%m-%d %H:%M}] sent id={n.id} {n.message[:30]}')
+                # 送信成功した予約は自動削除（手動削除の手間をなくす）
+                LineNotification.objects.filter(id=n.id).delete()
+                self.stdout.write(f'[{now:%Y-%m-%d %H:%M}] sent+removed id={n.id} {n.message[:30]}')
             else:
                 # 失敗したら未送信へ戻して次回リトライ（エラーを記録）
                 LineNotification.objects.filter(id=n.id).update(

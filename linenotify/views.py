@@ -142,8 +142,12 @@ def api_send_now(request):
     if not ok:
         LineNotification.objects.filter(id=n.id).update(
             sent=False, sent_at=None, error=err)
-    n.refresh_from_db()
-    return JsonResponse(_notif_dict(n))
+        n.refresh_from_db()
+        return JsonResponse(_notif_dict(n))
+
+    # 送信成功した予約は自動削除（手動削除の手間をなくす）
+    LineNotification.objects.filter(id=n.id).delete()
+    return JsonResponse({'ok': True, 'deleted': True})
 
 
 @login_required
