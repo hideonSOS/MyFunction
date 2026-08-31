@@ -126,12 +126,82 @@
 .td-item.done { opacity: 0.45; }
 .td-item.done .td-title-input { text-decoration: line-through; }
 
-.td-done {
-  margin-top: 7px;
-  width: 16px; height: 16px;
-  accent-color: #00ff88;
+/* 完了/戻す ボタン（チェックボックス廃止。追加ボタンと同系のボタンUI・青色） */
+.td-done-btn {
+  flex: 0 0 auto;
+  margin-top: 3px;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 12px;
+  letter-spacing: 1px;
+  padding: 5px 12px;
+  border-radius: 4px;
   cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s;
+  color: #001018;
+  background: var(--cyan, #00f5ff);
+  border: 1px solid var(--cyan, #00f5ff);
+  box-shadow: 0 0 8px #00f5ff55;
+  font-weight: 700;
 }
+.td-done-btn:hover { background: #7fe9ff; box-shadow: 0 0 12px #00f5ff99; }
+.td-done-btn.is-done {
+  color: var(--text-dim);
+  background: transparent;
+  border-color: var(--border);
+  box-shadow: none;
+  font-weight: 400;
+}
+.td-done-btn.is-done:hover { color: var(--cyan); border-color: var(--cyan); }
+
+/* ドラッグハンドル */
+.td-grip {
+  flex: 0 0 auto;
+  margin-top: 5px;
+  color: var(--text-dim);
+  font-size: 14px;
+  cursor: grab;
+  user-select: none;
+  padding: 0 2px;
+}
+.td-grip:hover { color: var(--cyan); }
+.td-item.td-dragging { opacity: 0.4; }
+.td-item.td-drop-before { box-shadow: 0 -3px 0 0 var(--cyan, #00f5ff); }
+.td-item.td-drop-after  { box-shadow: 0  3px 0 0 var(--cyan, #00f5ff); }
+
+/* ── 並び替えツールバー ───────────────────── */
+.td-sortbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+.td-sort-label {
+  font-size: 11px;
+  letter-spacing: 1px;
+  color: var(--text-dim);
+}
+.td-sort-btn {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 1px;
+  padding: 4px 12px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-dim);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.td-sort-btn:hover { border-color: var(--cyan); color: var(--cyan); }
+.td-sort-btn.active {
+  color: var(--cyan, #00f5ff);
+  border-color: var(--cyan, #00f5ff);
+  background: #00f5ff14;
+}
+.td-sort-save { color: var(--yellow, #ffe066); border-color: #ffe06655; }
+.td-sort-save:hover { color: var(--yellow, #ffe066); border-color: var(--yellow, #ffe066); background: #2a2306; }
 
 .td-imp {
   margin-top: 3px;

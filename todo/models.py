@@ -13,12 +13,15 @@ class TodoItem(models.Model):
     importance = models.PositiveSmallIntegerField(default=3)  # 1〜5（5=最重要）
     progress   = models.PositiveSmallIntegerField(default=0)  # 0〜100 (%)
     done       = models.BooleanField(default=False)
+    # 手動の並び順（小さいほど上）。一覧のドラッグ&ドロップで更新される。
+    # 新規は既存の最小値-1（=先頭）に置く
+    sort_order = models.IntegerField(default=0)
     created    = models.DateTimeField(auto_now_add=True)
     updated    = models.DateTimeField(auto_now=True)
 
     class Meta:
-        # 未完了が上 → 重要度が高い順 → 更新が新しい順
-        ordering = ['done', '-importance', '-updated']
+        # 未完了が上 → 手動順。重要度・更新日は手動順が同値のときのタイブレーク
+        ordering = ['done', 'sort_order', '-importance', '-updated']
 
     def __str__(self):
         return f'[★{self.importance} {self.progress}%] {self.title}'

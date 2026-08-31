@@ -80,18 +80,25 @@
   function row(t) {
     const r = el('div', 'td-item' + (t.done ? ' done' : '') + ' imp-' + t.importance);
 
-    // 完了チェック
-    const chk = document.createElement('input');
-    chk.type = 'checkbox';
-    chk.className = 'td-done';
-    chk.checked = t.done;
-    chk.title = '完了';
-    chk.addEventListener('click', ev => ev.stopPropagation());
-    chk.addEventListener('change', async () => {
-      await saveItem({ id: t.id, done: chk.checked });
+    // ドラッグハンドル（見出しをつかんで直感的に並び替え）
+    const grip = el('span', 'td-grip', '⠿');
+    grip.title = 'ドラッグで並び替え';
+    grip.addEventListener('click', ev => ev.stopPropagation());
+    grip.addEventListener('mousedown', () => { r.draggable = true; });
+    r.appendChild(grip);
+    makeRowDraggable(r, t);
+
+    // 完了/戻す ボタン（チェックボックスより目立つ青ボタン）
+    const doneBtn = el('button', 'td-done-btn' + (t.done ? ' is-done' : ''),
+                       t.done ? '↩ 戻す' : '✓ 完了');
+    doneBtn.type = 'button';
+    doneBtn.title = t.done ? '未完了に戻す' : '完了にする';
+    doneBtn.addEventListener('click', async ev => {
+      ev.stopPropagation();
+      await saveItem({ id: t.id, done: !t.done });
       render();
     });
-    r.appendChild(chk);
+    r.appendChild(doneBtn);
 
     // 重要度（★セレクト）
     const imp = document.createElement('select');
@@ -148,15 +155,64 @@
     r.appendChild(meta);
 
     r.style.setProperty('--p', t.progress);
-    r.addEventListener('click', () => openModal(t));
+    r.addEventListener('click', () => {
+      if (justDragged) return;   // ドロップ直後のclickでモーダルが開かないように
+      openModal(t);
+    });
     return r;
   }
 
-  function render() {
+  // ── 並び順（手動 / ソート表示） ─────────────
+  // sortKey=null が手動順（サーバーの sort_order）。ソートは表示だけを並べ替え、
+  // 「この並びを保存」かドラッグ操作で手動順として確定する
+  let sortKey = null;          // null | 'importance' | 'progress' | 'updated_ts'
+  let sortDir = -1;            // -1=降順 / 1=昇順
+
+  function sortedView(list) {
+    if (!sortKey) return list;
+    return list.slice().sort((a, b) => {
+      if (a.done !== b.done) return a.done ? 1 : -1;   // 未完了を常に上に
+      return (a[sortKey] - b[sortKey]) * sortDir;
+    });
+  }
+
+  function updateSortUi() {
+    document.querySelectorAll('.td-sort-btn[data-key]').forEach(btn => {
+      const on = btn.dataset.key === sortKey;
+      btn.classList.toggle('active', on);
+      const base = btn.dataset.label;
+      btn.textContent = on ? base + (sortDir === -1 ? ' ↓' : ' ↑') : base;
+    });
+    document.getElementById('td-sort-manual').classList.toggle('active', !sortKey);
+    document.getElementById('td-sort-save').hidden = !sortKey;
+  }
+
+  async function persistOrder(orderedVisible) {
+    // 表示中の並びを全体の手動順として保存する。
+    // 非表示（完了）分は現状の相対順のまま末尾側に付ける（doneが第一キーなので表示は変わらない）
+    const visibleIds = new Set(orderedVisible.map(t => t.id));
+    const rest = items.filter(t => !visibleIds.has(t.id));
+    items = orderedVisible.concat(rest);
+    sortKey = null;
+    updateSortUi();
+    render();
+    try {
+      await post('/todo/api/reorder/', { ids: items.map(t => t.id) });
+      setStatus('並び順を保存しました', 'ok');
+    } catch (e) {
+      setStatus(e.message, 'err');
+    }
+  }
+
+  function currentVisible() {
     const showDone = document.getElementById('td-show-done').checked;
+    return sortedView(items.filter(t => showDone || !t.done));
+  }
+
+  function render() {
     const box = document.getElementById('td-list');
     box.innerHTML = '';
-    const visible = items.filter(t => showDone || !t.done);
+    const visible = currentVisible();
     if (!visible.length) {
       box.appendChild(el('div', 'td-empty',
         items.length ? '（未完了はありません。「完了も表示」で確認できます）'
@@ -164,6 +220,65 @@
       return;
     }
     visible.forEach(t => box.appendChild(row(t)));
+  }
+
+  // ── 行のドラッグ&ドロップ並び替え ─────────────
+  let rowDragId = null;
+  let justDragged = false;
+
+  function clearRowDropMarks() {
+    document.querySelectorAll('.td-drop-before, .td-drop-after')
+      .forEach(e => e.classList.remove('td-drop-before', 'td-drop-after'));
+  }
+
+  function makeRowDraggable(r, t) {
+    // draggable はハンドル mousedown 時のみ true（行クリック=モーダルと共存させるため）
+    r.addEventListener('dragstart', ev => {
+      rowDragId = t.id;
+      ev.dataTransfer.effectAllowed = 'move';
+      ev.dataTransfer.setData('text/plain', String(t.id));
+      r.classList.add('td-dragging');
+    });
+    r.addEventListener('dragend', () => {
+      rowDragId = null;
+      r.draggable = false;
+      r.classList.remove('td-dragging');
+      clearRowDropMarks();
+      justDragged = true;
+      setTimeout(() => { justDragged = false; }, 100);
+    });
+    r.addEventListener('dragover', ev => {
+      if (rowDragId == null || rowDragId === t.id) return;
+      ev.preventDefault();
+      ev.dataTransfer.dropEffect = 'move';
+      const rect = r.getBoundingClientRect();
+      const after = ev.clientY > rect.top + rect.height / 2;
+      clearRowDropMarks();
+      r.classList.toggle('td-drop-after', after);
+      r.classList.toggle('td-drop-before', !after);
+    });
+    r.addEventListener('dragleave', ev => {
+      if (!r.contains(ev.relatedTarget)) {
+        r.classList.remove('td-drop-before', 'td-drop-after');
+      }
+    });
+    r.addEventListener('drop', ev => {
+      if (rowDragId == null || rowDragId === t.id) return;
+      ev.preventDefault();
+      const rect = r.getBoundingClientRect();
+      const after = ev.clientY > rect.top + rect.height / 2;
+      clearRowDropMarks();
+      // 現在の表示並び（ソート表示中ならその見た目）を基準に入れ替え、手動順として保存
+      const view = currentVisible();
+      const from = view.findIndex(x => x.id === rowDragId);
+      if (from < 0) return;
+      const [moved] = view.splice(from, 1);
+      let to = view.findIndex(x => x.id === t.id);
+      if (to < 0) to = view.length;
+      view.splice(after ? to + 1 : to, 0, moved);
+      persistOrder(view);
+      rowDragId = null;
+    });
   }
 
   async function load() {
@@ -197,6 +312,30 @@
     if (ev.key === 'Enter') addItem();
   });
   document.getElementById('td-show-done').addEventListener('change', render);
+
+  // ── ソートボタン（同じキーを再度押すと昇順⇔降順が切り替わる） ──
+  document.querySelectorAll('.td-sort-btn[data-key]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const key = btn.dataset.key;
+      if (sortKey === key) {
+        sortDir = -sortDir;
+      } else {
+        sortKey = key;
+        sortDir = -1;   // 初回は降順（重要度高い順・進捗多い順・更新新しい順）
+      }
+      updateSortUi();
+      render();
+    });
+  });
+  document.getElementById('td-sort-manual').addEventListener('click', () => {
+    sortKey = null;
+    updateSortUi();
+    render();
+  });
+  // ソート表示中の並びを手動順として確定する
+  document.getElementById('td-sort-save').addEventListener('click', () => {
+    persistOrder(currentVisible());
+  });
 
   // ── 詳細モーダル（閲覧 / 編集） ─────────────
   const modal = document.getElementById('td-modal');
@@ -731,5 +870,6 @@
 
   initEditor(document.getElementById('td-rte-toolbar'), noteEditor);
 
+  updateSortUi();
   load();
 })();

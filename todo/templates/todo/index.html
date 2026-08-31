@@ -33,12 +33,24 @@
     <label class="td-toggle"><input type="checkbox" id="td-show-done"><span>完了も表示</span></label>
   </div>
 
-  <!-- 一覧（重要度の降順） -->
+  <!-- 並び替えツールバー -->
+  <div class="td-sortbar">
+    <span class="td-sort-label">並び順</span>
+    <button class="td-sort-btn" id="td-sort-manual" type="button" title="ドラッグで決めた自分の並び">手動</button>
+    <button class="td-sort-btn" data-key="importance" data-label="重要度" type="button">重要度</button>
+    <button class="td-sort-btn" data-key="progress"   data-label="進捗"   type="button">進捗</button>
+    <button class="td-sort-btn" data-key="updated_ts" data-label="更新"   type="button">更新</button>
+    <button class="td-sort-btn td-sort-save" id="td-sort-save" type="button" hidden
+            title="いまのソート結果を手動順として確定する">この並びを保存</button>
+  </div>
+
+  <!-- 一覧 -->
   <div id="td-list" class="td-list">読み込み中...</div>
 
   <div class="td-note">
-    行をクリックすると詳細（メモ・添付）が開きます。重要度（★）・進捗（％）・完了は行内でも変更でき、すぐ自動保存されます。
-    並び順は 未完了 → 重要度が高い順。
+    行をクリックすると詳細（メモ・添付）が開きます。重要度（★）・進捗（％）は行内でも変更でき、すぐ自動保存されます。
+    左端の ⠿ をドラッグすると好きな順番に並び替えられます（並びは自動保存）。
+    ソートボタンは同じボタンをもう一度押すと 降順⇔昇順 が切り替わります。
   </div>
 
 </div>

@@ -33,6 +33,7 @@ def _item_dict(t):
         'progress':    t.progress,
         'done':        t.done,
         'updated':     timezone.localtime(t.updated).strftime('%m/%d %H:%M'),
+        'updated_ts':  t.updated.timestamp(),   # ソート用（表示文字列は年をまたぐと比較できないため）
         'attachments': [_attachment_dict(a) for a in t.attachments.all()],
     }
 
@@ -67,6 +68,10 @@ def api_save(request):
         if not title:
             return JsonResponse({'error': 'タイトルを入力してください'}, status=400)
         item = TodoItem(user=request.user)
+        # 新規は手動並びの先頭に置く（既存の最小値-1）
+        first = (TodoItem.objects.filter(user=request.user)
+                 .order_by('sort_order').first())
+        item.sort_order = (first.sort_order - 1) if first else 0
 
     if 'title' in data:
         v = str(data['title'] or '').strip()
@@ -103,6 +108,31 @@ def api_delete(request):
     except (KeyError, ValueError, json.JSONDecodeError):
         return JsonResponse({'error': 'invalid'}, status=400)
     TodoItem.objects.filter(user=request.user, id=item_id).delete()
+    return JsonResponse({'ok': True})
+
+
+@login_required
+@require_http_methods(['POST'])
+def api_reorder(request):
+    """一覧の手動並び順を更新。payload: {ids: [...]}（並べたい順のToDo ID列）
+
+    ドラッグ&ドロップ、およびソート表示の「この並びを保存」から呼ばれる。
+    渡されたIDに順番を振り直すだけなので、リストに無いIDは影響を受けない。
+    """
+    try:
+        data = json.loads(request.body)
+        ids = [int(x) for x in data['ids']]
+    except (KeyError, TypeError, ValueError, json.JSONDecodeError):
+        return JsonResponse({'error': 'invalid'}, status=400)
+
+    owned = {t.id: t for t in TodoItem.objects.filter(user=request.user, id__in=ids)}
+    changed = []
+    for order, tid in enumerate(ids):
+        item = owned.get(tid)
+        if item and item.sort_order != order:
+            item.sort_order = order
+            changed.append(item)
+    TodoItem.objects.bulk_update(changed, ['sort_order'])
     return JsonResponse({'ok': True})
 
 
