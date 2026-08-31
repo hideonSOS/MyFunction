@@ -174,6 +174,29 @@
 }
 .td-grip:hover { color: var(--cyan); }
 
+/* 一括削除の選択チェック */
+.td-sel {
+  flex: 0 0 auto;
+  margin-top: 8px;
+  width: 15px; height: 15px;
+  accent-color: var(--cyan, #00f5ff);
+  cursor: pointer;
+}
+.td-selbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 10px;
+  padding: 8px 12px;
+  border: 1px solid #ff555566;
+  border-radius: 6px;
+  background: #1a0a0e;
+}
+.td-sel-info { font-size: 12px; color: var(--text); letter-spacing: 1px; }
+.td-sel-info b { color: var(--pink, #ff006e); }
+.td-selbar .td-danger { color: var(--pink, #ff006e); border-color: #ff006e66; }
+.td-selbar .td-danger:hover { background: #2a0a14; border-color: var(--pink, #ff006e); }
+
 /* ▲▼ 移動ボタン（タップだけで1つずつ動かせる） */
 .td-move { display: flex; gap: 4px; }
 .td-move-btn {

@@ -113,6 +113,25 @@ def api_delete(request):
 
 @login_required
 @require_http_methods(['POST'])
+def api_bulk_delete(request):
+    """チェック選択した複数ToDoの一括削除。payload: {ids: [...]}
+
+    querysetのdeleteでも各行にpost_deleteシグナルが飛ぶため、
+    添付ファイルの実体削除（TodoAttachmentのレシーバ）はそのまま機能する。
+    """
+    try:
+        data = json.loads(request.body)
+        ids = [int(x) for x in data['ids']]
+    except (KeyError, TypeError, ValueError, json.JSONDecodeError):
+        return JsonResponse({'error': 'invalid'}, status=400)
+    if not ids:
+        return JsonResponse({'error': '削除対象がありません'}, status=400)
+    deleted, _ = TodoItem.objects.filter(user=request.user, id__in=ids).delete()
+    return JsonResponse({'ok': True, 'deleted': deleted})
+
+
+@login_required
+@require_http_methods(['POST'])
 def api_reorder(request):
     """一覧の手動並び順を更新。payload: {ids: [...]}（並べたい順のToDo ID列）
 

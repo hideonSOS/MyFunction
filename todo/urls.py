@@ -10,6 +10,7 @@ urlpatterns = [
     path('api/save/',           views.api_save,          name='api_save'),
     path('api/delete/',         views.api_delete,        name='api_delete'),
     path('api/reorder/',        views.api_reorder,       name='api_reorder'),
+    path('api/bulk_delete/',    views.api_bulk_delete,   name='api_bulk_delete'),
     path('api/upload/',         views.api_upload,        name='api_upload'),
     path('api/attach/delete/',  views.api_attach_delete, name='api_attach_delete'),
     path('api/attach/reorder/', views.api_attach_reorder, name='api_attach_reorder'),

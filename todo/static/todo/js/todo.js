@@ -35,7 +35,8 @@
 
   function replaceItem(u) {
     const i = items.findIndex(x => x.id === u.id);
-    if (i >= 0) items[i] = u; else items.push(u);
+    // 新規はサーバー側で先頭（sort_order最小）に入るので、ローカルも先頭に置く
+    if (i >= 0) items[i] = u; else items.unshift(u);
   }
 
   async function saveItem(patch) {
@@ -79,6 +80,19 @@
   // ── 一覧の1行 ────────────────────────────
   function row(t) {
     const r = el('div', 'td-item' + (t.done ? ' done' : '') + ' imp-' + t.importance);
+
+    // 一括削除用の選択チェックボックス
+    const sel = document.createElement('input');
+    sel.type = 'checkbox';
+    sel.className = 'td-sel';
+    sel.checked = selected.has(t.id);
+    sel.title = '選択（一括削除用）';
+    sel.addEventListener('click', ev => ev.stopPropagation());
+    sel.addEventListener('change', () => {
+      if (sel.checked) selected.add(t.id); else selected.delete(t.id);
+      updateSelUi();
+    });
+    r.appendChild(sel);
 
     // ドラッグハンドル（マウスでもタッチでも、押したまま動かして並び替え）
     r.dataset.todoId = String(t.id);
@@ -226,6 +240,10 @@
   function render() {
     const box = document.getElementById('td-list');
     box.innerHTML = '';
+    // 消えた項目の選択は掃除しておく
+    const ids = new Set(items.map(t => t.id));
+    selected.forEach(id => { if (!ids.has(id)) selected.delete(id); });
+    updateSelUi();
     const visible = currentVisible();
     if (!visible.length) {
       box.appendChild(el('div', 'td-empty',
@@ -235,6 +253,33 @@
     }
     visible.forEach(t => box.appendChild(row(t)));
   }
+
+  // ── 一括削除（チェック選択） ─────────────────
+  const selected = new Set();
+
+  function updateSelUi() {
+    const bar = document.getElementById('td-selbar');
+    bar.hidden = selected.size === 0;
+    document.getElementById('td-sel-count').textContent = selected.size;
+  }
+
+  document.getElementById('td-sel-clear').addEventListener('click', () => {
+    selected.clear();
+    render();
+  });
+  document.getElementById('td-sel-delete').addEventListener('click', async () => {
+    if (!selected.size) return;
+    if (!confirm(`選択した ${selected.size} 件を削除しますか？（添付も消えます）`)) return;
+    try {
+      await post('/todo/api/bulk_delete/', { ids: [...selected] });
+      items = items.filter(t => !selected.has(t.id));
+      selected.clear();
+      render();
+      setStatus('削除しました', 'ok');
+    } catch (e) {
+      setStatus(e.message, 'err');
+    }
+  });
 
   // ── 行の並び替え ─────────────────────────
   let justDragged = false;
@@ -484,6 +529,7 @@
   async function saveModal() {
     const title = document.getElementById('td-m-title').value.trim();
     if (!title) { document.getElementById('td-m-title').focus(); return; }
+    const wasDraft = draftMode;
     const saved = await saveItem({
       id:         currentItem ? currentItem.id : null,
       title,
@@ -493,11 +539,19 @@
       done:       document.getElementById('td-m-done').value === '1',
     });
     if (saved) {
-      // 保存後は通常の閲覧モードへ（新規状態も確定に変わる）
       saved.attachments = currentItem ? (currentItem.attachments || []) : [];
-      currentItem = saved;
       replaceItem(saved);
       setDraftUi(false);
+      if (wasDraft) {
+        // 新規追加は保存でモーダルを閉じて一覧へ戻る（閲覧画面を挟まない）
+        modal.hidden = true;
+        currentItem = null;
+        render();
+        setStatus('追加しました', 'ok');
+        return;
+      }
+      // 既存の編集は従来どおり閲覧モードへ
+      currentItem = saved;
       fillView(saved);
       setMode('view');
       render();

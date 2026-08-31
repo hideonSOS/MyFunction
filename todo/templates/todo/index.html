@@ -44,6 +44,13 @@
             title="いまのソート結果を手動順として確定する">この並びを保存</button>
   </div>
 
+  <!-- 選択中の操作バー（チェックが1件以上あるとき表示） -->
+  <div id="td-selbar" class="td-selbar" hidden>
+    <span class="td-sel-info"><b id="td-sel-count">0</b> 件選択中</span>
+    <button class="td-btn td-mini td-danger" id="td-sel-delete" type="button">選択した項目を削除</button>
+    <button class="td-btn td-mini" id="td-sel-clear" type="button">選択解除</button>
+  </div>
+
   <!-- 一覧 -->
   <div id="td-list" class="td-list">読み込み中...</div>
 
