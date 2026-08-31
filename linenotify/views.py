@@ -59,7 +59,7 @@ def _resolve_target(data):
     戻り値: (target or None, error or None)"""
     target_id = data.get('target')
     if not target_id:
-        return None, None
+        return None, '送信先を指定してください（ブロードキャストは現在無効です）'
     t = LineTarget.objects.filter(id=target_id).first()
     if not t:
         return None, '送信先が見つかりません（削除された可能性があります）'

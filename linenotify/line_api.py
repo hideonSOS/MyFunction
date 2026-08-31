@@ -85,9 +85,9 @@ def send_push(to_id, text):
 
 
 def send_to(target, text):
-    """LineTarget（None ならブロードキャスト）へ送る"""
+    """LineTarget へ送る。運用方針により宛先未指定（ブロードキャスト）は無効。"""
     if target is None:
-        return send_broadcast(text)
+        return False, 'ブロードキャストは現在無効です（送信先を指定してください）'
     return send_push(target.target_id, text)
 
 

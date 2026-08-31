@@ -38,8 +38,9 @@
   function renderTargetSelect(selectedId) {
     const sel = document.getElementById('ln-target');
     sel.innerHTML = '';
-    const opt0 = el('option', null, 'ブロードキャスト（友だち全員）');
+    const opt0 = el('option', null, '— 送信先を選択 —');
     opt0.value = '';
+    opt0.disabled = true;
     sel.appendChild(opt0);
     targets.forEach(t => {
       const o = el('option', null, `${t.name}（${t.kind_label}）`);
@@ -100,7 +101,7 @@
     box.innerHTML = '';
     if (!targets.length) {
       box.appendChild(el('div', 'ln-empty',
-        '送信先はまだ登録されていません（未登録でもブロードキャスト送信は可能です）'));
+        '送信先が未登録です。下のフォームから登録してください（送信には宛先が必須です）'));
       return;
     }
     targets.forEach(t => {
@@ -124,7 +125,7 @@
 
       const bDel = el('button', 'ln-btn ln-mini ln-danger', '削除');
       bDel.addEventListener('click', async () => {
-        if (!confirm(`送信先「${t.name}」を削除しますか？\nこの宛先の予約はブロードキャストに戻ります。`)) return;
+        if (!confirm(`送信先「${t.name}」を削除しますか？\nこの宛先の予約は送信できなくなります。`)) return;
         await post('/line/api/target/delete/', { id: t.id });
         await load();
       });
