@@ -43,11 +43,13 @@ body {
 #pp-print { background: #1a6b3c; border-color: #2a8b52; font-weight: bold; }
 #pp-print:hover { background: #218548; }
 
-/* ── シート（3日横並び） ───────────────────── */
-.pp-sheet {
+/* ── ページ（1枚 = A3横・3日横並び。日数分だけ縦に続く） ── */
+.pp-sheet { display: block; }
+
+.pp-page {
   display: flex;
   gap: 6mm;
-  justify-content: center;
+  justify-content: flex-start;
   align-items: flex-start;
   background: #fff;
   width: 404mm;              /* A3横(420) − 余白8mm×2 */
@@ -56,7 +58,11 @@ body {
   box-shadow: 0 2px 12px rgba(0,0,0,0.25);
 }
 
-.pp-day { flex: 1 1 0; min-width: 0; }
+/* 3日未満のページでも1日分の幅を一定に保つ（gap 6mm×2を差し引いて3等分） */
+.pp-day {
+  flex: 0 0 calc((100% - 12mm) / 3);
+  min-width: 0;
+}
 
 .pp-day-head {
   text-align: center;
@@ -137,10 +143,16 @@ body {
 @media print {
   body { background: #fff; }
   .pp-toolbar { display: none !important; }
-  .pp-sheet {
+  .pp-page {
     width: auto;
     margin: 0;
     padding: 0;
     box-shadow: none;
+    page-break-after: always;   /* 3日ごとにA3横1枚 */
+    break-after: page;
+  }
+  .pp-page:last-child {
+    page-break-after: auto;
+    break-after: auto;
   }
 }

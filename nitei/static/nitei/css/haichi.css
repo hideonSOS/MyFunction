@@ -443,6 +443,7 @@
   @page { size: A4 portrait; margin: 12mm; }
 
   #hamburger, #sidebar, .hc-toolbar, .hc-note,
+  .hc-dangerzone, .hc-pdf-panel,
   .hc-chip, #hc-palette { display: none !important; }
   #page-wrapper { margin-left: 0 !important; padding: 0 !important; color: #000; }
 
@@ -494,9 +495,32 @@
 
 .hc-pdf-dates {
   display: flex;
-  gap: 8px;
+  gap: 14px;
+  align-items: center;
   flex-wrap: wrap;
   margin-bottom: 10px;
+}
+.hc-pdf-field {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  letter-spacing: 1px;
+  color: #00e5ff99;
+}
+.hc-pdf-dates select {
+  background: #071020;
+  border: 1px solid #00e5ff55;
+  border-radius: 3px;
+  color: #00e5ff;
+  font-family: 'Courier New', monospace;
+  font-size: 14px;
+  padding: 5px 8px;
+}
+.hc-pdf-hint {
+  font-size: 12px;
+  color: #7fffd4;
+  letter-spacing: 1px;
 }
 .hc-pdf-dates input[type="date"] {
   background: #071020;
@@ -516,6 +540,21 @@
 }
 .hc-pdf-actions .hc-primary { color: #00ff88; border-color: #00ff8855; }
 .hc-pdf-actions .hc-primary:hover { background: #06301a; border-color: #00ff88; }
+
+/* ── 危険操作ゾーン（ページ右下。誤クリック防止のため他と隔離） ── */
+.hc-dangerzone {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 40px;
+  padding-top: 12px;
+  border-top: 1px dashed #ff006e33;
+}
+.hc-clear-btn {
+  font-size: 11px;
+  padding: 4px 10px;
+  opacity: 0.7;
+}
+.hc-clear-btn:hover { opacity: 1; }
 
 /* ── タイムピッカー（HH:MM。クリックで開く） ───── */
 #hc-time-picker {

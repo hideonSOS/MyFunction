@@ -26,16 +26,23 @@
     <span class="hc-spacer"></span>
     <span id="hc-status">読み込み中...</span>
     <button class="hc-btn" id="pdf-btn" type="button">🖨 PDF印刷</button>
-    <button class="hc-btn hc-danger" id="clear-btn" type="button">この日をクリア</button>
   </div>
 
-  <!-- PDF印刷: 日付選択パネル（最大3日をA3横に並べて印刷） -->
+  <!-- PDF印刷: 範囲選択パネル（開始日から連続N日。3日ごとにA3横1枚へ改ページ） -->
   <div id="pdf-panel" class="hc-pdf-panel" hidden>
-    <div class="hc-pdf-title">印刷する日付（最大3日 / A3横に並びます）</div>
+    <div class="hc-pdf-title">印刷範囲（開始日から連続。3日ごとにA3横1枚に分かれます）</div>
     <div class="hc-pdf-dates">
-      <input type="date" id="pdf-d1">
-      <input type="date" id="pdf-d2">
-      <input type="date" id="pdf-d3">
+      <label class="hc-pdf-field">開始日 <input type="date" id="pdf-start"></label>
+      <label class="hc-pdf-field">日数
+        <select id="pdf-days">
+          <option value="3" selected>3日</option>
+          <option value="4">4日</option>
+          <option value="5">5日</option>
+          <option value="6">6日</option>
+          <option value="7">7日</option>
+        </select>
+      </label>
+      <span id="pdf-pages-hint" class="hc-pdf-hint"></span>
     </div>
     <div class="hc-pdf-actions">
       <button class="hc-btn" id="pdf-cancel" type="button">キャンセル</button>
@@ -50,6 +57,11 @@
   <div class="hc-note">
     セルをクリックすると氏名が順に切り替わり（もう一度で次の人、末尾の次は空）→ 自動保存。背景色は氏名ごとに自動で付きます。
     列名（上段）は編集でき、レース番号をクリックすると着色が切り替わります。
+  </div>
+
+  <!-- 危険操作は他のボタンから離してページ右下に置く（誤クリック防止） -->
+  <div class="hc-dangerzone">
+    <button class="hc-btn hc-danger hc-clear-btn" id="clear-btn" type="button">この日をクリア</button>
   </div>
 
 </div>

@@ -1,4 +1,5 @@
-/* 配置図 印刷ページ ── ?dates=YYYY-MM-DD,... （最大3日）をA3横に並べる */
+/* 配置図 印刷ページ ── ?dates=YYYY-MM-DD,... を3日ごとに区切り、
+   1区切り＝A3横1枚として並べる（N日 → A3×ceil(N/3)枚） */
 (function () {
   'use strict';
 
@@ -104,7 +105,7 @@
 
   async function init() {
     const dates = DATES_PARAM.split(',').map(s => s.trim())
-      .filter(s => /^\d{4}-\d{2}-\d{2}$/.test(s)).slice(0, 3);
+      .filter(s => /^\d{4}-\d{2}-\d{2}$/.test(s)).slice(0, 31);   // 安全弁
     if (!dates.length) {
       sheet.textContent = '日付が指定されていません（?dates=YYYY-MM-DD,... を付けてください）';
       return;
@@ -115,9 +116,17 @@
         fetch('/nitei/api/layout/?date=' + encodeURIComponent(d))
           .then(res => res.ok ? res.json() : Promise.reject(res.status))
       ));
+      // 3日ごとに1ページ（A3横1枚）へ分割
       sheet.innerHTML = '';
-      results.forEach(data => sheet.appendChild(buildDay(data)));
-      document.title = '配置図 ' + dates.join(' ');
+      for (let i = 0; i < results.length; i += 3) {
+        const page = el('div', 'pp-page');
+        results.slice(i, i + 3).forEach(data => page.appendChild(buildDay(data)));
+        sheet.appendChild(page);
+      }
+      const pages = Math.ceil(dates.length / 3);
+      document.title = '配置図 ' + dates[0] +
+        (dates.length > 1 ? '〜' + dates[dates.length - 1] : '') +
+        '（' + dates.length + '日・A3×' + pages + '枚）';
     } catch (e) {
       sheet.textContent = '読み込みに失敗しました。ログインし直してから開いてください。';
     }
