@@ -103,6 +103,25 @@
     return box;
   }
 
+  /** 列名がセル幅に収まらない場合、横方向に圧縮して1行で全体を表示する
+      （Excelの「縮小して全体を表示」相当。収まる列名は等倍のまま） */
+  function fitHeaders() {
+    document.querySelectorAll('.pp-th-cell').forEach(th => {
+      const text = th.textContent;
+      if (!text) return;
+      const span = el('span', 'pp-fit', text);
+      th.textContent = '';
+      th.appendChild(span);
+      const cs = getComputedStyle(th);
+      const avail = th.clientWidth
+        - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+      const w = span.scrollWidth;
+      if (w > avail && avail > 0) {
+        span.style.transform = 'scaleX(' + (avail / w).toFixed(3) + ')';
+      }
+    });
+  }
+
   async function init() {
     const dates = DATES_PARAM.split(',').map(s => s.trim())
       .filter(s => /^\d{4}-\d{2}-\d{2}$/.test(s)).slice(0, 31);   // 安全弁
@@ -123,6 +142,7 @@
         results.slice(i, i + 3).forEach(data => page.appendChild(buildDay(data)));
         sheet.appendChild(page);
       }
+      fitHeaders();
       const pages = Math.ceil(dates.length / 3);
       document.title = '配置図 ' + dates[0] +
         (dates.length > 1 ? '〜' + dates[dates.length - 1] : '') +

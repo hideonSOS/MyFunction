@@ -91,10 +91,19 @@ body {
 }
 
 .pp-table thead th {
-  font-size: 9pt;
+  font-size: 8pt;
+  letter-spacing: 0;
   padding: 1mm 0.5mm;
   background: #f0f0f0;
   border-bottom: 0.6mm solid #000;
+}
+
+/* 長い列名（ホワイトボード等）は横方向に圧縮して1行で全体を表示
+   （収まる列名は等倍のまま。倍率は JS が実測して設定する） */
+.pp-fit {
+  display: inline-block;
+  white-space: nowrap;
+  transform-origin: center;
 }
 
 .pp-th-time { width: 13mm; }
