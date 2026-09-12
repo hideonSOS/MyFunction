@@ -541,6 +541,104 @@
 .hc-pdf-actions .hc-primary { color: #00ff88; border-color: #00ff8855; }
 .hc-pdf-actions .hc-primary:hover { background: #06301a; border-color: #00ff88; }
 
+/* ── 名簿管理パネル ─────────────────────────── */
+.hc-roster-list { margin-bottom: 12px; }
+
+.hc-roster-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 4px 2px;
+  border-bottom: 1px solid #00e5ff18;
+}
+
+.hc-roster-move {
+  width: 24px; height: 22px;
+  border: 1px solid #00e5ff44;
+  border-radius: 4px;
+  background: #0a1830;
+  color: #00e5ff;
+  font-size: 10px;
+  cursor: pointer;
+  line-height: 1;
+}
+.hc-roster-move:hover:not(:disabled) { background: #12263f; }
+.hc-roster-move:disabled { opacity: 0.25; cursor: default; }
+
+.hc-roster-chip {
+  width: 26px; height: 20px;
+  border: 1px solid #ffffff33;
+  border-radius: 4px;
+  background: rgba(var(--tint, 120, 130, 140), 0.85);
+  cursor: pointer;
+}
+.hc-roster-chip:hover { border-color: #fff; }
+
+.hc-roster-name {
+  flex: 1;
+  min-width: 120px;
+  background: #071020;
+  border: 1px solid #00e5ff33;
+  border-radius: 3px;
+  color: #00e5ff;
+  font-size: 14px;
+  letter-spacing: 2px;
+  padding: 4px 8px;
+}
+.hc-roster-name:focus { outline: none; border-color: #00e5ff; }
+
+.hc-roster-del {
+  border: 1px solid #ff006e44;
+  border-radius: 4px;
+  background: transparent;
+  color: #ff6b8a;
+  font-size: 11px;
+  padding: 3px 9px;
+  cursor: pointer;
+}
+.hc-roster-del:hover { background: #2a0f1a; border-color: #ff006e; }
+
+/* 色選択ストリップ（チップをクリックで行内に開く） */
+.hc-roster-swatches {
+  flex-basis: 100%;
+  display: flex;
+  gap: 5px;
+  padding: 6px 0 2px 66px;
+}
+.hc-roster-sw {
+  width: 24px; height: 20px;
+  border: 1px solid #ffffff22;
+  border-radius: 4px;
+  background: rgba(var(--tint, 120, 130, 140), 0.85);
+  cursor: pointer;
+}
+.hc-roster-sw:hover { border-color: #fff; }
+.hc-roster-sw.selected { border: 2px solid #fff; box-shadow: 0 0 6px #00e5ff; }
+
+.hc-roster-add {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+.hc-roster-add input {
+  background: #071020;
+  border: 1px solid #00e5ff55;
+  border-radius: 3px;
+  color: #00e5ff;
+  font-size: 14px;
+  padding: 5px 8px;
+  width: 160px;
+}
+.hc-roster-add input:focus { outline: none; border-color: #00e5ff; }
+.hc-roster-hint {
+  font-size: 10px;
+  color: #00e5ff66;
+  letter-spacing: 1px;
+}
+
 /* ── 危険操作ゾーン（ページ右下。誤クリック防止のため他と隔離） ── */
 .hc-dangerzone {
   display: flex;

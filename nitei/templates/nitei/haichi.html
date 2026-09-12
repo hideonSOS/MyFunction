@@ -25,7 +25,22 @@
     <span id="hc-weekday"></span>
     <span class="hc-spacer"></span>
     <span id="hc-status">読み込み中...</span>
+    <button class="hc-btn" id="roster-btn" type="button">👥 名簿</button>
     <button class="hc-btn" id="pdf-btn" type="button">🖨 PDF印刷</button>
+  </div>
+
+  <!-- 名簿管理パネル（クリック循環の順序・自動着色の色を編集） -->
+  <div id="roster-panel" class="hc-pdf-panel" hidden>
+    <div class="hc-pdf-title">名簿（上から順にセルのクリックで切り替わります。色は自動着色に使われます）</div>
+    <div id="roster-list" class="hc-roster-list"></div>
+    <div class="hc-roster-add">
+      <input type="text" id="roster-new-name" maxlength="20" placeholder="氏名（例：田中）">
+      <button class="hc-btn" id="roster-add" type="button">＋ 追加</button>
+      <span class="hc-roster-hint">追加時の色は自動割り当て（行の色チップから変更可）</span>
+    </div>
+    <div class="hc-pdf-actions">
+      <button class="hc-btn" id="roster-close" type="button">閉じる</button>
+    </div>
   </div>
 
   <!-- PDF印刷: 範囲選択パネル（開始日から連続N日。3日ごとにA3横1枚へ改ページ） -->
@@ -71,6 +86,7 @@
   const COL_COUNT       = {{ col_count }};
   const DEFAULT_HEADERS = {{ default_headers|safe }};
   const COLOR_KEYS      = {{ color_keys|safe }};
+  const MEMBERS         = {{ members|safe }};
 </script>
 {% endblock %}
 

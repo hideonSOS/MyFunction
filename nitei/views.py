@@ -8,7 +8,7 @@ from django.views.decorators.csrf import csrf_exempt
 from datetime import date as date_cls, datetime
 from .models import (
     Title, WorkEntry, EventEntry, PERSONS,
-    LayoutDay, LayoutRace, LayoutCell,
+    LayoutDay, LayoutRace, LayoutCell, LayoutMember,
     LAYOUT_RACE_COUNT, LAYOUT_COL_COUNT, LAYOUT_DEFAULT_HEADERS, LAYOUT_COLOR_KEYS,
 )
 
@@ -70,6 +70,7 @@ def haichi(request):
         'col_count':        LAYOUT_COL_COUNT,
         'default_headers':  json.dumps(LAYOUT_DEFAULT_HEADERS, ensure_ascii=False),
         'color_keys':       json.dumps(LAYOUT_COLOR_KEYS),
+        'members':          json.dumps(_members_list(), ensure_ascii=False),
     })
 
 
@@ -421,3 +422,105 @@ def api_layout_clear(request):
 
     LayoutDay.objects.filter(date=day_date).delete()
     return JsonResponse({'ok': True})
+
+
+# ── 配置図の名簿（クリック循環の順序・自動着色の色） ────
+
+def _members_list():
+    return [{'id': m.id, 'name': m.name, 'color': m.color, 'order': m.order}
+            for m in LayoutMember.objects.all()]
+
+
+def _members_response():
+    return JsonResponse({'members': _members_list()})
+
+
+@nitei_login_required
+def api_members(request):
+    return _members_response()
+
+
+@nitei_login_required
+@csrf_exempt
+@require_http_methods(['POST'])
+def api_member_save(request):
+    """名簿の追加 or 更新（id あり=更新）。payload: {id?, name?, color?}
+    改名時は、配置済みセル（全日付）の氏名・色も追従して書き換える"""
+    try:
+        body = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'invalid json'}, status=400)
+
+    name  = str(body.get('name') or '').strip()[:20]
+    color = str(body.get('color') or '').strip()
+
+    member_id = body.get('id')
+    if member_id:
+        m = LayoutMember.objects.filter(id=member_id).first()
+        if not m:
+            return JsonResponse({'error': 'not found'}, status=404)
+        if name and name != m.name:
+            if LayoutMember.objects.filter(name=name).exclude(id=m.id).exists():
+                return JsonResponse({'error': f'「{name}」は登録済みです'}, status=400)
+            old = m.name
+            m.name = name
+            # 改名を配置済みセルへ反映（過去日も含む。同一人物の表記修正を想定）
+            LayoutCell.objects.filter(text=old).update(text=name)
+        if color in LAYOUT_COLOR_KEYS:
+            m.color = color
+            # 色変更も配置済みセルへ反映
+            LayoutCell.objects.filter(text=m.name).update(color=color)
+        m.save()
+        return _members_response()
+
+    # 新規追加
+    if not name:
+        return JsonResponse({'error': '氏名を入力してください'}, status=400)
+    if LayoutMember.objects.filter(name=name).exists():
+        return JsonResponse({'error': f'「{name}」は登録済みです'}, status=400)
+    if color not in LAYOUT_COLOR_KEYS:
+        # 未指定なら、使用数が最も少ない色を自動で割り当てる
+        used = {c: 0 for c in LAYOUT_COLOR_KEYS}
+        for m in LayoutMember.objects.all():
+            if m.color in used:
+                used[m.color] += 1
+        color = min(LAYOUT_COLOR_KEYS, key=lambda c: used[c])
+    last = LayoutMember.objects.order_by('-order').first()
+    LayoutMember.objects.create(
+        name=name, color=color, order=(last.order + 1) if last else 0)
+    return _members_response()
+
+
+@nitei_login_required
+@csrf_exempt
+@require_http_methods(['POST'])
+def api_member_delete(request):
+    """名簿から削除。配置済みセルの文字は残す（履歴保全。色と循環からは外れる）"""
+    try:
+        body = json.loads(request.body)
+        member_id = int(body['id'])
+    except (KeyError, ValueError, json.JSONDecodeError):
+        return JsonResponse({'error': 'invalid'}, status=400)
+    LayoutMember.objects.filter(id=member_id).delete()
+    return _members_response()
+
+
+@nitei_login_required
+@csrf_exempt
+@require_http_methods(['POST'])
+def api_member_reorder(request):
+    """名簿の並び順（=クリック循環の順序）を更新。payload: {ids: [...]}"""
+    try:
+        body = json.loads(request.body)
+        ids = [int(x) for x in body['ids']]
+    except (KeyError, TypeError, ValueError, json.JSONDecodeError):
+        return JsonResponse({'error': 'invalid'}, status=400)
+    owned = {m.id: m for m in LayoutMember.objects.filter(id__in=ids)}
+    order = 0
+    for mid in ids:
+        m = owned.get(mid)
+        if m:
+            m.order = order
+            m.save(update_fields=['order'])
+            order += 1
+    return _members_response()

@@ -123,3 +123,17 @@ class LayoutCell(models.Model):
     def __str__(self):
         return f"{self.day.date} {self.race}R col{self.col}={self.text}({self.color})"
 
+
+class LayoutMember(models.Model):
+    """配置図の名簿。セルのクリック循環の順序と、氏名ごとの自動着色の色を持つ
+    （画面の「名簿」パネルから追加・削除・並び替え・色変更できる）"""
+    name  = models.CharField(max_length=20, unique=True)
+    color = models.CharField(max_length=4)   # LAYOUT_COLOR_KEYS のいずれか
+    order = models.IntegerField(default=0)
+
+    class Meta:
+        ordering = ['order', 'id']
+
+    def __str__(self):
+        return f'{self.name}({self.color})'
+

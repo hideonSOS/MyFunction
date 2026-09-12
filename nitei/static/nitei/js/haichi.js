@@ -8,16 +8,29 @@
 
   const WEEKDAYS = ['日', '月', '火', '水', '木', '金', '土'];
 
-  // 配置セルに入れる氏名。先頭の '' はクリア。クリックで順に切り替わる（日程と同じ操作）
-  const NAMES = ['', '松山', '清水', '生田', '栗原', '芳松', '水野',
-                 '表木', '虎谷', '小林', '三室', '金山', '山田'];
-  // 氏名 → 背景色キー（条件付き書式のように自動で着色。色は haichi.css の .tint-c* ）
-  const NAME_COLOR = {
-    '松山': 'c1',  '清水': 'c2',  '生田': 'c3',  '栗原': 'c4',
-    '芳松': 'c5',  '水野': 'c6',  '表木': 'c7',  '虎谷': 'c8',
-    '小林': 'c9',  '三室': 'c10', '金山': 'c11', '山田': 'c12',
-  };
+  // 配置セルに入れる氏名と色は「名簿」（サーバー管理）から作る。
+  // NAMES 先頭の '' はクリア。クリックで名簿の順に切り替わる
+  let members = [];       // [{id, name, color, order}]
+  let NAMES = [''];
+  let NAME_COLOR = {};
+
+  function applyRoster(list) {
+    members = list || [];
+    NAMES = [''].concat(members.map(m => m.name));
+    NAME_COLOR = {};
+    members.forEach(m => { NAME_COLOR[m.name] = m.color; });
+  }
+  applyRoster(MEMBERS);
+
   function cellColor(name) { return NAME_COLOR[name] || ''; }
+
+  // 小さなDOM生成ヘルパー
+  function el(tag, cls, text) {
+    const e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (text != null) e.textContent = text;
+    return e;
+  }
 
   const dateInput = document.getElementById('date-input');
   const statusEl  = document.getElementById('hc-status');
@@ -445,6 +458,129 @@
          String(d.getDate()).padStart(2, '0'));
   });
 
+  // ── 名簿管理パネル（追加・改名・色変更・並び替え・削除） ──
+  const rosterPanel = document.getElementById('roster-panel');
+
+  async function rosterPost(url, body) {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body || {}),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || ('HTTP ' + res.status));
+    return data;
+  }
+
+  // サーバー応答の名簿を反映し、パネルと盤面（表示中セルの色）を描き直す
+  function rosterUpdated(data) {
+    applyRoster(data.members);
+    renderRosterPanel();
+    render();
+  }
+
+  function renderRosterPanel() {
+    const box = document.getElementById('roster-list');
+    box.innerHTML = '';
+    members.forEach((m, i) => {
+      const row = el('div', 'hc-roster-row');
+
+      const up = el('button', 'hc-roster-move', '▲');
+      up.type = 'button'; up.title = '上へ';
+      up.disabled = (i === 0);
+      up.addEventListener('click', () => moveMember(i, -1));
+      const down = el('button', 'hc-roster-move', '▼');
+      down.type = 'button'; down.title = '下へ';
+      down.disabled = (i === members.length - 1);
+      down.addEventListener('click', () => moveMember(i, 1));
+      row.appendChild(up); row.appendChild(down);
+
+      // 色チップ（クリックで12色ストリップを開閉）
+      const chip = el('button', 'hc-roster-chip tint-' + m.color);
+      chip.type = 'button'; chip.title = '色を変更';
+      chip.addEventListener('click', () => {
+        const opened = row.querySelector('.hc-roster-swatches');
+        document.querySelectorAll('.hc-roster-swatches').forEach(e => e.remove());
+        if (opened) return;   // 開いていたら閉じるだけ
+        const strip = el('div', 'hc-roster-swatches');
+        COLOR_KEYS.forEach(ck => {
+          const sw = el('button', 'hc-roster-sw tint-' + ck);
+          sw.type = 'button';
+          sw.classList.toggle('selected', ck === m.color);
+          sw.addEventListener('click', async () => {
+            try { rosterUpdated(await rosterPost('/nitei/api/members/save/', { id: m.id, color: ck })); }
+            catch (e) { alert(e.message); }
+          });
+          strip.appendChild(sw);
+        });
+        row.appendChild(strip);
+      });
+      row.appendChild(chip);
+
+      // 氏名（その場で編集 → change で保存。配置済みセルにも改名が反映される）
+      const nameInput = document.createElement('input');
+      nameInput.type = 'text';
+      nameInput.className = 'hc-roster-name';
+      nameInput.value = m.name;
+      nameInput.maxLength = 20;
+      nameInput.addEventListener('change', async () => {
+        const v = nameInput.value.trim();
+        if (!v || v === m.name) { nameInput.value = m.name; return; }
+        try { rosterUpdated(await rosterPost('/nitei/api/members/save/', { id: m.id, name: v })); }
+        catch (e) { alert(e.message); renderRosterPanel(); }
+      });
+      row.appendChild(nameInput);
+
+      const del = el('button', 'hc-roster-del', '削除');
+      del.type = 'button';
+      del.addEventListener('click', async () => {
+        if (!confirm('「' + m.name + '」を名簿から削除しますか？\n（配置済みのセルの文字は残ります。色と切り替え候補から外れます）')) return;
+        try { rosterUpdated(await rosterPost('/nitei/api/members/delete/', { id: m.id })); }
+        catch (e) { alert(e.message); }
+      });
+      row.appendChild(del);
+
+      box.appendChild(row);
+    });
+    if (!members.length) {
+      box.appendChild(el('div', 'hc-roster-hint', '名簿が空です。下から追加してください'));
+    }
+  }
+
+  async function moveMember(i, dir) {
+    const j = i + dir;
+    if (j < 0 || j >= members.length) return;
+    const ids = members.map(m => m.id);
+    [ids[i], ids[j]] = [ids[j], ids[i]];
+    try { rosterUpdated(await rosterPost('/nitei/api/members/reorder/', { ids })); }
+    catch (e) { alert(e.message); }
+  }
+
+  async function addMember() {
+    const input = document.getElementById('roster-new-name');
+    const name = input.value.trim();
+    if (!name) { input.focus(); return; }
+    try {
+      rosterUpdated(await rosterPost('/nitei/api/members/save/', { name }));
+      input.value = '';
+      input.focus();
+    } catch (e) { alert(e.message); }
+  }
+
+  document.getElementById('roster-btn').addEventListener('click', () => {
+    if (!rosterPanel.hidden) { rosterPanel.hidden = true; return; }
+    pdfPanel.hidden = true;   // 他のパネルは閉じる
+    renderRosterPanel();
+    rosterPanel.hidden = false;
+  });
+  document.getElementById('roster-close').addEventListener('click', () => {
+    rosterPanel.hidden = true;
+  });
+  document.getElementById('roster-add').addEventListener('click', addMember);
+  document.getElementById('roster-new-name').addEventListener('keydown', ev => {
+    if (ev.key === 'Enter') addMember();
+  });
+
   // ── PDF印刷（開始日から連続N日。3日ごとにA3横1枚へ改ページ） ──
   const pdfPanel = document.getElementById('pdf-panel');
 
@@ -456,6 +592,7 @@
 
   document.getElementById('pdf-btn').addEventListener('click', () => {
     if (!pdfPanel.hidden) { pdfPanel.hidden = true; return; }
+    rosterPanel.hidden = true;   // 他のパネルは閉じる
     document.getElementById('pdf-start').value = state.date;   // 初期値: 表示中の日
     updatePagesHint();
     pdfPanel.hidden = false;
