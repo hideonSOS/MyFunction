@@ -335,6 +335,24 @@ def main():
         slog("全件IDリストを取得中...")
         all_ids = fetch_all_ids(service)
         slog(f"全件ID取得完了: {len(all_ids)} 件")
+
+        # Gmailで削除・ゴミ箱・迷惑メールへ移動したメールをキャッシュから除く
+        # （全件IDの一覧は通常の一覧のみで、ゴミ箱・迷惑メールは含まれない）
+        live = set(all_ids)
+        gone = [i for i in existing_ids if i not in live]
+        # 安全装置: 一度に1割超が消える場合はGmail側の応答異常を疑い、除外しない
+        if gone and len(gone) > max(100, len(existing) // 10):
+            log(f"[WARN] 削除候補が多すぎるため除外を見送り: {len(gone)} 件")
+        elif all_ids and gone:
+            for i in gone:
+                existing_map.pop(i, None)
+            existing = [m for m in existing if m['id'] in live]
+            existing_ids = set(existing_map.keys())
+            save_cache(existing)
+            log(f"Gmailで削除済みのメールを除外: {len(gone)} 件")
+        else:
+            log("Gmailで削除済みのメールを除外: 0 件")
+
         # キャッシュにないIDだけを対象にする
         target_ids = [i for i in all_ids if i not in existing_ids]
         slog(f"未取得: {len(target_ids)} 件")
