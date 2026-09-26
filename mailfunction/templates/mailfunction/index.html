@@ -104,6 +104,10 @@ tr.selected td { background: #002a44; }
 tr.selected td:first-child { border-left: 2px solid var(--cyan); padding-left: 8px; }
 
 .col-from    { width: 26%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--cyan); }
+/* From欄のラベル別の色（都市=シアン[既定] / 箕面市=緑 / 代理店・関係=黄 / アンドアイ=白） */
+.col-from.from-green  { color: var(--green); }
+.col-from.from-yellow { color: var(--yellow); }
+.col-from.from-white  { color: #ffffff; }
 .col-subject { max-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .col-date    { width: 100px; white-space: nowrap; color: #ffffff; text-align: right; font-size: .72em; }
 
@@ -875,6 +879,8 @@ function loadLabels() {
       var html = '<option value="">🏷 ラベル: すべて</option>';
       var user = (data.labels || []).filter(l => !l.system);
       var sys  = (data.labels || []).filter(l => l.system);
+      (data.labels || []).forEach(function(l) { LABEL_NAMES[l.id] = l.name; });
+      applyFromColors();   // ラベル名が分かったので一覧の色分けを適用
       if (user.length) {
         html += '<optgroup label="マイラベル">' + user.map(function(l) {
           return '<option value="' + esc(l.id) + '">' + esc(l.name) + '（' + l.count + '）</option>';
@@ -968,6 +974,39 @@ function renderRows(mails) {
       + '<td class="col-date">'    + esc(m.date_fmt) + '</td>'
       + '</tr>';
   }).join('');
+  applyFromColors();
+}
+
+// ── From欄の色分け（ラベルごと） ─────────────────────
+// ラベル名の先頭一致で判定。複数付いている場合は上にあるものを優先。
+// どれにも当たらないメールは既定のシアン
+var FROM_COLOR_RULES = [
+  { prefix: '都市',       cls: '' },            // シアン（既定色のまま）
+  { prefix: '箕面',       cls: 'from-green' },
+  { prefix: '代理店',     cls: 'from-yellow' },
+  { prefix: 'アンドアイ', cls: 'from-white' },
+];
+var LABEL_NAMES = {};   // ラベルID → 名前（loadLabels で埋める）
+
+function fromColorClass(labelIds) {
+  for (var i = 0; i < FROM_COLOR_RULES.length; i++) {
+    var r = FROM_COLOR_RULES[i];
+    for (var j = 0; j < labelIds.length; j++) {
+      var name = LABEL_NAMES[labelIds[j]];
+      if (name && name.indexOf(r.prefix) === 0) return r.cls;
+    }
+  }
+  return '';
+}
+
+function applyFromColors() {
+  document.querySelectorAll('#mail-tbody tr[data-labels]').forEach(function(tr) {
+    var td = tr.querySelector('.col-from');
+    if (!td) return;
+    td.classList.remove('from-green', 'from-yellow', 'from-white');
+    var cls = fromColorClass(tr.dataset.labels.split(',').filter(Boolean));
+    if (cls) td.classList.add(cls);
+  });
 }
 
 function esc(s) {
