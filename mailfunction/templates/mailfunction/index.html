@@ -156,18 +156,20 @@ tr.selected td:first-child { border-left: 2px solid var(--cyan); padding-left: 8
 
 /* 件名ヘッダー（詳細ペイン最上段） */
 .detail-head {
-  padding: 16px 20px 12px;
+  padding: 18px 20px 16px;
   border-bottom: 1px solid var(--border);
 }
-.detail-subject {
+/* 件名・着信日時は同じ大きさ・シアンでそろえる */
+.detail-subject,
+.detail-date {
   font-size: 1.35em; font-weight: bold; line-height: 1.45;
-  color: var(--green); text-shadow: var(--glow-g);
+  color: var(--cyan); text-shadow: var(--glow-c);
   word-break: break-word;
 }
 .detail-date {
-  margin-top: 6px;
-  font-size: .86em; letter-spacing: .06em;
-  color: var(--yellow);
+  margin-top: 14px;
+  letter-spacing: .04em;
+  word-break: keep-all;   /* 幅が狭いときは「日付」と「時刻」の間でだけ折り返す */
 }
 
 .body-section { margin: 0 20px 10px; }
