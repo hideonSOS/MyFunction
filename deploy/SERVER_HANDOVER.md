@@ -14,6 +14,10 @@ cron で直接実行するだけで、**コード変更・migrate・collectstati
 0 3 * * * cd /srv/MyFunction && flock -n /tmp/ringi_fetch.lock ./venv/bin/python docs_fetcher.py >> logs/cron_ringi.log 2>&1
 # メール（Gmail取得・15分ごと）※2026-09-26 毎日3:10から変更（/etc/cron.d/myfunction-sync に設定済み）
 */15 * * * * cd /srv/MyFunction && flock -n /tmp/mail_fetch.lock ./venv/bin/python mailfunction/mail_fetcher.py >> logs/cron_mail.log 2>&1
+# メール全件照合（毎日 3:20）※2026-09-26 追加。Gmailで削除・ゴミ箱移動したメールを除外し、取りこぼしも補完
+20 3 * * * cd /srv/MyFunction && flock -n /tmp/mail_fetch.lock ./venv/bin/python mailfunction/mail_fetcher.py --full >> logs/cron_mail.log 2>&1
+# 15分ごとの回では、新着の取り込みに加えて マイラベル・受信トレイ・未読・スター の
+#   付け外しもGmailの現状に合わせる（ラベル名・連絡先名の対応表もこの時に更新）
 # 補足: mail_fetcher.py 自体も logs/mail_fetcher.lock で実行ロックを取り、
 #       画面のSYNCボタン(root)とcron(www-data)が重なった場合は後発がスキップする。
 #       キャッシュは一時ファイル→置換のアトミック書き込み。
