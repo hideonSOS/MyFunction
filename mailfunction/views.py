@@ -5,7 +5,7 @@ import subprocess
 import sys
 import uuid
 from datetime import datetime, timezone, timedelta
-from email.utils import parsedate_to_datetime
+from email.utils import parsedate_to_datetime, parseaddr
 
 JST = timezone(timedelta(hours=9))
 from pathlib import Path
@@ -59,9 +59,17 @@ def _load_mails():
         dt = _parse_date(m.get('date', ''))
         m['date_fmt']    = dt.strftime('%Y/%m/%d') if dt else ''
         m['date_detail'] = dt.strftime('%Y/%m/%d %H:%M') if dt else ''
+        m['from_name']   = _display_name(m.get('from', ''))
     _cache_data  = mails
     _cache_mtime = mtime
     return mails
+
+
+def _display_name(raw):
+    """'"山田 太郎" <taro@example.com>' → '山田 太郎'。名前が無ければアドレスを返す"""
+    name, addr = parseaddr(raw or '')
+    name = name.strip().strip('"\\').strip()
+    return name or addr or (raw or '')
 
 
 INITIAL_LIMIT = 300
@@ -164,6 +172,7 @@ def search(request):
         'id':          m['id'],
         'subject':     m.get('subject', ''),
         'from':        m.get('from', ''),
+        'from_name':   m.get('from_name', ''),
         'to':          m.get('to', ''),
         'date_fmt':    m.get('date_fmt', ''),
         'date_detail': m.get('date_detail', ''),

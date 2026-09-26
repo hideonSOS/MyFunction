@@ -144,6 +144,16 @@ tr.selected td:first-child { border-left: 2px solid var(--cyan); padding-left: 8
 }
 .auth-banner a:hover { background: #ff990022; }
 
+/* 送信元・送信先: 既定は名前のみ。クリックでアドレスを開閉 */
+.addr-toggle {
+  cursor: pointer;
+  border-bottom: 1px dotted var(--cyan-dim);
+}
+.addr-toggle:hover { color: var(--cyan); }
+.addr-email { display: none; color: var(--text-dim); font-size: .92em; }
+.addr-toggle.open .addr-email { display: inline; }
+.addr-sep { color: var(--text-dim); }
+
 /* 件名ヘッダー（詳細ペイン最上段） */
 .detail-head {
   padding: 16px 20px 12px;
@@ -375,7 +385,7 @@ tr.selected td:first-child { border-left: 2px solid var(--cyan); padding-left: 8
                 data-date="{{ m.date_detail }}"
                 data-snippet="{{ m.snippet }}"
                 data-labels="{{ m.labels|join:',' }}">
-              <td class="col-from">{{ m.from|truncatechars:30 }}</td>
+              <td class="col-from" title="{{ m.from }}">{{ m.from_name }}</td>
               <td class="col-subject">{{ m.subject }}</td>
               <td class="col-date">{{ m.date_fmt }}</td>
             </tr>
@@ -593,6 +603,32 @@ function fmtDate(dateStr) {
   return dateStr;
 }
 
+/** "山田 <a@x>, \"鈴木, 花子\" <b@y>, c@z" → [{name, email}, ...]
+    （引用符や<>の中のカンマでは区切らない） */
+function parseAddrList(raw) {
+  var parts = [], cur = '', inQ = false, inA = false;
+  for (var i = 0; i < (raw || '').length; i++) {
+    var ch = raw[i];
+    if (ch === '\\' && inQ) { cur += ch + (raw[++i] || ''); continue; }
+    if (ch === '"') inQ = !inQ;
+    else if (ch === '<' && !inQ) inA = true;
+    else if (ch === '>' && !inQ) inA = false;
+    if (ch === ',' && !inQ && !inA) { parts.push(cur); cur = ''; continue; }
+    cur += ch;
+  }
+  parts.push(cur);
+  return parts.map(function(p) {
+    p = p.trim();
+    if (!p) return null;
+    var m = p.match(/^(.*?)\s*<([^>]*)>\s*$/);
+    if (m) {
+      var name = m[1].replace(/\\"/g, '"').replace(/^"+|"+$/g, '').trim();
+      return { name: name || m[2], email: m[2] };
+    }
+    return { name: p, email: p };
+  }).filter(Boolean);
+}
+
 // ── メール選択 ───────────────────────────────────────
 function selectMail(tr) {
   document.querySelectorAll('#mail-tbody tr').forEach(r => r.classList.remove('selected'));
@@ -602,10 +638,24 @@ function selectMail(tr) {
     return '<div class="field-row"><span class="fk">' + key + '</span><span class="fv ' + (cls||'') + '">' + esc(val) + '</span></div>';
   }
 
+  // アドレス欄: 既定は名前だけ。名前クリックでメールアドレスを開閉
+  function addrRow(key, raw) {
+    var items = parseAddrList(raw).map(function(a) {
+      if (!a.email || a.name === a.email) {
+        return '<span class="addr">' + esc(a.name || a.email) + '</span>';
+      }
+      return '<span class="addr addr-toggle" onclick="this.classList.toggle(\'open\')"'
+        + ' title="クリックでメールアドレスを表示">' + esc(a.name)
+        + '<span class="addr-email"> &lt;' + esc(a.email) + '&gt;</span></span>';
+    });
+    return '<div class="field-row"><span class="fk">' + key + '</span><span class="fv">'
+      + items.join('<span class="addr-sep">, </span>') + '</span></div>';
+  }
+
   // 件名・日付は上部ヘッダーに表示（ラベルは非表示）
   var html = '<div class="field-section-label">メール情報</div>';
-  html += row('送信元', tr.dataset.from);
-  if (tr.dataset.to) html += row('送信先', tr.dataset.to);
+  html += addrRow('送信元', tr.dataset.from);
+  if (tr.dataset.to) html += addrRow('送信先', tr.dataset.to);
 
   document.getElementById('detail-subject').textContent = tr.dataset.subject || '（件名なし）';
   document.getElementById('detail-date').textContent    = fmtDate(tr.dataset.date);
@@ -876,7 +926,7 @@ function renderRows(mails) {
     var labels = (m.labels || []).join(',');
     var subjectEsc = esc(m.subject);
     var fromEsc    = esc(m.from);
-    var fromShort  = m.from.length > 30 ? m.from.substring(0, 30) + '…' : m.from;
+    var fromName   = m.from_name || m.from;   // 一覧は名前だけ（アドレスはホバーで表示）
     return '<tr onclick="selectMail(this)"'
       + ' data-id="'      + esc(m.id)       + '"'
       + ' data-subject="' + esc(m.subject)   + '"'
@@ -885,7 +935,7 @@ function renderRows(mails) {
       + ' data-to="'      + esc(m.to || '')  + '"'
       + ' data-snippet="' + esc(m.snippet)   + '"'
       + ' data-labels="'  + esc(labels)      + '">'
-      + '<td class="col-from">'    + esc(fromShort)  + '</td>'
+      + '<td class="col-from" title="' + fromEsc + '">' + esc(fromName) + '</td>'
       + '<td class="col-subject">' + subjectEsc       + '</td>'
       + '<td class="col-date">'    + esc(m.date_fmt) + '</td>'
       + '</tr>';
