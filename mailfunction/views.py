@@ -256,9 +256,10 @@ def labels(request):
 
     # マイラベルは件数0でも出す（作ったばかりのラベルも見えるように）。
     # Gmail側で削除済みのラベル（対応表に無い Label_*）は出さない
+    # 並びは名前の逆順（都市 → 箕面市 → 代理店・関係 → …）。ユーザー指定の優先順
     user = sorted(({'id': i, 'name': n, 'count': counts[i], 'system': False}
                    for i, n in names.items()),
-                  key=lambda x: x['name'])
+                  key=lambda x: x['name'], reverse=True)
     system = [{'id': i, 'name': n, 'count': counts[i], 'system': True}
               for i, n in SYSTEM_LABELS if counts[i]]
     return JsonResponse({'labels': user + system})
