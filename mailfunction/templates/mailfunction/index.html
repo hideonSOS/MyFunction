@@ -111,6 +111,48 @@ tr.selected td:first-child { border-left: 2px solid var(--cyan); padding-left: 8
 .col-from.from-yellow { color: var(--yellow); }
 .col-from.from-white  { color: #ffffff; }
 .col-subject { max-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ── 独自マーク（★重要 など） ── */
+.mark-c-yellow { --mc: var(--yellow); }
+.mark-c-orange { --mc: var(--orange); }
+.mark-c-pink   { --mc: var(--pink); }
+.mark-c-red    { --mc: #ff3b3b; }
+.mark-c-green  { --mc: var(--green); }
+.mark-c-cyan   { --mc: var(--cyan); }
+.mark-c-purple { --mc: #b36bff; }
+.mark-c-white  { --mc: #ffffff; }
+.mark-sym-on   { color: var(--mc); }
+/* 一覧の先頭列: 付いているマークを表示。クリックで先頭のマーク（重要）を付け外し */
+th.col-mark, td.col-mark { width: 34px; padding-left: 6px; padding-right: 0; text-align: center; white-space: nowrap; overflow: hidden; }
+td.col-mark { font-size: .95em; }
+td.col-mark .mark-empty { color: #3a5a7a; }
+td.col-mark:hover .mark-empty { color: var(--yellow); }
+/* 詳細ペインのマークボタン */
+.mark-bar { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+.mark-btn {
+  font-family: 'Meiryo', 'メイリオ', sans-serif; font-size: 12px;
+  padding: 3px 12px; border-radius: 12px; cursor: pointer; user-select: none;
+  border: 1px solid var(--border); color: var(--text-dim); background: transparent;
+}
+.mark-btn .mark-sym { color: #3a5a7a; margin-right: 4px; }
+.mark-btn:hover { border-color: currentColor; }
+/* 付いている時はマークの色で強調 */
+.mark-btn.on { color: var(--mc); border-color: var(--mc); background: #ffffff0d; font-weight: bold; }
+.mark-btn.on .mark-sym { color: var(--mc); }
+.mark-btn-edit { color: var(--text-dim); border-style: dashed; }
+/* マーク設定ダイアログ */
+.mark-edit-row { display: flex; gap: 6px; align-items: center; }
+.mark-edit-row input[type=text] {
+  background: var(--bg3); color: var(--text); border: 1px solid var(--cyan-dim); border-radius: 3px;
+  padding: 5px 8px; font-size: .84em; outline: none; box-sizing: border-box;
+}
+.mark-edit-row .in-sym  { width: 46px; text-align: center; }
+.mark-edit-row .in-name { flex: 1; min-width: 0; }
+.mark-edit-row select {
+  background: var(--bg3); color: var(--text); border: 1px solid var(--cyan-dim); border-radius: 3px; padding: 5px;
+}
+.mark-edit-row .btn { padding: 4px 10px; font-size: .72em; }
+.mark-edit-note { font-size: .72em; color: var(--text-dim); line-height: 1.6; }
 .col-date    { width: 100px; white-space: nowrap; color: #ffffff; text-align: right; font-size: .72em; }
 
 .label-tag {
@@ -346,6 +388,11 @@ tr.selected td:first-child { border-left: 2px solid var(--cyan); padding-left: 8
 /* 「ALL」「ラベルなし」はラベルそのものではないので白系で区別 */
 .chip-label-meta { color: var(--text); border-color: #b0c8e066; }
 .chip-label-meta.active { background: var(--text); border-color: var(--text); }
+/* 独自マークの絞り込みチップ（マークの色） */
+.chip.chip-mark, .chip.chip-mark:hover { color: var(--mc); border-color: var(--mc); }
+.chip.chip-mark.active { color: #061018; background: var(--mc); border-color: var(--mc); }
+.chip.chip-mark-edit { border-style: dashed; }
+#mark-chips { display: contents; }   /* 中のチップを chip-bar の並び（gap）に乗せる */
 .chip-sep {
   width: 1px;
   height: 16px;
@@ -392,6 +439,9 @@ tr.selected td:first-child { border-left: 2px solid var(--cyan); padding-left: 8
           <span class="chip chip-state" id="chip-unread" onclick="toggleUnread()">未読のみ</span>
           <span class="chip chip-state" id="chip-d7"  onclick="setDays(7)">7日以内</span>
           <span class="chip chip-state" id="chip-d30" onclick="setDays(30)">30日以内</span>
+          <span class="chip-sep"></span>
+          <span id="mark-chips"></span>
+          <span class="chip chip-mark-edit" onclick="openMarkEditor()" title="マークの追加・名前や記号・色の変更">⚙ マーク設定</span>
           <span id="label-chips"><span class="chip-loading">ラベルを読み込み中...</span></span>
         </div>
       </div>
@@ -400,6 +450,7 @@ tr.selected td:first-child { border-left: 2px solid var(--cyan); padding-left: 8
         <table>
           <thead>
             <tr>
+              <th class="col-mark" title="マーク（クリックで先頭のマークを付け外し）">★</th>
               <th style="width:26%;">FROM</th>
               <th>SUBJECT</th>
               <th style="width:110px; text-align:right;">DATE</th>
@@ -415,12 +466,13 @@ tr.selected td:first-child { border-left: 2px solid var(--cyan); padding-left: 8
                 data-date="{{ m.date_detail }}"
                 data-snippet="{{ m.snippet }}"
                 data-labels="{{ m.labels|join:',' }}">
+              <td class="col-mark" onclick="quickMark(event, this)"></td>
               <td class="col-from" title="{{ m.from }}">{{ m.from_name }}</td>
               <td class="col-subject">{{ m.subject }}</td>
               <td class="col-date">{{ m.date_fmt }}</td>
             </tr>
             {% empty %}
-            <tr><td colspan="3" class="no-data">// NO MAIL CACHE — RUN SYNC //</td></tr>
+            <tr><td colspan="4" class="no-data">// NO MAIL CACHE — RUN SYNC //</td></tr>
             {% endfor %}
           </tbody>
         </table>
@@ -457,6 +509,7 @@ tr.selected td:first-child { border-left: 2px solid var(--cyan); padding-left: 8
         <div class="detail-head">
           <div class="detail-subject" id="detail-subject"></div>
           <div class="detail-date" id="detail-date"></div>
+          <div class="mark-bar" id="mark-bar"></div>
         </div>
         <div class="field-list" id="field-list"></div>
 
@@ -525,6 +578,23 @@ tr.selected td:first-child { border-left: 2px solid var(--cyan); padding-left: 8
       <span id="compose-msg"></span>
       <button class="btn btn-cyan" onclick="sendMail()">✉ SEND</button>
       <button class="btn" style="color:var(--text-dim);border-color:var(--border);" onclick="closeCompose()">CANCEL</button>
+    </div>
+  </div>
+</div>
+
+<!-- マーク設定 -->
+<div class="compose-overlay" id="mark-overlay" onclick="if (event.target === this) closeMarkEditor()">
+  <div class="compose-panel">
+    <div class="compose-header">
+      <span>▸ MARK SETTINGS</span>
+      <button onclick="closeMarkEditor()">✕</button>
+    </div>
+    <div class="compose-body">
+      <div class="mark-edit-note">このサイト内だけの印です（Gmailには反映されません）。記号は ★ ◆ ● ! など1〜2文字。<br>一番上のマークは、一覧の左端の列をクリックして付け外しできます。</div>
+      <div id="mark-edit-list" style="display:flex;flex-direction:column;gap:8px;"></div>
+      <div class="field-section-label" style="margin-top:6px;">新しいマーク</div>
+      <div class="mark-edit-row" id="mark-new-row"></div>
+      <div id="mark-edit-msg" style="font-size:.78em;color:var(--orange);"></div>
     </div>
   </div>
 </div>
@@ -699,6 +769,8 @@ function selectMail(tr) {
 
   document.getElementById('detail-subject').textContent = tr.dataset.subject || '（件名なし）';
   document.getElementById('detail-date').textContent    = fmtDate(tr.dataset.date);
+  currentMailId = tr.dataset.id;
+  renderMarkBar();
   document.getElementById('field-list').innerHTML = html;
   document.getElementById('detail-empty').style.display   = 'none';
   document.getElementById('detail-content').style.display = 'block';
@@ -951,6 +1023,7 @@ function doSearch() {
   var params = new URLSearchParams({
     q: query, label: [currentBox, currentLabel].filter(Boolean).join(','),   // AND
     unread: unreadOnly ? '1' : '', days: currentDays ? String(currentDays) : '',
+    mark: currentMark ? String(currentMark) : '',
   });
   fetch('/mailfunction/search/?' + params)
     .then(r => r.json())
@@ -964,7 +1037,7 @@ function doSearch() {
 function renderRows(mails) {
   var tbody = document.getElementById('mail-tbody');
   if (!mails.length) {
-    tbody.innerHTML = '<tr><td colspan="3" class="no-data">// NO RESULTS //</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="4" class="no-data">// NO RESULTS //</td></tr>';
     return;
   }
   tbody.innerHTML = mails.map(function(m) {
@@ -980,12 +1053,184 @@ function renderRows(mails) {
       + ' data-to="'      + esc(m.to || '')  + '"'
       + ' data-snippet="' + esc(m.snippet)   + '"'
       + ' data-labels="'  + esc(labels)      + '">'
+      + '<td class="col-mark" onclick="quickMark(event, this)"></td>'
       + '<td class="col-from" title="' + fromEsc + '">' + esc(fromName) + '</td>'
       + '<td class="col-subject">' + subjectEsc       + '</td>'
       + '<td class="col-date">'    + esc(m.date_fmt) + '</td>'
       + '</tr>';
   }).join('');
   applyFromColors();
+  renderMarkCells();
+}
+
+// ── 独自マーク（★重要 など。このサイト内だけの印） ─────
+var MARKS       = [];   // [{id, name, symbol, color, count}]（並び順。先頭が一覧でワンクリックのマーク）
+var MAIL_MARKS  = {};   // メールID → 付いているマークID
+var MARK_COLORS = [];
+var MARK_COLOR_NAMES = { yellow: '黄', orange: '橙', pink: 'ピンク', red: '赤',
+                         green: '緑', cyan: 'シアン', purple: '紫', white: '白' };
+var currentMark   = 0;    // 絞り込み中のマークID（0=なし）
+var currentMailId = '';   // 詳細ペインで開いているメール
+
+function loadMarks() {
+  fetch('/mailfunction/marks/').then(r => r.json()).then(applyMarkData).catch(function() {});
+}
+
+function applyMarkData(data) {
+  MARKS       = data.marks    || [];
+  MAIL_MARKS  = data.assigned || {};
+  MARK_COLORS = data.colors   || [];
+  if (currentMark && !MARKS.some(function(k) { return k.id === currentMark; })) {
+    currentMark = 0;   // 絞り込み中のマークが削除された
+    doSearch();
+  }
+  renderMarkChips();
+  renderMarkCells();
+  renderMarkBar();
+  if (document.getElementById('mark-overlay').classList.contains('open')) renderMarkEditor();
+}
+
+function postMark(url, params) {
+  params.csrfmiddlewaretoken = CSRF;
+  return fetch(url, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+    body: new URLSearchParams(params),
+  }).then(function(r) {
+    return r.json().then(function(d) {
+      if (!r.ok) throw new Error(d.error || '保存に失敗しました');
+      return d;
+    });
+  });
+}
+
+function markSymHtml(k) {
+  return '<span class="mark-c-' + esc(k.color) + ' mark-sym-on">' + esc(k.symbol) + '</span>';
+}
+
+// 一覧の左端列: 付いているマーク。何も無ければ先頭マークの薄い記号（★なら☆）
+function renderMarkCells() {
+  var first = MARKS[0];
+  document.querySelectorAll('#mail-tbody td.col-mark').forEach(function(td) {
+    var ids = MAIL_MARKS[td.parentNode.dataset.id] || [];
+    var on  = MARKS.filter(function(k) { return ids.indexOf(k.id) >= 0; });
+    if (on.length) {
+      td.innerHTML = on.map(markSymHtml).join('');
+      td.title = on.map(function(k) { return k.symbol + ' ' + k.name; }).join(' / ');
+    } else if (first) {
+      td.innerHTML = '<span class="mark-empty">' + (first.symbol === '★' ? '☆' : esc(first.symbol)) + '</span>';
+      td.title = 'クリックで「' + first.name + '」を付ける';
+    } else {
+      td.innerHTML = ''; td.title = '';
+    }
+  });
+}
+
+function quickMark(ev, td) {
+  ev.stopPropagation();   // 行の選択（詳細表示）はしない
+  if (!MARKS.length) { openMarkEditor(); return; }
+  toggleMark(td.parentNode.dataset.id, MARKS[0].id);
+}
+
+function toggleMark(mailId, markId) {
+  if (!mailId) return;
+  // 先に画面へ反映し、保存結果で確定する
+  var ids = (MAIL_MARKS[mailId] || []).slice();
+  var i = ids.indexOf(markId);
+  if (i >= 0) ids.splice(i, 1); else ids.push(markId);
+  MAIL_MARKS[mailId] = ids;
+  renderMarkCells();
+  renderMarkBar();
+  postMark('/mailfunction/marks/toggle/', { mail_id: mailId, mark_id: markId })
+    .then(function(d) {
+      applyMarkData(d);
+      if (currentMark === markId) doSearch();   // 絞り込み中なら一覧も更新
+    })
+    .catch(loadMarks);
+}
+
+// 詳細ペインのマークボタン（押すたびに付け外し）
+function renderMarkBar() {
+  var bar = document.getElementById('mark-bar');
+  if (!currentMailId) { bar.innerHTML = ''; return; }
+  var ids = MAIL_MARKS[currentMailId] || [];
+  bar.innerHTML = MARKS.map(function(k) {
+    var on = ids.indexOf(k.id) >= 0;
+    return '<span class="mark-btn mark-c-' + esc(k.color) + (on ? ' on' : '') + '"'
+      + ' onclick="toggleMark(currentMailId, ' + k.id + ')"'
+      + ' title="' + (on ? 'クリックで外す' : 'クリックで付ける') + '">'
+      + '<span class="mark-sym">' + esc(k.symbol) + '</span>' + esc(k.name) + '</span>';
+  }).join('') + '<span class="mark-btn mark-btn-edit" onclick="openMarkEditor()" title="マークの追加・変更">＋</span>';
+}
+
+// 絞り込みチップ（他の条件と AND）
+function renderMarkChips() {
+  document.getElementById('mark-chips').innerHTML = MARKS.map(function(k) {
+    return '<span class="chip chip-mark mark-c-' + esc(k.color) + (currentMark === k.id ? ' active' : '') + '"'
+      + ' onclick="setMarkFilter(' + k.id + ')" title="「' + esc(k.name) + '」の付いたメールだけ表示">'
+      + esc(k.symbol) + ' ' + esc(k.name) + ' ' + k.count + '</span>';
+  }).join('');
+}
+
+function setMarkFilter(id) {
+  currentMark = (currentMark === id) ? 0 : id;   // 再クリックで解除
+  renderMarkChips();
+  doSearch();
+}
+
+// ── マーク設定ダイアログ ──
+function openMarkEditor() {
+  document.getElementById('mark-edit-msg').textContent = '';
+  document.getElementById('mark-overlay').classList.add('open');
+  renderMarkEditor();
+}
+
+function closeMarkEditor() {
+  document.getElementById('mark-overlay').classList.remove('open');
+}
+
+function markEditRowHtml(k) {
+  var color = k ? k.color : MARK_COLORS[0];
+  var opts = MARK_COLORS.map(function(c) {
+    return '<option value="' + c + '"' + (c === color ? ' selected' : '') + '>'
+      + (MARK_COLOR_NAMES[c] || c) + '</option>';
+  }).join('');
+  return '<input type="text" class="in-sym" maxlength="4" value="' + esc(k ? k.symbol : '★') + '" title="記号">'
+    + '<input type="text" class="in-name" maxlength="30" placeholder="名前（例: 要対応）" value="' + esc(k ? k.name : '') + '">'
+    + '<select class="in-color" title="色">' + opts + '</select>'
+    + (k ? '<button class="btn btn-cyan" onclick="saveMark(this, ' + k.id + ')">保存</button>'
+         + '<button class="btn btn-orange" onclick="deleteMark(' + k.id + ')">削除</button>'
+         : '<button class="btn btn-cyan" onclick="saveMark(this)">＋ 追加</button>');
+}
+
+function renderMarkEditor() {
+  document.getElementById('mark-edit-list').innerHTML = MARKS.length
+    ? MARKS.map(function(k) { return '<div class="mark-edit-row">' + markEditRowHtml(k) + '</div>'; }).join('')
+    : '<div class="mark-edit-note">マークはまだありません</div>';
+  document.getElementById('mark-new-row').innerHTML = markEditRowHtml(null);
+}
+
+function saveMark(btn, id) {
+  var row = btn.parentNode;
+  var p = {
+    symbol: row.querySelector('.in-sym').value,
+    name:   row.querySelector('.in-name').value,
+    color:  row.querySelector('.in-color').value,
+  };
+  if (id) p.id = id;
+  var msg = document.getElementById('mark-edit-msg');
+  postMark('/mailfunction/marks/save/', p)
+    .then(function(d) { msg.textContent = ''; applyMarkData(d); })
+    .catch(function(e) { msg.textContent = e.message; });
+}
+
+function deleteMark(id) {
+  var k = MARKS.find(function(x) { return x.id === id; });
+  if (!k) return;
+  if (!confirm('マーク「' + k.name + '」を削除します。\n付けていた ' + k.count + ' 件のメールからも外れます。よろしいですか？')) return;
+  postMark('/mailfunction/marks/delete/', { id: id })
+    .then(applyMarkData)
+    .catch(function(e) { document.getElementById('mark-edit-msg').textContent = e.message; });
 }
 
 // ── From欄の色分け（ラベルごと） ─────────────────────
@@ -1047,6 +1292,7 @@ function esc(s) {
 // ── ページロード：進行中ジョブを自動再接続 ─────────────
 window.addEventListener('load', function() {
   loadLabels();    // ラベルのチップとプルダウンを構築
+  loadMarks();     // 独自マークの一覧・付いているメール
   var saved = localStorage.getItem(JOB_KEY);
   if (saved) {
     try {

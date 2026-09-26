@@ -17,6 +17,7 @@ from django.shortcuts import render, redirect
 from django.views.decorators.http import require_POST
 
 from . import gmail_client as gc
+from .models import MailMark, MailMarkAssign
 
 APP_DIR    = Path(__file__).resolve().parent
 BASE_DIR   = APP_DIR.parent
@@ -231,9 +232,14 @@ def search(request):
         days = int(request.GET.get('days') or 0)             # 直近N日
     except ValueError:
         days = 0
+    mark = request.GET.get('mark', '').strip()               # 独自マークのID
 
     mails = _load_mails()
 
+    if mark.isdigit():
+        marked = set(MailMarkAssign.objects.filter(mark_id=int(mark))
+                     .values_list('mail_id', flat=True))
+        mails = [m for m in mails if m['id'] in marked]
     if label:
         # カンマ区切りで複数指定可。すべての条件に当てはまるメールだけ（AND）
         # 例: label=INBOX,Label_123 → 受信トレイ かつ そのラベル
@@ -354,6 +360,78 @@ def _addr_labels():
         if addr:
             table.setdefault(addr, set()).update(mine)
     return {a: sorted(ls) for a, ls in table.items()}
+
+
+# ── 独自マーク（★重要 など。このサイト内だけの印でGmailには反映しない） ──
+# 色は画面側のCSS（.mark-c-xxx）と対応するキーだけを受け付ける
+MARK_COLORS = ['yellow', 'orange', 'pink', 'red', 'green', 'cyan', 'purple', 'white']
+
+
+def _marks_payload():
+    live = {m['id'] for m in _load_mails()}   # Gmailで削除済みのメールは数えない
+    assigned = {}
+    for mail_id, mark_id in MailMarkAssign.objects.values_list('mail_id', 'mark_id'):
+        if mail_id in live:
+            assigned.setdefault(mail_id, []).append(mark_id)
+    counts = {}
+    for ids in assigned.values():
+        for i in ids:
+            counts[i] = counts.get(i, 0) + 1
+    marks = [{'id': k.id, 'name': k.name, 'symbol': k.symbol, 'color': k.color,
+              'count': counts.get(k.id, 0)} for k in MailMark.objects.all()]
+    return {'marks': marks, 'assigned': assigned, 'colors': MARK_COLORS}
+
+
+@login_required
+def marks(request):
+    """マーク一覧と、メールID → 付いているマークID の表"""
+    return JsonResponse(_marks_payload())
+
+
+@login_required
+@require_POST
+def mark_toggle(request):
+    """メールのマークを付け外しする"""
+    mail_id = request.POST.get('mail_id', '').strip()
+    mark = MailMark.objects.filter(pk=request.POST.get('mark_id') or 0).first()
+    if not mail_id or mark is None:
+        return JsonResponse({'error': 'bad_request'}, status=400)
+    deleted, _ = MailMarkAssign.objects.filter(mail_id=mail_id, mark=mark).delete()
+    if not deleted:
+        MailMarkAssign.objects.get_or_create(mail_id=mail_id, mark=mark)
+    return JsonResponse({'on': not deleted, **_marks_payload()})
+
+
+@login_required
+@require_POST
+def mark_save(request):
+    """マークの追加（id なし）・変更（id あり）"""
+    name   = request.POST.get('name', '').strip()[:30]
+    symbol = request.POST.get('symbol', '').strip()[:4] or '★'
+    color  = request.POST.get('color', '')
+    if not name:
+        return JsonResponse({'error': '名前を入力してください'}, status=400)
+    if color not in MARK_COLORS:
+        color = MARK_COLORS[0]
+    pk = request.POST.get('id')
+    if pk:
+        mark = MailMark.objects.filter(pk=pk).first()
+        if mark is None:
+            return JsonResponse({'error': 'not_found'}, status=404)
+    else:
+        last = MailMark.objects.order_by('-sort_order').first()
+        mark = MailMark(sort_order=(last.sort_order + 1) if last else 0)
+    mark.name, mark.symbol, mark.color = name, symbol, color
+    mark.save()
+    return JsonResponse(_marks_payload())
+
+
+@login_required
+@require_POST
+def mark_delete(request):
+    """マークを削除（そのマークの付け外し記録もまとめて消える）"""
+    MailMark.objects.filter(pk=request.POST.get('id') or 0).delete()
+    return JsonResponse(_marks_payload())
 
 
 # ── メール詳細（本文 + 添付一覧） ─────────────────────
