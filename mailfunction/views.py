@@ -189,14 +189,23 @@ def _is_forward(m):
     return bool(_FORWARD_SUBJECT.match(m.get('subject') or ''))
 
 
-def _has_label(m, label):
-    """画面の絞り込み条件。SENT は転送を除く送信（返信を含む）、FWD は転送だけ"""
+def _has_label(m, label, user_labels):
+    """画面の絞り込み条件。SENT は転送を除く送信（返信を含む）、FWD は転送だけ、
+    NOLABEL はマイラベルが付いていないもの"""
     labels = m.get('labels', [])
     if label == 'SENT':
         return 'SENT' in labels and not _is_forward(m)
     if label == 'FWD':
         return 'SENT' in labels and _is_forward(m)
+    if label == 'NOLABEL':
+        return _has_no_user_label(m, user_labels)
     return label in labels
+
+
+def _has_no_user_label(m, user_labels):
+    """マイラベル（Gmailで作ったラベル）が1つも付いていない。
+    Gmail側で削除済みのラベルIDが残っていても、付いていない扱い"""
+    return not any(l in user_labels for l in m.get('labels', []))
 
 
 @login_required
@@ -216,7 +225,9 @@ def search(request):
         # カンマ区切りで複数指定可。すべての条件に当てはまるメールだけ（AND）
         # 例: label=INBOX,Label_123 → 受信トレイ かつ そのラベル
         required = [l for l in label.split(',') if l]
-        mails = [m for m in mails if all(_has_label(m, l) for l in required)]
+        user_labels = _user_label_names()
+        mails = [m for m in mails
+                 if all(_has_label(m, l, user_labels) for l in required)]
     if sender:
         mails = [m for m in mails if sender in m.get('from', '').lower()]
     if unread:
@@ -267,16 +278,9 @@ def labels(request):
     ユーザー作成ラベル（名前順）→ システムラベル（Gmailの並び）の順"""
     from collections import Counter
 
-    counts = Counter(l for m in _load_mails() for l in m.get('labels', []))
-
-    names = {}
-    try:
-        with open(LABEL_CACHE, encoding='utf-8') as f:
-            for l in json.load(f):
-                if l.get('type') == 'user':
-                    names[l['id']] = l['name']
-    except (OSError, ValueError):
-        pass   # 対応表が未作成でも、システムラベルだけは出せる
+    mails  = _load_mails()
+    counts = Counter(l for m in mails for l in m.get('labels', []))
+    names  = _user_label_names()   # 対応表が未作成でも、システムラベルだけは出せる
 
     # マイラベルは件数0でも出す（作ったばかりのラベルも見えるように）。
     # Gmail側で削除済みのラベル（対応表に無い Label_*）は出さない
@@ -287,7 +291,22 @@ def labels(request):
     system = [{'id': i, 'name': n, 'count': counts[i], 'system': True}
               for i, n in SYSTEM_LABELS if counts[i]]
     return JsonResponse({'labels': user + system, 'addr_labels': _addr_labels(),
-                         'own_addrs': _own_addrs()})
+                         'own_addrs': _own_addrs(),
+                         'total': len(mails),
+                         'nolabel_count': sum(_has_no_user_label(m, names) for m in mails)})
+
+
+def _user_label_names():
+    """マイラベルの「ID → 名前」表（label_cache.json）。無ければ空"""
+    names = {}
+    try:
+        with open(LABEL_CACHE, encoding='utf-8') as f:
+            for l in json.load(f):
+                if l.get('type') == 'user':
+                    names[l['id']] = l['name']
+    except (OSError, ValueError):
+        pass
+    return names
 
 
 def _own_addrs():

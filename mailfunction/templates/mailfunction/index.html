@@ -343,6 +343,9 @@ tr.selected td:first-child { border-left: 2px solid var(--cyan); padding-left: 8
   color: var(--cyan);        /* 件数0でも灰色にせず、どのラベルも同じ見え方 */
   border-color: #00f5ff66;
 }
+/* 「ALL」「ラベルなし」はラベルそのものではないので白系で区別 */
+.chip-label-meta { color: var(--text); border-color: #b0c8e066; }
+.chip-label-meta.active { background: var(--text); border-color: var(--text); }
 .chip-sep {
   width: 1px;
   height: 16px;
@@ -880,7 +883,8 @@ function loadLabels() {
     .then(r => r.json())
     .then(data => {
       var sel = document.getElementById('label-select');
-      var html = '<option value="">🏷 ラベル: すべて</option>';
+      var html = '<option value="">🏷 ラベル: すべて</option>'
+               + '<option value="NOLABEL">ラベルなし（' + data.nolabel_count + '）</option>';
       var user = (data.labels || []).filter(l => !l.system);
       var sys  = (data.labels || []).filter(l => l.system);
       (data.labels || []).forEach(function(l) { LABEL_NAMES[l.id] = l.name; });
@@ -901,21 +905,22 @@ function loadLabels() {
       sel.value = currentLabel;
       if (sel.value !== currentLabel) sel.value = '';
 
-      // 上部チップ: Gmailで作ったラベル（マイラベル）ごと。クリックで絞り込み／再クリックで解除
+      // 上部チップ: 先頭に「ALL」（ラベルで絞り込まない）と「ラベルなし」、
+      // 続いてGmailで作ったラベル（マイラベル）ごと。クリックで絞り込み／再クリックで解除
       var box = document.getElementById('label-chips');
       box.innerHTML = '';
-      user.forEach(function(l) {
+      [{ id: '', name: 'ALL', count: data.total },
+       { id: 'NOLABEL', name: 'ラベルなし', count: data.nolabel_count }].concat(user).forEach(function(l) {
         var chip = document.createElement('span');
-        chip.className = 'chip chip-label' + (currentLabel === l.id ? ' active' : '');
+        chip.className = 'chip chip-label' + (l.id === '' || l.id === 'NOLABEL' ? ' chip-label-meta' : '')
+                       + (currentLabel === l.id ? ' active' : '');
         chip.dataset.label = l.id;
         chip.title = l.name + '（' + l.count + '件）';
         chip.textContent = l.name + ' ' + l.count;
-        chip.onclick = function() { setLabelFilter(l.id); };
+        // ALL は再クリックしても ALL のまま（トグルしない）
+        chip.onclick = function() { setLabelFilter(l.id, l.id === ''); };
         box.appendChild(chip);
       });
-      if (!user.length) {
-        box.innerHTML = '<span class="chip-loading">Gmailで作ったラベルがありません</span>';
-      }
     })
     .catch(function() {
       document.getElementById('label-chips').innerHTML = '';
