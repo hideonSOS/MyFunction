@@ -91,7 +91,46 @@ def save_label_cache(service):
     with open(tmp, 'w', encoding='utf-8') as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
     os.replace(tmp, LABEL_FILE)
-    return len(data)
+    return data
+
+
+# 取り込み済みメールでも後から変わりうるラベル（マイラベルに加えて同期する）
+SYNC_SYSTEM_LABELS = ['INBOX', 'UNREAD', 'STARRED']
+
+
+def _ids_with_label(service, label_id):
+    """指定ラベルが付いているメールIDの集合（IDだけ取るので軽い）"""
+    ids, token = set(), None
+    while True:
+        res = service.users().messages().list(
+            userId='me', labelIds=[label_id], maxResults=500, pageToken=token,
+            fields='messages/id,nextPageToken').execute()
+        ids.update(m['id'] for m in res.get('messages', []))
+        token = res.get('nextPageToken')
+        if not token:
+            return ids
+
+
+def sync_labels(service, mails, user_label_ids):
+    """取り込み済みメールのラベルをGmailの現状に合わせる。
+    新着取得時にしかラベルを記録しないため、後から付けた／外したラベル、
+    既読化・スターの付け外しが反映されない問題への対処。変更件数を返す"""
+    targets = list(user_label_ids) + SYNC_SYSTEM_LABELS
+    members = {lid: _ids_with_label(service, lid) for lid in targets}
+    changed = 0
+    for m in mails:
+        labels = list(m.get('labels') or [])
+        now = set(labels)
+        for lid in targets:
+            if m['id'] in members[lid]:
+                now.add(lid)
+            else:
+                now.discard(lid)
+        if now != set(labels):
+            # 元の並びを保ちつつ、追加分を末尾へ
+            m['labels'] = [l for l in labels if l in now] + sorted(now - set(labels))
+            changed += 1
+    return changed
 
 
 def _own_names(creds, gmail_service):
@@ -259,8 +298,11 @@ def main():
     slog("認証完了")
 
     # ラベル名・連絡先名の対応表を更新（失敗してもメール取得は続行）
+    user_label_ids = None
     try:
-        log(f"ラベル一覧を更新: {save_label_cache(service)} 件")
+        label_data = save_label_cache(service)
+        user_label_ids = [l['id'] for l in label_data if l['type'] == 'user']
+        log(f"ラベル一覧を更新: {len(label_data)} 件")
     except Exception as e:
         log(f"[WARN] ラベル一覧の取得に失敗: {e}")
     try:
@@ -277,6 +319,16 @@ def main():
     existing_map = {m['id']: m for m in existing}
     existing_ids = set(existing_map.keys())
     slog(f"既存キャッシュ: {len(existing)} 件")
+
+    # 取り込み済みメールのラベル（マイラベル・受信トレイ・未読・スター）をGmailの現状へ
+    if user_label_ids is not None and existing:
+        try:
+            changed = sync_labels(service, existing, user_label_ids)
+            if changed:
+                save_cache(existing)
+            log(f"ラベルの付け外しを反映: {changed} 件")
+        except Exception as e:
+            log(f"[WARN] ラベルの同期に失敗: {str(e)[:200]}")
 
     # 取得対象IDを決定
     if mode == 'full':

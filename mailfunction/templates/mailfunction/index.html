@@ -319,6 +319,7 @@ tr.selected td:first-child { border-left: 2px solid var(--cyan); padding-left: 8
   font-weight: bold;
 }
 .chip-state.active { background: var(--green); border-color: var(--green); }
+.chip-empty { opacity: .45; }   /* まだメールが付いていないラベル */
 .chip-sep {
   width: 1px;
   height: 16px;
@@ -869,7 +870,8 @@ function loadLabels() {
       box.innerHTML = '';
       user.forEach(function(l) {
         var chip = document.createElement('span');
-        chip.className = 'chip chip-label' + (currentLabel === l.id ? ' active' : '');
+        chip.className = 'chip chip-label' + (currentLabel === l.id ? ' active' : '')
+                       + (l.count ? '' : ' chip-empty');
         chip.dataset.label = l.id;
         chip.title = l.name + '（' + l.count + '件）';
         chip.textContent = l.name + ' ' + l.count;
