@@ -76,7 +76,9 @@ def save_cache(mails):
 
 
 # ── 同時実行の防止（定期更新cronと画面のSYNCボタンが重ならないように） ──
-LOCK_FILE = '/tmp/mail_fetcher_run.lock'
+# /tmp は sticky + protected_regular により、他ユーザー作成のファイルを
+# O_CREAT で開けない（root でも不可）。アプリの logs/ に置く
+LOCK_FILE = BASE_DIR / 'logs' / 'mail_fetcher.lock'
 
 def acquire_run_lock():
     """取得できたらロック用fdを返す（プロセス終了まで保持）。
@@ -84,8 +86,9 @@ def acquire_run_lock():
     if os.name != 'posix':
         return True
     import fcntl
+    LOCK_FILE.parent.mkdir(exist_ok=True)
     # root(画面SYNC) と www-data(cron) の双方が開けるよう読み取り専用で作成・取得
-    fd = os.open(LOCK_FILE, os.O_RDONLY | os.O_CREAT, 0o666)
+    fd = os.open(str(LOCK_FILE), os.O_RDONLY | os.O_CREAT, 0o666)
     try:
         fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
     except OSError:
