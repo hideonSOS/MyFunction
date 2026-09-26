@@ -365,7 +365,7 @@ tr.selected td:first-child { border-left: 2px solid var(--cyan); padding-left: 8
           <span class="chip chip-state" id="chip-d7"  onclick="setDays(7)">7日以内</span>
           <span class="chip chip-state" id="chip-d30" onclick="setDays(30)">30日以内</span>
           <span class="chip-sep"></span>
-          <span id="sender-chips"><span class="chip-loading">差出人を集計中...</span></span>
+          <span id="label-chips"><span class="chip-loading">ラベルを読み込み中...</span></span>
         </div>
       </div>
 
@@ -820,7 +820,6 @@ function scrollLogBottom() {
 
 // ── フィルタ（サーバーサイド検索） ───────────────────────
 var currentLabel  = '';
-var currentSender = '';   // 差出人チップ（メールアドレス）
 var unreadOnly    = false;
 var currentDays   = 0;    // 0=期間指定なし
 var searchTimer   = null;
@@ -837,6 +836,9 @@ function setLabelFilter(label, fromSelect) {
   sel.value = currentLabel;
   if (sel.value !== currentLabel) sel.value = '';
   sel.classList.toggle('active', currentLabel !== '' && sel.value === currentLabel);
+  document.querySelectorAll('.chip-label').forEach(function(c) {
+    c.classList.toggle('active', c.dataset.label === currentLabel);
+  });
   doSearch();
 }
 
@@ -861,8 +863,26 @@ function loadLabels() {
       sel.innerHTML = html;
       sel.value = currentLabel;
       if (sel.value !== currentLabel) sel.value = '';
+
+      // 上部チップ: Gmailで作ったラベル（マイラベル）ごと。クリックで絞り込み／再クリックで解除
+      var box = document.getElementById('label-chips');
+      box.innerHTML = '';
+      user.forEach(function(l) {
+        var chip = document.createElement('span');
+        chip.className = 'chip chip-label' + (currentLabel === l.id ? ' active' : '');
+        chip.dataset.label = l.id;
+        chip.title = l.name + '（' + l.count + '件）';
+        chip.textContent = l.name + ' ' + l.count;
+        chip.onclick = function() { setLabelFilter(l.id); };
+        box.appendChild(chip);
+      });
+      if (!user.length) {
+        box.innerHTML = '<span class="chip-loading">Gmailで作ったラベルがありません</span>';
+      }
     })
-    .catch(function() {});
+    .catch(function() {
+      document.getElementById('label-chips').innerHTML = '';
+    });
 }
 
 function toggleUnread() {
@@ -878,36 +898,6 @@ function setDays(d) {
   doSearch();
 }
 
-function setSenderFilter(email) {
-  currentSender = (currentSender === email) ? '' : email;   // 再クリックで解除
-  var chips = document.querySelectorAll('.chip-sender');
-  chips.forEach(function(c) {
-    c.classList.toggle('active', c.dataset.email === currentSender);
-  });
-  doSearch();
-}
-
-function loadSenders() {
-  fetch('/mailfunction/senders/')
-    .then(r => r.json())
-    .then(data => {
-      var box = document.getElementById('sender-chips');
-      box.innerHTML = '';
-      (data.senders || []).forEach(function(s) {
-        var chip = document.createElement('span');
-        chip.className = 'chip chip-sender';
-        chip.dataset.email = s.email;
-        chip.title = s.email + '（' + s.count + '件）';
-        chip.textContent = s.name + ' ' + s.count;
-        chip.onclick = function() { setSenderFilter(s.email); };
-        box.appendChild(chip);
-      });
-    })
-    .catch(function() {
-      document.getElementById('sender-chips').innerHTML = '';
-    });
-}
-
 function applyFilter() {
   // 入力のたびに即時ではなくデバウンス（300ms）
   clearTimeout(searchTimer);
@@ -917,7 +907,7 @@ function applyFilter() {
 function doSearch() {
   var query = document.getElementById('query-input').value.trim();
   var params = new URLSearchParams({
-    q: query, label: currentLabel, sender: currentSender,
+    q: query, label: currentLabel,
     unread: unreadOnly ? '1' : '', days: currentDays ? String(currentDays) : '',
   });
   fetch('/mailfunction/search/?' + params)
@@ -961,8 +951,7 @@ function esc(s) {
 
 // ── ページロード：進行中ジョブを自動再接続 ─────────────
 window.addEventListener('load', function() {
-  loadSenders();   // 主要差出人チップを構築
-  loadLabels();    // ラベル選択プルダウンを構築
+  loadLabels();    // ラベルのチップとプルダウンを構築
   var saved = localStorage.getItem(JOB_KEY);
   if (saved) {
     try {

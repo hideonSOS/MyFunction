@@ -263,34 +263,6 @@ def labels(request):
     return JsonResponse({'labels': user + system})
 
 
-# ── 上位差出人（クイックフィルタ用） ───────────────────
-@login_required
-def senders(request):
-    """受信メール（SENT以外）の差出人を集計し、件数の多い順に返す"""
-    from collections import Counter
-
-    counts = Counter()
-    names  = {}
-    for m in _load_mails():
-        if 'SENT' in m.get('labels', []):
-            continue
-        raw = m.get('from', '')
-        if not raw:
-            continue
-        # "表示名 <addr@example.com>" からアドレスを取り出す（無ければ全体）
-        addr = raw.rsplit('<', 1)[-1].rstrip('>').strip().lower()
-        if not addr:
-            continue
-        counts[addr] += 1
-        if addr not in names or names[addr] == addr:
-            # 連絡先の登録名 → ヘッダー名 → アドレス の順で決める
-            names[addr] = _display_name(raw)
-
-    top = [{'email': a, 'name': names[a], 'count': c}
-           for a, c in counts.most_common(15)]
-    return JsonResponse({'senders': top})
-
-
 # ── メール詳細（本文 + 添付一覧） ─────────────────────
 @login_required
 def mail_detail(request, mail_id):
