@@ -144,12 +144,20 @@ tr.selected td:first-child { border-left: 2px solid var(--cyan); padding-left: 8
 }
 .auth-banner a:hover { background: #ff990022; }
 
-.snippet-box {
-  margin: 10px 20px; padding: 12px 14px;
-  background: #010508; border: 1px solid var(--border); border-radius: 3px;
-  font-family: 'Share Tech Mono', monospace; font-size: .78em;
-  color: var(--text); line-height: 1.7; word-break: break-all;
-  white-space: pre-wrap; max-height: 160px; overflow-y: auto;
+/* 件名ヘッダー（詳細ペイン最上段） */
+.detail-head {
+  padding: 16px 20px 12px;
+  border-bottom: 1px solid var(--border);
+}
+.detail-subject {
+  font-size: 1.35em; font-weight: bold; line-height: 1.45;
+  color: var(--green); text-shadow: var(--glow-g);
+  word-break: break-word;
+}
+.detail-date {
+  margin-top: 6px;
+  font-size: .86em; letter-spacing: .06em;
+  color: var(--yellow);
 }
 
 .body-section { margin: 0 20px 10px; }
@@ -377,8 +385,12 @@ tr.selected td:first-child { border-left: 2px solid var(--cyan); padding-left: 8
       <div id="detail-empty" class="detail-empty">// SELECT A MAIL //</div>
 
       <div id="detail-content" class="detail-content" style="display:none;">
+        <!-- 件名（最上段・大きく緑）→ 日付 -->
+        <div class="detail-head">
+          <div class="detail-subject" id="detail-subject"></div>
+          <div class="detail-date" id="detail-date"></div>
+        </div>
         <div class="field-list" id="field-list"></div>
-        <div class="snippet-box" id="snippet-box"></div>
 
         <!-- 本文が長くても見落とさないよう、添付は本文の上に置く -->
         <div class="att-section" id="att-section" style="display:none;">
@@ -568,21 +580,14 @@ function selectMail(tr) {
     return '<div class="field-row"><span class="fk">' + key + '</span><span class="fv ' + (cls||'') + '">' + esc(val) + '</span></div>';
   }
 
-  var labels     = tr.dataset.labels ? tr.dataset.labels.split(',').filter(Boolean) : [];
-  var labelsHtml = labels.map(function(l) {
-    var c = ['INBOX','UNREAD','SENT'].includes(l) ? 'label-' + l : 'label-default';
-    return '<span class="label-tag ' + c + '">' + esc(l) + '</span>';
-  }).join('');
-
+  // 件名・日付は上部ヘッダーに表示（ラベルは非表示）
   var html = '<div class="field-section-label">メール情報</div>';
-  html += row('件名',  tr.dataset.subject, 'cyan');
   html += row('送信元', tr.dataset.from);
   if (tr.dataset.to) html += row('送信先', tr.dataset.to);
-  html += row('日付',  fmtDate(tr.dataset.date), 'yellow');
-  if (labelsHtml) html += '<div class="field-row"><span class="fk">ラベル</span><span class="fv">' + labelsHtml + '</span></div>';
 
+  document.getElementById('detail-subject').textContent = tr.dataset.subject || '（件名なし）';
+  document.getElementById('detail-date').textContent    = fmtDate(tr.dataset.date);
   document.getElementById('field-list').innerHTML = html;
-  document.getElementById('snippet-box').textContent = tr.dataset.subject || '（件名なし）';
   document.getElementById('detail-empty').style.display   = 'none';
   document.getElementById('detail-content').style.display = 'block';
   document.getElementById('detail-content').scrollTop     = 0;   // 別メールを開いたら先頭から
