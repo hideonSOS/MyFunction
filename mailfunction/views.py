@@ -94,13 +94,14 @@ def _load_contacts():
 
 
 def _display_name(raw):
-    """'"山田 太郎" <taro@example.com>' → '山田 太郎'。
-    ヘッダーに名前が無ければ連絡先の登録名、それも無ければアドレスを返す
-    （Gmailの画面も、名前の無いメールは連絡先名で補って表示している）"""
+    """表示名の優先順: 連絡先の登録名 → 差出人ヘッダーの名前 → アドレス。
+    Gmailの画面と同じく、連絡先に登録済みの相手はヘッダーの名前
+    （例: 会社名「ケイプランニング」）より登録名を優先する"""
     name, addr = parseaddr(raw or '')
+    contact = _load_contacts().get(addr.lower(), '')
+    if contact:
+        return contact
     name = name.strip().strip('"\\').strip()
-    if not name or name.lower() == addr.lower():
-        name = _load_contacts().get(addr.lower(), '')
     return name or addr or (raw or '')
 
 
@@ -282,7 +283,7 @@ def senders(request):
             continue
         counts[addr] += 1
         if addr not in names or names[addr] == addr:
-            # 名前が無い差出人は連絡先の登録名で補う
+            # 連絡先の登録名 → ヘッダー名 → アドレス の順で決める
             names[addr] = _display_name(raw)
 
     top = [{'email': a, 'name': names[a], 'count': c}

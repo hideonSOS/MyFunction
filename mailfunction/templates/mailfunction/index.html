@@ -632,10 +632,8 @@ function parseAddrList(raw) {
       name  = m[1].replace(/\\"/g, '"').replace(/^"+|"+$/g, '').trim();
       email = m[2];
     }
-    // 名前が無ければ連絡先の登録名で補う（Gmailの画面と同じ見え方）
-    if (!name || name.toLowerCase() === email.toLowerCase()) {
-      name = CONTACT_NAMES[email.toLowerCase()] || '';
-    }
+    // 連絡先の登録名を最優先（Gmailの画面と同じ見え方）→ ヘッダーの名前 → アドレス
+    name = CONTACT_NAMES[email.toLowerCase()] || name;
     return { name: name || email, email: email };
   }).filter(Boolean);
 }
