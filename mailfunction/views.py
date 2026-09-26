@@ -193,7 +193,11 @@ def search(request):
     mails = _load_mails()
 
     if label:
-        mails = [m for m in mails if label in m.get('labels', [])]
+        # カンマ区切りで複数指定可。すべてのラベルが付いたメールだけ（AND）
+        # 例: label=INBOX,Label_123 → 受信トレイ かつ そのラベル
+        required = [l for l in label.split(',') if l]
+        mails = [m for m in mails
+                 if all(l in m.get('labels', []) for l in required)]
     if sender:
         mails = [m for m in mails if sender in m.get('from', '').lower()]
     if unread:
@@ -228,9 +232,10 @@ def search(request):
 LABEL_CACHE = APP_DIR / 'label_cache.json'
 
 # Gmail のシステムラベルの表示名と並び順（ここに無いシステムラベルは出さない）
+# INBOX / SENT は画面上部のフォルダボタンで選ぶため、ラベルの候補には含めない
 SYSTEM_LABELS = [
-    ('INBOX', '受信トレイ'), ('UNREAD', '未読'), ('STARRED', 'スター付き'),
-    ('IMPORTANT', '重要'), ('SENT', '送信済み'), ('DRAFT', '下書き'),
+    ('UNREAD', '未読'), ('STARRED', 'スター付き'),
+    ('IMPORTANT', '重要'), ('DRAFT', '下書き'),
     ('CATEGORY_PERSONAL', 'メイン'), ('CATEGORY_UPDATES', '新着'),
     ('CATEGORY_PROMOTIONS', 'プロモーション'), ('CATEGORY_SOCIAL', 'ソーシャル'),
     ('CATEGORY_FORUMS', 'フォーラム'),

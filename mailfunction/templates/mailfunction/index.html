@@ -366,9 +366,9 @@ tr.selected td:first-child { border-left: 2px solid var(--cyan); padding-left: 8
       <div class="panel">
         <div class="panel-title">▸ Mail List</div>
         <div class="toolbar">
-          <button class="btn btn-lbl btn-lbl-all active" id="lbtn-all"  onclick="setLabelFilter('')">ALL</button>
-          <button class="btn btn-lbl btn-lbl-in"         id="lbtn-in"   onclick="setLabelFilter('INBOX')">INBOX</button>
-          <button class="btn btn-lbl btn-lbl-sent"       id="lbtn-sent" onclick="setLabelFilter('SENT')">SENT</button>
+          <button class="btn btn-lbl btn-lbl-all active" id="lbtn-all"  onclick="setBoxFilter('')">ALL</button>
+          <button class="btn btn-lbl btn-lbl-in"         id="lbtn-in"   onclick="setBoxFilter('INBOX')">INBOX</button>
+          <button class="btn btn-lbl btn-lbl-sent"       id="lbtn-sent" onclick="setBoxFilter('SENT')">SENT</button>
           <select id="label-select" class="label-select" onchange="setLabelFilter(this.value, true)" title="Gmailのラベルで絞り込み">
             <option value="">🏷 ラベル: すべて</option>
           </select>
@@ -836,19 +836,27 @@ function scrollLogBottom() {
 }
 
 // ── フィルタ（サーバーサイド検索） ───────────────────────
-var currentLabel  = '';
+// フォルダ（ALL/INBOX/SENT）とラベル（チップ・プルダウン）は独立した条件で、
+// 両方選ぶと AND（例: INBOX かつ 都市）で絞り込む
+var currentBox    = '';   // '' / 'INBOX' / 'SENT'
+var currentLabel  = '';   // ラベルID（チップ・プルダウンで選択）
 var unreadOnly    = false;
 var currentDays   = 0;    // 0=期間指定なし
 var searchTimer   = null;
+
+function setBoxFilter(box) {
+  currentBox = (currentBox === box && box !== '') ? '' : box;   // 再クリックで ALL に戻る
+  document.getElementById('lbtn-all').classList.toggle('active',  currentBox === '');
+  document.getElementById('lbtn-in').classList.toggle('active',   currentBox === 'INBOX');
+  document.getElementById('lbtn-sent').classList.toggle('active', currentBox === 'SENT');
+  doSearch();
+}
 
 // fromSelect=true はプルダウンからの選択（トグル解除せずそのまま適用）
 function setLabelFilter(label, fromSelect) {
   if (fromSelect) currentLabel = label;
   else currentLabel = (currentLabel === label && label !== '') ? '' : label;
-  document.getElementById('lbtn-all').classList.toggle('active',  currentLabel === '');
-  document.getElementById('lbtn-in').classList.toggle('active',   currentLabel === 'INBOX');
-  document.getElementById('lbtn-sent').classList.toggle('active', currentLabel === 'SENT');
-  // ボタンとプルダウンの表示を一致させる（一覧に無いラベルなら「すべて」表示）
+  // チップとプルダウンの表示を一致させる（一覧に無いラベルなら「すべて」表示）
   var sel = document.getElementById('label-select');
   sel.value = currentLabel;
   if (sel.value !== currentLabel) sel.value = '';
@@ -924,7 +932,7 @@ function applyFilter() {
 function doSearch() {
   var query = document.getElementById('query-input').value.trim();
   var params = new URLSearchParams({
-    q: query, label: currentLabel,
+    q: query, label: [currentBox, currentLabel].filter(Boolean).join(','),   // AND
     unread: unreadOnly ? '1' : '', days: currentDays ? String(currentDays) : '',
   });
   fetch('/mailfunction/search/?' + params)
