@@ -174,6 +174,45 @@ def search(request):
     return JsonResponse({'mails': result, 'matched': len(mails)})
 
 
+# ── ラベル一覧（ラベル選択での絞り込み用） ───────────────
+LABEL_CACHE = APP_DIR / 'label_cache.json'
+
+# Gmail のシステムラベルの表示名と並び順（ここに無いシステムラベルは出さない）
+SYSTEM_LABELS = [
+    ('INBOX', '受信トレイ'), ('UNREAD', '未読'), ('STARRED', 'スター付き'),
+    ('IMPORTANT', '重要'), ('SENT', '送信済み'), ('DRAFT', '下書き'),
+    ('CATEGORY_PERSONAL', 'メイン'), ('CATEGORY_UPDATES', '新着'),
+    ('CATEGORY_PROMOTIONS', 'プロモーション'), ('CATEGORY_SOCIAL', 'ソーシャル'),
+    ('CATEGORY_FORUMS', 'フォーラム'),
+]
+
+
+@login_required
+def labels(request):
+    """キャッシュ中のメールに付いているラベルを件数付きで返す。
+    ユーザー作成ラベル（名前順）→ システムラベル（Gmailの並び）の順"""
+    from collections import Counter
+
+    counts = Counter(l for m in _load_mails() for l in m.get('labels', []))
+
+    names = {}
+    try:
+        with open(LABEL_CACHE, encoding='utf-8') as f:
+            for l in json.load(f):
+                if l.get('type') == 'user':
+                    names[l['id']] = l['name']
+    except (OSError, ValueError):
+        pass   # 対応表が未作成でも、システムラベルだけは出せる
+
+    # Gmail側で削除済みのラベル（対応表に無い Label_*）は出さない
+    user = sorted(({'id': i, 'name': n, 'count': counts[i], 'system': False}
+                   for i, n in names.items() if counts[i]),
+                  key=lambda x: x['name'])
+    system = [{'id': i, 'name': n, 'count': counts[i], 'system': True}
+              for i, n in SYSTEM_LABELS if counts[i]]
+    return JsonResponse({'labels': user + system})
+
+
 # ── 上位差出人（クイックフィルタ用） ───────────────────
 @login_required
 def senders(request):

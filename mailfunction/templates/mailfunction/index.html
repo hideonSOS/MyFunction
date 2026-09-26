@@ -258,6 +258,25 @@ tr.selected td:first-child { border-left: 2px solid var(--cyan); padding-left: 8
 /* ── オレンジボタン ── */
 .btn-orange { color: var(--orange); border-color: #ff990080; }
 .btn-orange:hover:not(:disabled) { background: #ff990018; box-shadow: 0 0 10px #ff9900aa; border-color: var(--orange); }
+/* ── ラベル選択プルダウン ───────────────────── */
+.label-select {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: .78em;
+  padding: 5px 8px;
+  max-width: 220px;
+  background: #010508;
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  cursor: pointer;
+}
+.label-select:focus { outline: none; border-color: var(--cyan); }
+.label-select.active {
+  color: var(--cyan);
+  border-color: var(--cyan);
+  box-shadow: var(--glow-c);
+}
+
 /* ── クイックフィルタ・チップ ───────────────── */
 .chip-bar {
   display: flex;
@@ -319,6 +338,9 @@ tr.selected td:first-child { border-left: 2px solid var(--cyan); padding-left: 8
           <button class="btn btn-lbl btn-lbl-all active" id="lbtn-all"  onclick="setLabelFilter('')">ALL</button>
           <button class="btn btn-lbl btn-lbl-in"         id="lbtn-in"   onclick="setLabelFilter('INBOX')">INBOX</button>
           <button class="btn btn-lbl btn-lbl-sent"       id="lbtn-sent" onclick="setLabelFilter('SENT')">SENT</button>
+          <select id="label-select" class="label-select" onchange="setLabelFilter(this.value, true)" title="Gmailのラベルで絞り込み">
+            <option value="">🏷 ラベル: すべて</option>
+          </select>
           <input type="text" id="query-input" placeholder="SEARCH..." oninput="applyFilter()">
           <button class="btn btn-cyan" id="sync-btn" onclick="fetchMails('update')">⟳ SYNC</button>
           <button class="btn btn-green" id="full-btn" onclick="confirmFullSync()">⟳ FULL</button>
@@ -740,12 +762,44 @@ var unreadOnly    = false;
 var currentDays   = 0;    // 0=期間指定なし
 var searchTimer   = null;
 
-function setLabelFilter(label) {
-  currentLabel = (currentLabel === label && label !== '') ? '' : label;
+// fromSelect=true はプルダウンからの選択（トグル解除せずそのまま適用）
+function setLabelFilter(label, fromSelect) {
+  if (fromSelect) currentLabel = label;
+  else currentLabel = (currentLabel === label && label !== '') ? '' : label;
   document.getElementById('lbtn-all').classList.toggle('active',  currentLabel === '');
   document.getElementById('lbtn-in').classList.toggle('active',   currentLabel === 'INBOX');
   document.getElementById('lbtn-sent').classList.toggle('active', currentLabel === 'SENT');
+  // ボタンとプルダウンの表示を一致させる（一覧に無いラベルなら「すべて」表示）
+  var sel = document.getElementById('label-select');
+  sel.value = currentLabel;
+  if (sel.value !== currentLabel) sel.value = '';
+  sel.classList.toggle('active', currentLabel !== '' && sel.value === currentLabel);
   doSearch();
+}
+
+function loadLabels() {
+  fetch('/mailfunction/labels/')
+    .then(r => r.json())
+    .then(data => {
+      var sel = document.getElementById('label-select');
+      var html = '<option value="">🏷 ラベル: すべて</option>';
+      var user = (data.labels || []).filter(l => !l.system);
+      var sys  = (data.labels || []).filter(l => l.system);
+      if (user.length) {
+        html += '<optgroup label="マイラベル">' + user.map(function(l) {
+          return '<option value="' + esc(l.id) + '">' + esc(l.name) + '（' + l.count + '）</option>';
+        }).join('') + '</optgroup>';
+      }
+      if (sys.length) {
+        html += '<optgroup label="Gmail標準">' + sys.map(function(l) {
+          return '<option value="' + esc(l.id) + '">' + esc(l.name) + '（' + l.count + '）</option>';
+        }).join('') + '</optgroup>';
+      }
+      sel.innerHTML = html;
+      sel.value = currentLabel;
+      if (sel.value !== currentLabel) sel.value = '';
+    })
+    .catch(function() {});
 }
 
 function toggleUnread() {
@@ -845,6 +899,7 @@ function esc(s) {
 // ── ページロード：進行中ジョブを自動再接続 ─────────────
 window.addEventListener('load', function() {
   loadSenders();   // 主要差出人チップを構築
+  loadLabels();    // ラベル選択プルダウンを構築
   var saved = localStorage.getItem(JOB_KEY);
   if (saved) {
     try {

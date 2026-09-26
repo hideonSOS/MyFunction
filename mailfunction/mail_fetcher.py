@@ -25,6 +25,7 @@ BASE_DIR     = APP_DIR.parent                           # プロジェクトル�
 TOKEN_FILE   = APP_DIR / 'token.json'
 CREDS_FILE   = BASE_DIR / 'credentials.json'
 OUT_FILE     = APP_DIR / 'mail_cache.json'
+LABEL_FILE   = APP_DIR / 'label_cache.json'   # ラベルID → 名前 の対応表
 DEBUG_FILE   = APP_DIR / 'mail_debug.json'
 SCOPES       = ['https://www.googleapis.com/auth/gmail.readonly']
 
@@ -73,6 +74,19 @@ def save_cache(mails):
     with open(tmp, 'w', encoding='utf-8') as f:
         json.dump(mails, f, ensure_ascii=False, indent=2)
     os.replace(tmp, OUT_FILE)
+
+
+def save_label_cache(service):
+    """Gmail のラベル一覧（ID・名前・種別）を保存する。
+    キャッシュのメールはラベルを内部ID（Label_123…）で持つため、画面表示に名前が要る"""
+    labels = service.users().labels().list(userId='me').execute().get('labels', [])
+    data = [{'id': l['id'], 'name': l.get('name', l['id']), 'type': l.get('type', '')}
+            for l in labels]
+    tmp = LABEL_FILE.with_name(LABEL_FILE.name + '.tmp')
+    with open(tmp, 'w', encoding='utf-8') as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+    os.replace(tmp, LABEL_FILE)
+    return len(data)
 
 
 # ── 同時実行の防止（定期更新cronと画面のSYNCボタンが重ならないように） ──
@@ -178,6 +192,12 @@ def main():
     creds = get_credentials()
     service = build('gmail', 'v1', credentials=creds)
     slog("認証完了")
+
+    # ラベル名の対応表を更新（失敗してもメール取得は続行）
+    try:
+        log(f"ラベル一覧を更新: {save_label_cache(service)} 件")
+    except Exception as e:
+        log(f"[WARN] ラベル一覧の取得に失敗: {e}")
 
     # 既存キャッシュを読み込み
     existing = load_cache()

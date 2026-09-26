@@ -21,6 +21,7 @@ django_secrets.json
 # キャッシュ・一時ファイル
 docs_cache.json
 mailfunction/mail_cache.json
+mailfunction/label_cache.json
 *.pkl
 *.parquet
 *.json.tmp
