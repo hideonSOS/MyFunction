@@ -118,6 +118,9 @@ def index(request):
         'initial_limit': INITIAL_LIMIT,
         'needs_auth':    gc.needs_auth(),
         'needs_contacts_auth': gc.needs_contacts_auth(),
+        # Google は IPアドレスのサイトへの認証戻りを禁止しているため、
+        # 認証（許可）は localhost で開いたときだけ実行できる
+        'oauth_available': request.get_host().split(':')[0] == 'localhost',
         # 詳細画面の送信元・送信先の名前補完用（アドレス → 連絡先の登録名）
         'contact_names': _load_contacts(),
     }

@@ -409,13 +409,13 @@ tr.selected td:first-child { border-left: 2px solid var(--cyan); padding-left: 8
 
       {% if needs_auth %}
       <div class="auth-banner">
-        <span>⚠ Gmail API の認証が必要です</span>
-        <a href="/mailfunction/oauth/start/">認証する</a>
+        <span>⚠ Gmail API の認証が必要です{% if not oauth_available %}（認証は管理者が http://localhost:8000 で行い、認証ファイルをサーバーへ転送します）{% endif %}</span>
+        {% if oauth_available %}<a href="/mailfunction/oauth/start/">認証する</a>{% endif %}
       </div>
       {% elif needs_contacts_auth %}
       <div class="auth-banner">
-        <span>ⓘ 差出人の名前を連絡先の登録名で表示するには、連絡先の読み取り許可が必要です（メール機能はこのまま使えます）</span>
-        <a href="/mailfunction/oauth/start/">許可する</a>
+        <span>ⓘ 差出人の名前を連絡先の登録名で表示するには、連絡先の読み取り許可が必要です（メール機能はこのまま使えます）{% if not oauth_available %}。許可は http://localhost:8000 で行ってください{% endif %}</span>
+        {% if oauth_available %}<a href="/mailfunction/oauth/start/">許可する</a>{% endif %}
       </div>
       {% endif %}
       {{ contact_names|json_script:"contact-names" }}
