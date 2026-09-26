@@ -414,7 +414,7 @@ tr.selected td:first-child { border-left: 2px solid var(--cyan); padding-left: 8
       </div>
       {% elif needs_contacts_auth %}
       <div class="auth-banner">
-        <span>ⓘ 差出人の名前を連絡先の登録名で表示するには、連絡先の読み取り許可が必要です（メール機能はこのまま使えます）{% if not oauth_available %}。許可は http://localhost:8000 で行ってください{% endif %}</span>
+        <span>ⓘ 差出人を連絡先の登録名・自分のアカウント名で表示するには、追加の読み取り許可が必要です（メール機能はこのまま使えます）{% if not oauth_available %}。許可は http://localhost:8000 で行ってください{% endif %}</span>
         {% if oauth_available %}<a href="/mailfunction/oauth/start/">許可する</a>{% endif %}
       </div>
       {% endif %}

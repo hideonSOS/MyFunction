@@ -24,12 +24,15 @@ BASE_DIR   = APP_DIR.parent
 TOKEN_FILE = APP_DIR / 'token.json'
 CREDS_FILE = BASE_DIR / 'credentials.json'
 
-# 読み取り + 送信 + 連絡先（差出人の名前を連絡先の登録名で補うため）
+# 読み取り + 送信 + 連絡先 + プロフィール
+# （差出人の名前を、連絡先の登録名・自分のGoogleアカウント名で表示するため）
 CONTACTS_SCOPE = 'https://www.googleapis.com/auth/contacts.readonly'
+PROFILE_SCOPE  = 'https://www.googleapis.com/auth/userinfo.profile'
 SCOPES = [
     'https://www.googleapis.com/auth/gmail.readonly',
     'https://www.googleapis.com/auth/gmail.send',
     CONTACTS_SCOPE,
+    PROFILE_SCOPE,
 ]
 
 
@@ -70,11 +73,13 @@ def needs_auth():
 
 
 def needs_contacts_auth():
-    """連絡先の権限が未付与か（メールは使えるが、名前補完に再認証が必要な状態）"""
+    """名前表示用の権限（連絡先・プロフィール）が未付与か
+    （メールは使えるが、名前の表示に追加の許可が必要な状態）"""
     if not TOKEN_FILE.exists():
         return False
     try:
-        return CONTACTS_SCOPE not in (_load_token().scopes or [])
+        granted = _load_token().scopes or []
+        return CONTACTS_SCOPE not in granted or PROFILE_SCOPE not in granted
     except Exception:
         return False
 

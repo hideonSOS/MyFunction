@@ -28,6 +28,7 @@ OUT_FILE     = APP_DIR / 'mail_cache.json'
 LABEL_FILE   = APP_DIR / 'label_cache.json'   # ラベルID → 名前 の対応表
 CONTACT_FILE = APP_DIR / 'contact_cache.json' # メールアドレス → 連絡先の登録名
 CONTACTS_SCOPE = 'https://www.googleapis.com/auth/contacts.readonly'
+PROFILE_SCOPE  = 'https://www.googleapis.com/auth/userinfo.profile'
 DEBUG_FILE   = APP_DIR / 'mail_debug.json'
 SCOPES       = ['https://www.googleapis.com/auth/gmail.readonly']
 
@@ -93,10 +94,34 @@ def save_label_cache(service):
     return len(data)
 
 
-def save_contact_cache(creds):
+def _own_names(creds, gmail_service):
+    """ホストアカウント自身のアドレス（送信元エイリアス含む）→ 現在の名前。
+    Gmailの「送信者名」が設定されていればそれを、空ならGoogleアカウント名を使う。
+    過去の送信メールはヘッダーに送信当時の名前が残っているため、ここで上書きして統一する"""
+    account_name = ''
+    if PROFILE_SCOPE in (creds.scopes or []):
+        try:
+            me = build('people', 'v1', credentials=creds).people().get(
+                resourceName='people/me', personFields='names').execute()
+            names = me.get('names') or []
+            account_name = (names[0].get('displayName') or '').strip() if names else ''
+        except Exception as e:
+            log(f"[WARN] アカウント名の取得に失敗: {str(e)[:200]}")
+    own = {}
+    send_as = gmail_service.users().settings().sendAs().list(userId='me').execute()
+    for s in send_as.get('sendAs', []):
+        addr = (s.get('sendAsEmail') or '').strip().lower()
+        name = (s.get('displayName') or '').strip() or account_name
+        if addr and name:
+            own[addr] = name
+    return own
+
+
+def save_contact_cache(creds, gmail_service=None):
     """Googleの連絡先から「メールアドレス → 登録名」の対応表を保存する。
     差出人ヘッダーに名前が無いメール（Gmailは画面上だけ連絡先名で補って表示している）
-    を、MyFunction でも同じ名前で表示するため。権限が未付与なら None を返してスキップ"""
+    を、MyFunction でも同じ名前で表示するため。自分自身のアドレスは現在の
+    アカウント名で上書きする。権限が未付与なら None を返してスキップ"""
     if CONTACTS_SCOPE not in (creds.scopes or []):
         return None
     people = build('people', 'v1', credentials=creds)
@@ -117,6 +142,11 @@ def save_contact_cache(creds):
         token = res.get('nextPageToken')
         if not token:
             break
+    if gmail_service is not None:
+        try:
+            table.update(_own_names(creds, gmail_service))
+        except Exception as e:
+            log(f"[WARN] 自分の名前の取得に失敗: {str(e)[:200]}")
     tmp = CONTACT_FILE.with_name(CONTACT_FILE.name + '.tmp')
     with open(tmp, 'w', encoding='utf-8') as f:
         json.dump(table, f, ensure_ascii=False, indent=2)
@@ -234,7 +264,7 @@ def main():
     except Exception as e:
         log(f"[WARN] ラベル一覧の取得に失敗: {e}")
     try:
-        n = save_contact_cache(creds)
+        n = save_contact_cache(creds, service)
         if n is None:
             log("連絡先: 権限が未付与のためスキップ（メール画面から再認証すると有効）")
         else:
