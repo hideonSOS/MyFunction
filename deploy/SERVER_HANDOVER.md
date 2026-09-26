@@ -12,8 +12,11 @@ cron で直接実行するだけで、**コード変更・migrate・collectstati
 ```
 # 稟議（デスクネッツ取得・毎日 3:00）
 0 3 * * * cd /srv/MyFunction && flock -n /tmp/ringi_fetch.lock ./venv/bin/python docs_fetcher.py >> logs/cron_ringi.log 2>&1
-# メール（Gmail取得・毎日 3:10）
-10 3 * * * cd /srv/MyFunction && flock -n /tmp/mail_fetch.lock ./venv/bin/python mailfunction/mail_fetcher.py >> logs/cron_mail.log 2>&1
+# メール（Gmail取得・15分ごと）※2026-09-26 毎日3:10から変更（/etc/cron.d/myfunction-sync に設定済み）
+*/15 * * * * cd /srv/MyFunction && flock -n /tmp/mail_fetch.lock ./venv/bin/python mailfunction/mail_fetcher.py >> logs/cron_mail.log 2>&1
+# 補足: mail_fetcher.py 自体も logs/mail_fetcher.lock で実行ロックを取り、
+#       画面のSYNCボタン(root)とcron(www-data)が重なった場合は後発がスキップする。
+#       キャッシュは一時ファイル→置換のアトミック書き込み。
 ```
 
 ## 注意点
