@@ -155,15 +155,16 @@ tr.selected td:first-child { border-left: 2px solid var(--cyan); padding-left: 8
 .body-section { margin: 0 20px 10px; }
 .body-label { font-family: 'Orbitron', monospace; font-size: .58em; letter-spacing: .15em; color: var(--cyan-dim); text-transform: uppercase; margin-bottom: 4px; }
 .body-loading { font-size: .78em; color: var(--text-dim); font-family: 'Share Tech Mono', monospace; }
+/* 本文は高さ上限を設けず内容に合わせて伸ばす（スクロールは詳細ペイン全体で1本） */
 .body-box {
   background: #010508; border: 1px solid var(--border); border-radius: 3px;
   padding: 12px 14px; font-family: 'Share Tech Mono', monospace; font-size: .78em;
   color: var(--text); line-height: 1.7; word-break: break-all;
-  white-space: pre-wrap; max-height: 325px; overflow-y: auto;
+  white-space: pre-wrap;
 }
-.body-box::-webkit-scrollbar { width: 4px; }
-.body-box::-webkit-scrollbar-track { background: var(--bg); }
-.body-box::-webkit-scrollbar-thumb { background: var(--cyan-dim); }
+.detail-content::-webkit-scrollbar { width: 6px; }
+.detail-content::-webkit-scrollbar-track { background: var(--bg); }
+.detail-content::-webkit-scrollbar-thumb { background: var(--cyan-dim); }
 
 .att-section { margin: 0 20px 14px; }
 .att-label { font-family: 'Orbitron', monospace; font-size: .58em; letter-spacing: .15em; color: var(--cyan-dim); text-transform: uppercase; margin-bottom: 6px; }
@@ -379,15 +380,16 @@ tr.selected td:first-child { border-left: 2px solid var(--cyan); padding-left: 8
         <div class="field-list" id="field-list"></div>
         <div class="snippet-box" id="snippet-box"></div>
 
+        <!-- 本文が長くても見落とさないよう、添付は本文の上に置く -->
+        <div class="att-section" id="att-section" style="display:none;">
+          <div class="att-label">// ATTACHMENTS</div>
+          <div class="att-list" id="att-list"></div>
+        </div>
+
         <div class="body-section">
           <div class="body-label">// BODY</div>
           <div id="body-loading" class="body-loading" style="display:none;">読み込み中...</div>
           <div id="body-box" class="body-box" style="display:none;"></div>
-        </div>
-
-        <div class="att-section" id="att-section" style="display:none;">
-          <div class="att-label">// ATTACHMENTS</div>
-          <div class="att-list" id="att-list"></div>
         </div>
       </div>
 
@@ -583,6 +585,7 @@ function selectMail(tr) {
   document.getElementById('snippet-box').textContent = tr.dataset.subject || '（件名なし）';
   document.getElementById('detail-empty').style.display   = 'none';
   document.getElementById('detail-content').style.display = 'block';
+  document.getElementById('detail-content').scrollTop     = 0;   // 別メールを開いたら先頭から
 
   // 本文・添付をリセットして非同期取得
   document.getElementById('body-box').style.display     = 'none';

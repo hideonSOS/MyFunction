@@ -48,8 +48,12 @@ def _load_mails():
     mtime = MAIL_CACHE.stat().st_mtime
     if _cache_data is not None and mtime == _cache_mtime:
         return _cache_data
-    with open(MAIL_CACHE, encoding='utf-8') as f:
-        mails = json.load(f)
+    try:
+        with open(MAIL_CACHE, encoding='utf-8') as f:
+            mails = json.load(f)
+    except (OSError, ValueError):
+        # 更新中などで読めなかった場合は直前の内容を返す（次回アクセスで再読込）
+        return _cache_data or []
     mails.sort(key=lambda m: _parse_date(m.get('date', '')) or datetime.min, reverse=True)
     for m in mails:
         dt = _parse_date(m.get('date', ''))

@@ -11,6 +11,7 @@ mail_fetcher.py  –  Gmail API でメールを全件取得しキャッシュに
 """
 
 import json
+import os
 import sys
 from pathlib import Path
 from datetime import datetime, timezone
@@ -66,8 +67,31 @@ def load_cache():
         return json.load(f)
 
 def save_cache(mails):
-    with open(OUT_FILE, 'w', encoding='utf-8') as f:
+    # 一時ファイルに書き切ってから置き換える。画面側が書き込み途中の
+    # 不完全なJSONを読んでエラーになるのを防ぐ（定期更新で頻度が上がるため）
+    tmp = OUT_FILE.with_name(OUT_FILE.name + '.tmp')
+    with open(tmp, 'w', encoding='utf-8') as f:
         json.dump(mails, f, ensure_ascii=False, indent=2)
+    os.replace(tmp, OUT_FILE)
+
+
+# ── 同時実行の防止（定期更新cronと画面のSYNCボタンが重ならないように） ──
+LOCK_FILE = '/tmp/mail_fetcher_run.lock'
+
+def acquire_run_lock():
+    """取得できたらロック用fdを返す（プロセス終了まで保持）。
+    他で実行中なら None。POSIX 以外（ローカルWindows開発機）はロックしない"""
+    if os.name != 'posix':
+        return True
+    import fcntl
+    # root(画面SYNC) と www-data(cron) の双方が開けるよう読み取り専用で作成・取得
+    fd = os.open(LOCK_FILE, os.O_RDONLY | os.O_CREAT, 0o666)
+    try:
+        fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except OSError:
+        os.close(fd)
+        return None
+    return fd
 
 
 # ── ID リスト取得 ─────────────────────────────────────
@@ -138,6 +162,13 @@ def fetch_detail(service, msg_id):
 # ── メイン ───────────────────────────────────────────
 def main():
     mode = 'full' if '--full' in sys.argv else 'update'
+
+    lock = acquire_run_lock()
+    if lock is None:
+        log('[SKIP] 別のメール更新が実行中のため今回はスキップしました')
+        log('[DONE] 完了（スキップ）')
+        return
+
     slog(f"開始（モード: {mode}）")
 
     slog("認証中...")
