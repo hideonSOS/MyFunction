@@ -880,6 +880,7 @@ function loadLabels() {
       var user = (data.labels || []).filter(l => !l.system);
       var sys  = (data.labels || []).filter(l => l.system);
       (data.labels || []).forEach(function(l) { LABEL_NAMES[l.id] = l.name; });
+      ADDR_LABELS = data.addr_labels || {};
       applyFromColors();   // ラベル名が分かったので一覧の色分けを適用
       if (user.length) {
         html += '<optgroup label="マイラベル">' + user.map(function(l) {
@@ -987,6 +988,7 @@ var FROM_COLOR_RULES = [
   { prefix: 'アンドアイ', cls: 'from-white' },
 ];
 var LABEL_NAMES = {};   // ラベルID → 名前（loadLabels で埋める）
+var ADDR_LABELS = {};   // 差出人アドレス → その人のメールに付くラベルID（送信メールの色分け用）
 
 function fromColorClass(labelIds) {
   for (var i = 0; i < FROM_COLOR_RULES.length; i++) {
@@ -1004,7 +1006,14 @@ function applyFromColors() {
     var td = tr.querySelector('.col-from');
     if (!td) return;
     td.classList.remove('from-green', 'from-yellow', 'from-white');
-    var cls = fromColorClass(tr.dataset.labels.split(',').filter(Boolean));
+    var labels = tr.dataset.labels.split(',').filter(Boolean);
+    // 送信・転送したメールは、宛先の人がふだん届くラベルの色に合わせる
+    if (labels.indexOf('SENT') >= 0 && tr.dataset.to) {
+      parseAddrList(tr.dataset.to).forEach(function(a) {
+        (ADDR_LABELS[a.email.toLowerCase()] || []).forEach(function(l) { labels.push(l); });
+      });
+    }
+    var cls = fromColorClass(labels);
     if (cls) td.classList.add(cls);
   });
 }

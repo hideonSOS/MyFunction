@@ -267,7 +267,24 @@ def labels(request):
                   key=lambda x: x['name'], reverse=True)
     system = [{'id': i, 'name': n, 'count': counts[i], 'system': True}
               for i, n in SYSTEM_LABELS if counts[i]]
-    return JsonResponse({'labels': user + system})
+    return JsonResponse({'labels': user + system, 'addr_labels': _addr_labels()})
+
+
+def _addr_labels():
+    """差出人アドレス → その人から届いたメールに付いているマイラベルID。
+    送信・転送したメール（自分がFrom）の色分けを、宛先の人のラベルで決めるために使う"""
+    table = {}
+    for m in _load_mails():
+        labels = m.get('labels', [])
+        if 'SENT' in labels:
+            continue
+        mine = [l for l in labels if l.startswith('Label_')]
+        if not mine:
+            continue
+        addr = parseaddr(m.get('from', ''))[1].lower()
+        if addr:
+            table.setdefault(addr, set()).update(mine)
+    return {a: sorted(ls) for a, ls in table.items()}
 
 
 # ── メール詳細（本文 + 添付一覧） ─────────────────────
