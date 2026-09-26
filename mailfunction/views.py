@@ -189,23 +189,36 @@ def _is_forward(m):
     return bool(_FORWARD_SUBJECT.match(m.get('subject') or ''))
 
 
-def _has_label(m, label, user_labels):
-    """画面の絞り込み条件。SENT は転送を除く送信（返信を含む）、FWD は転送だけ、
-    NOLABEL はマイラベルが付いていないもの"""
+def _thread_key(m):
+    return m.get('thread_id') or m['id']
+
+
+def _thread_user_labels(mails, user_labels):
+    """会話（スレッド）→ その会話のどれかのメールに付いているマイラベルID。
+    Gmailのラベルは相手から届いたメールにしか付かないことが多いため、
+    ラベルの絞り込みはGmailの画面と同じく会話単位で行う（自分の返信も表示される）。
+    Gmail側で削除済みのラベルIDは含めない"""
+    table = {}
+    for m in mails:
+        s = table.setdefault(_thread_key(m), set())
+        s.update(l for l in m.get('labels', []) if l in user_labels)
+    return table
+
+
+def _has_label(m, label, thread_labels):
+    """画面の絞り込み条件。SENT は転送を除く送信（返信を含む）、FWD は転送だけ。
+    マイラベルと NOLABEL（マイラベルの付いていない会話）は会話単位で判定し、
+    それ以外（INBOX・未読・スター等）は1通ずつ判定する"""
     labels = m.get('labels', [])
     if label == 'SENT':
         return 'SENT' in labels and not _is_forward(m)
     if label == 'FWD':
         return 'SENT' in labels and _is_forward(m)
     if label == 'NOLABEL':
-        return _has_no_user_label(m, user_labels)
+        return not thread_labels.get(_thread_key(m))
+    if label.startswith('Label_'):
+        return label in thread_labels.get(_thread_key(m), ())
     return label in labels
-
-
-def _has_no_user_label(m, user_labels):
-    """マイラベル（Gmailで作ったラベル）が1つも付いていない。
-    Gmail側で削除済みのラベルIDが残っていても、付いていない扱い"""
-    return not any(l in user_labels for l in m.get('labels', []))
 
 
 @login_required
@@ -225,9 +238,9 @@ def search(request):
         # カンマ区切りで複数指定可。すべての条件に当てはまるメールだけ（AND）
         # 例: label=INBOX,Label_123 → 受信トレイ かつ そのラベル
         required = [l for l in label.split(',') if l]
-        user_labels = _user_label_names()
+        thread_labels = _thread_user_labels(mails, _user_label_names())
         mails = [m for m in mails
-                 if all(_has_label(m, l, user_labels) for l in required)]
+                 if all(_has_label(m, l, thread_labels) for l in required)]
     if sender:
         mails = [m for m in mails if sender in m.get('from', '').lower()]
     if unread:
@@ -281,6 +294,12 @@ def labels(request):
     mails  = _load_mails()
     counts = Counter(l for m in mails for l in m.get('labels', []))
     names  = _user_label_names()   # 対応表が未作成でも、システムラベルだけは出せる
+    # マイラベルの件数は絞り込みと同じく会話単位（会話内の返信なども数える）
+    thread_labels = _thread_user_labels(mails, names)
+    for m in mails:
+        for l in thread_labels.get(_thread_key(m), ()):
+            if l not in m.get('labels', []):
+                counts[l] += 1
 
     # マイラベルは件数0でも出す（作ったばかりのラベルも見えるように）。
     # Gmail側で削除済みのラベル（対応表に無い Label_*）は出さない
@@ -293,7 +312,8 @@ def labels(request):
     return JsonResponse({'labels': user + system, 'addr_labels': _addr_labels(),
                          'own_addrs': _own_addrs(),
                          'total': len(mails),
-                         'nolabel_count': sum(_has_no_user_label(m, names) for m in mails)})
+                         'nolabel_count': sum(_has_label(m, 'NOLABEL', thread_labels)
+                                              for m in mails)})
 
 
 def _user_label_names():
