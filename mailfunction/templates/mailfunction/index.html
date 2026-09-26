@@ -881,6 +881,7 @@ function loadLabels() {
       var sys  = (data.labels || []).filter(l => l.system);
       (data.labels || []).forEach(function(l) { LABEL_NAMES[l.id] = l.name; });
       ADDR_LABELS = data.addr_labels || {};
+      OWN_ADDRS   = data.own_addrs   || [];
       applyFromColors();   // ラベル名が分かったので一覧の色分けを適用
       if (user.length) {
         html += '<optgroup label="マイラベル">' + user.map(function(l) {
@@ -988,17 +989,22 @@ var FROM_COLOR_RULES = [
   { prefix: 'アンドアイ', cls: 'from-white' },
 ];
 var LABEL_NAMES = {};   // ラベルID → 名前（loadLabels で埋める）
-var ADDR_LABELS = {};   // 差出人アドレス → その人のメールに付くラベルID（送信メールの色分け用）
+var ADDR_LABELS = {};   // 差出人アドレス → その人のメールに付くラベルID（送信・CC/BCCメールの色分け用）
+var OWN_ADDRS   = [];   // 自分のアドレス（宛先に自分がいるか＝CC/BCCかの判定用）
 
-function fromColorClass(labelIds) {
+function matchColorRule(labelIds) {
   for (var i = 0; i < FROM_COLOR_RULES.length; i++) {
     var r = FROM_COLOR_RULES[i];
     for (var j = 0; j < labelIds.length; j++) {
       var name = LABEL_NAMES[labelIds[j]];
-      if (name && name.indexOf(r.prefix) === 0) return r.cls;
+      if (name && name.indexOf(r.prefix) === 0) return r;
     }
   }
-  return '';
+  return null;
+}
+function fromColorClass(labelIds) {
+  var r = matchColorRule(labelIds);
+  return r ? r.cls : '';
 }
 
 function applyFromColors() {
@@ -1007,11 +1013,18 @@ function applyFromColors() {
     if (!td) return;
     td.classList.remove('from-green', 'from-yellow', 'from-white');
     var labels = tr.dataset.labels.split(',').filter(Boolean);
-    // 送信・転送したメールは、宛先の人がふだん届くラベルの色に合わせる
-    if (labels.indexOf('SENT') >= 0 && tr.dataset.to) {
-      parseAddrList(tr.dataset.to).forEach(function(a) {
-        (ADDR_LABELS[a.email.toLowerCase()] || []).forEach(function(l) { labels.push(l); });
-      });
+    var toAddrs = parseAddrList(tr.dataset.to || '').map(function(a) { return a.email.toLowerCase(); });
+    var addLabelsOf = function(addr) {
+      (ADDR_LABELS[addr] || []).forEach(function(l) { labels.push(l); });
+    };
+    if (labels.indexOf('SENT') >= 0) {
+      // 送信・転送したメールは、宛先の人がふだん届くラベルの色に合わせる
+      toAddrs.forEach(addLabelsOf);
+    } else if (!matchColorRule(labels) &&
+               !toAddrs.some(function(a) { return OWN_ADDRS.indexOf(a) >= 0; })) {
+      // CC・BCC（宛先に自分がいない）で届いた、色の決まらないメールは送信元の人のラベルで
+      var from = parseAddrList(tr.dataset.from || '')[0];
+      if (from) addLabelsOf(from.email.toLowerCase());
     }
     var cls = fromColorClass(labels);
     if (cls) td.classList.add(cls);

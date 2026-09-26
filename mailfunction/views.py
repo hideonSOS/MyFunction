@@ -267,12 +267,23 @@ def labels(request):
                   key=lambda x: x['name'], reverse=True)
     system = [{'id': i, 'name': n, 'count': counts[i], 'system': True}
               for i, n in SYSTEM_LABELS if counts[i]]
-    return JsonResponse({'labels': user + system, 'addr_labels': _addr_labels()})
+    return JsonResponse({'labels': user + system, 'addr_labels': _addr_labels(),
+                         'own_addrs': _own_addrs()})
+
+
+def _own_addrs():
+    """自分（ホストアカウント）のアドレス。送信済みメールの差出人から求める。
+    CC・BCCで届いたメール（宛先に自分がいない）の判定に使う"""
+    own = {parseaddr(m.get('from', ''))[1].lower()
+           for m in _load_mails() if 'SENT' in m.get('labels', [])}
+    own.discard('')
+    return sorted(own)
 
 
 def _addr_labels():
     """差出人アドレス → その人から届いたメールに付いているマイラベルID。
-    送信・転送したメール（自分がFrom）の色分けを、宛先の人のラベルで決めるために使う"""
+    送信・転送したメール（自分がFrom）は宛先の人のラベル、CC・BCCで届いた
+    ラベル無しのメールは送信元の人のラベルで色分けするために使う"""
     table = {}
     for m in _load_mails():
         labels = m.get('labels', [])
