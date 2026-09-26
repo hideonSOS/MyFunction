@@ -412,7 +412,13 @@ tr.selected td:first-child { border-left: 2px solid var(--cyan); padding-left: 8
         <span>⚠ Gmail API の認証が必要です</span>
         <a href="/mailfunction/oauth/start/">認証する</a>
       </div>
+      {% elif needs_contacts_auth %}
+      <div class="auth-banner">
+        <span>ⓘ 差出人の名前を連絡先の登録名で表示するには、連絡先の読み取り許可が必要です（メール機能はこのまま使えます）</span>
+        <a href="/mailfunction/oauth/start/">許可する</a>
+      </div>
       {% endif %}
+      {{ contact_names|json_script:"contact-names" }}
 
       <div id="detail-empty" class="detail-empty">// SELECT A MAIL //</div>
 
@@ -620,14 +626,20 @@ function parseAddrList(raw) {
   return parts.map(function(p) {
     p = p.trim();
     if (!p) return null;
+    var name = '', email = p;
     var m = p.match(/^(.*?)\s*<([^>]*)>\s*$/);
     if (m) {
-      var name = m[1].replace(/\\"/g, '"').replace(/^"+|"+$/g, '').trim();
-      return { name: name || m[2], email: m[2] };
+      name  = m[1].replace(/\\"/g, '"').replace(/^"+|"+$/g, '').trim();
+      email = m[2];
     }
-    return { name: p, email: p };
+    // 名前が無ければ連絡先の登録名で補う（Gmailの画面と同じ見え方）
+    if (!name || name.toLowerCase() === email.toLowerCase()) {
+      name = CONTACT_NAMES[email.toLowerCase()] || '';
+    }
+    return { name: name || email, email: email };
   }).filter(Boolean);
 }
+var CONTACT_NAMES = JSON.parse(document.getElementById('contact-names').textContent || '{}');
 
 // ── メール選択 ───────────────────────────────────────
 function selectMail(tr) {

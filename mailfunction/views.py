@@ -20,6 +20,7 @@ from . import gmail_client as gc
 APP_DIR    = Path(__file__).resolve().parent
 BASE_DIR   = APP_DIR.parent
 MAIL_CACHE = APP_DIR / 'mail_cache.json'
+CONTACT_CACHE = APP_DIR / 'contact_cache.json'   # アドレス → 連絡先の登録名
 LOG_DIR    = BASE_DIR / 'logs'
 FETCHER    = APP_DIR / 'mail_fetcher.py'
 PYTHON     = sys.executable
@@ -45,7 +46,8 @@ def _load_mails():
     global _cache_data, _cache_mtime
     if not MAIL_CACHE.exists():
         return []
-    mtime = MAIL_CACHE.stat().st_mtime
+    # 連絡先の表が更新されたら表示名も作り直す（どちらかの更新で再構築）
+    mtime = (MAIL_CACHE.stat().st_mtime, _contacts_mtime())
     if _cache_data is not None and mtime == _cache_mtime:
         return _cache_data
     try:
@@ -65,10 +67,40 @@ def _load_mails():
     return mails
 
 
+_contacts_data  = None
+_contacts_mtime_cached = None
+
+
+def _contacts_mtime():
+    try:
+        return CONTACT_CACHE.stat().st_mtime
+    except OSError:
+        return None
+
+
+def _load_contacts():
+    """連絡先の「アドレス(小文字) → 登録名」表。無ければ空"""
+    global _contacts_data, _contacts_mtime_cached
+    mtime = _contacts_mtime()
+    if _contacts_data is not None and mtime == _contacts_mtime_cached:
+        return _contacts_data
+    try:
+        with open(CONTACT_CACHE, encoding='utf-8') as f:
+            data = json.load(f)
+    except (OSError, ValueError):
+        data = _contacts_data or {}
+    _contacts_data, _contacts_mtime_cached = data, mtime
+    return data
+
+
 def _display_name(raw):
-    """'"山田 太郎" <taro@example.com>' → '山田 太郎'。名前が無ければアドレスを返す"""
+    """'"山田 太郎" <taro@example.com>' → '山田 太郎'。
+    ヘッダーに名前が無ければ連絡先の登録名、それも無ければアドレスを返す
+    （Gmailの画面も、名前の無いメールは連絡先名で補って表示している）"""
     name, addr = parseaddr(raw or '')
     name = name.strip().strip('"\\').strip()
+    if not name or name.lower() == addr.lower():
+        name = _load_contacts().get(addr.lower(), '')
     return name or addr or (raw or '')
 
 
@@ -85,6 +117,9 @@ def index(request):
         'cache_exists':  MAIL_CACHE.exists(),
         'initial_limit': INITIAL_LIMIT,
         'needs_auth':    gc.needs_auth(),
+        'needs_contacts_auth': gc.needs_contacts_auth(),
+        # 詳細画面の送信元・送信先の名前補完用（アドレス → 連絡先の登録名）
+        'contact_names': _load_contacts(),
     }
     return render(request, 'mailfunction/index.html', ctx)
 
@@ -126,6 +161,8 @@ def oauth_callback(request):
     )
     # ローカル開発時のみ有効（本番デプロイ前に再コメントアウト）
     os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
+    # 付与済み権限の併合などで返却スコープが要求と順序・内容が異なっても受け付ける
+    os.environ['OAUTHLIB_RELAX_TOKEN_SCOPE'] = '1'
     code_verifier = request.session.get('oauth_code_verifier')
     if code_verifier:
         flow.code_verifier = code_verifier
@@ -241,10 +278,9 @@ def senders(request):
         if not addr:
             continue
         counts[addr] += 1
-        if addr not in names:
-            # 表示名の前後に残る引用符・バックスラッシュを掃除
-            name = raw.rsplit('<', 1)[0].strip().strip('"\\').strip()
-            names[addr] = name or addr
+        if addr not in names or names[addr] == addr:
+            # 名前が無い差出人は連絡先の登録名で補う
+            names[addr] = _display_name(raw)
 
     top = [{'email': a, 'name': names[a], 'count': c}
            for a, c in counts.most_common(15)]

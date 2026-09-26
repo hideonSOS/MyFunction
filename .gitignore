@@ -22,6 +22,7 @@ django_secrets.json
 docs_cache.json
 mailfunction/mail_cache.json
 mailfunction/label_cache.json
+mailfunction/contact_cache.json
 *.pkl
 *.parquet
 *.json.tmp

@@ -24,20 +24,29 @@ BASE_DIR   = APP_DIR.parent
 TOKEN_FILE = APP_DIR / 'token.json'
 CREDS_FILE = BASE_DIR / 'credentials.json'
 
-# 読み取り + 送信スコープ
+# 読み取り + 送信 + 連絡先（差出人の名前を連絡先の登録名で補うため）
+CONTACTS_SCOPE = 'https://www.googleapis.com/auth/contacts.readonly'
 SCOPES = [
     'https://www.googleapis.com/auth/gmail.readonly',
     'https://www.googleapis.com/auth/gmail.send',
+    CONTACTS_SCOPE,
 ]
 
 
 # ── 認証 ─────────────────────────────────────────────
+def _load_token():
+    """token.json を「付与済みの権限のまま」読み込む。
+    SCOPES を渡すと、未付与の権限（再認証前の連絡先など）まで要求して
+    更新に失敗し、メール機能ごと止まってしまうため"""
+    return Credentials.from_authorized_user_file(str(TOKEN_FILE))
+
+
 def get_credentials():
     """token.json から認証情報を取得・リフレッシュして返す。失敗時は None。"""
     if not TOKEN_FILE.exists():
         return None
     try:
-        creds = Credentials.from_authorized_user_file(str(TOKEN_FILE), SCOPES)
+        creds = _load_token()
     except Exception:
         return None
 
@@ -58,6 +67,16 @@ def get_credentials():
 def needs_auth():
     """認証が必要な状態かどうか。"""
     return get_credentials() is None
+
+
+def needs_contacts_auth():
+    """連絡先の権限が未付与か（メールは使えるが、名前補完に再認証が必要な状態）"""
+    if not TOKEN_FILE.exists():
+        return False
+    try:
+        return CONTACTS_SCOPE not in (_load_token().scopes or [])
+    except Exception:
+        return False
 
 
 def get_service():

@@ -26,6 +26,8 @@ TOKEN_FILE   = APP_DIR / 'token.json'
 CREDS_FILE   = BASE_DIR / 'credentials.json'
 OUT_FILE     = APP_DIR / 'mail_cache.json'
 LABEL_FILE   = APP_DIR / 'label_cache.json'   # ラベルID → 名前 の対応表
+CONTACT_FILE = APP_DIR / 'contact_cache.json' # メールアドレス → 連絡先の登録名
+CONTACTS_SCOPE = 'https://www.googleapis.com/auth/contacts.readonly'
 DEBUG_FILE   = APP_DIR / 'mail_debug.json'
 SCOPES       = ['https://www.googleapis.com/auth/gmail.readonly']
 
@@ -46,7 +48,9 @@ def slog(msg):
 def get_credentials():
     creds = None
     if TOKEN_FILE.exists():
-        creds = Credentials.from_authorized_user_file(str(TOKEN_FILE), SCOPES)
+        # 付与済みの権限のまま読む。SCOPES を渡すと更新時に token.json の権限が
+        # gmail.readonly だけに上書きされ、送信・連絡先の権限情報が失われる
+        creds = Credentials.from_authorized_user_file(str(TOKEN_FILE))
 
     if not creds or not creds.valid:
         if creds and creds.expired and creds.refresh_token:
@@ -87,6 +91,37 @@ def save_label_cache(service):
         json.dump(data, f, ensure_ascii=False, indent=2)
     os.replace(tmp, LABEL_FILE)
     return len(data)
+
+
+def save_contact_cache(creds):
+    """Googleの連絡先から「メールアドレス → 登録名」の対応表を保存する。
+    差出人ヘッダーに名前が無いメール（Gmailは画面上だけ連絡先名で補って表示している）
+    を、MyFunction でも同じ名前で表示するため。権限が未付与なら None を返してスキップ"""
+    if CONTACTS_SCOPE not in (creds.scopes or []):
+        return None
+    people = build('people', 'v1', credentials=creds)
+    table, token = {}, None
+    while True:
+        res = people.people().connections().list(
+            resourceName='people/me', personFields='names,emailAddresses',
+            pageSize=1000, pageToken=token).execute()
+        for p in res.get('connections', []):
+            names = p.get('names') or []
+            name = (names[0].get('displayName') or '').strip() if names else ''
+            if not name:
+                continue
+            for e in p.get('emailAddresses') or []:
+                addr = (e.get('value') or '').strip().lower()
+                if addr:
+                    table[addr] = name
+        token = res.get('nextPageToken')
+        if not token:
+            break
+    tmp = CONTACT_FILE.with_name(CONTACT_FILE.name + '.tmp')
+    with open(tmp, 'w', encoding='utf-8') as f:
+        json.dump(table, f, ensure_ascii=False, indent=2)
+    os.replace(tmp, CONTACT_FILE)
+    return len(table)
 
 
 # ── 同時実行の防止（定期更新cronと画面のSYNCボタンが重ならないように） ──
@@ -193,11 +228,19 @@ def main():
     service = build('gmail', 'v1', credentials=creds)
     slog("認証完了")
 
-    # ラベル名の対応表を更新（失敗してもメール取得は続行）
+    # ラベル名・連絡先名の対応表を更新（失敗してもメール取得は続行）
     try:
         log(f"ラベル一覧を更新: {save_label_cache(service)} 件")
     except Exception as e:
         log(f"[WARN] ラベル一覧の取得に失敗: {e}")
+    try:
+        n = save_contact_cache(creds)
+        if n is None:
+            log("連絡先: 権限が未付与のためスキップ（メール画面から再認証すると有効）")
+        else:
+            log(f"連絡先を更新: {n} アドレス")
+    except Exception as e:
+        log(f"[WARN] 連絡先の取得に失敗: {str(e)[:300]}")
 
     # 既存キャッシュを読み込み
     existing = load_cache()
