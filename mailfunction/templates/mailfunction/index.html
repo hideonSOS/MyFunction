@@ -84,6 +84,8 @@
 .btn-lbl-all.active  { background: #b0c8e022; border-color: var(--text);  box-shadow: 0 0 10px #b0c8e0aa, 0 0 24px #b0c8e044; }
 .btn-lbl-in.active   { background: #00f5ff22; border-color: var(--cyan);  box-shadow: 0 0 10px #00f5ffaa, 0 0 24px #00f5ff44; }
 .btn-lbl-sent.active { background: #00ff8822; border-color: var(--green); box-shadow: 0 0 10px #00ff88aa, 0 0 24px #00ff8844; }
+.btn-lbl-fwd  { color: var(--orange); border-color: #ff990044; }
+.btn-lbl-fwd.active  { background: #ff990022; border-color: var(--orange); box-shadow: 0 0 10px #ff9900aa, 0 0 24px #ff990044; }
 
 .count-badge { margin-left: auto; font-size: .75em; color: var(--text-dim); border: 1px solid var(--border); padding: 3px 10px; border-radius: 10px; }
 .count-badge b { color: var(--cyan); }
@@ -372,7 +374,8 @@ tr.selected td:first-child { border-left: 2px solid var(--cyan); padding-left: 8
         <div class="toolbar">
           <button class="btn btn-lbl btn-lbl-all active" id="lbtn-all"  onclick="setBoxFilter('')">ALL</button>
           <button class="btn btn-lbl btn-lbl-in"         id="lbtn-in"   onclick="setBoxFilter('INBOX')">INBOX</button>
-          <button class="btn btn-lbl btn-lbl-sent"       id="lbtn-sent" onclick="setBoxFilter('SENT')">SENT</button>
+          <button class="btn btn-lbl btn-lbl-sent"       id="lbtn-sent" onclick="setBoxFilter('SENT')" title="送信・返信（転送を除く）">SENT</button>
+          <button class="btn btn-lbl btn-lbl-fwd"        id="lbtn-fwd"  onclick="setBoxFilter('FWD')" title="転送（件名が Fwd: / FW: / 転送: で始まる送信メール）">FWD</button>
           <select id="label-select" class="label-select" onchange="setLabelFilter(this.value, true)" title="Gmailのラベルで絞り込み">
             <option value="">🏷 ラベル: すべて</option>
           </select>
@@ -840,9 +843,9 @@ function scrollLogBottom() {
 }
 
 // ── フィルタ（サーバーサイド検索） ───────────────────────
-// フォルダ（ALL/INBOX/SENT）とラベル（チップ・プルダウン）は独立した条件で、
+// フォルダ（ALL/INBOX/SENT/FWD）とラベル（チップ・プルダウン）は独立した条件で、
 // 両方選ぶと AND（例: INBOX かつ 都市）で絞り込む
-var currentBox    = '';   // '' / 'INBOX' / 'SENT'
+var currentBox    = '';   // '' / 'INBOX' / 'SENT'（転送以外の送信）/ 'FWD'（転送）
 var currentLabel  = '';   // ラベルID（チップ・プルダウンで選択）
 var unreadOnly    = false;
 var currentDays   = 0;    // 0=期間指定なし
@@ -853,6 +856,7 @@ function setBoxFilter(box) {
   document.getElementById('lbtn-all').classList.toggle('active',  currentBox === '');
   document.getElementById('lbtn-in').classList.toggle('active',   currentBox === 'INBOX');
   document.getElementById('lbtn-sent').classList.toggle('active', currentBox === 'SENT');
+  document.getElementById('lbtn-fwd').classList.toggle('active',  currentBox === 'FWD');
   doSearch();
 }
 

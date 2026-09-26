@@ -1,6 +1,7 @@
 import json
 import mimetypes
 import os
+import re
 import subprocess
 import sys
 import uuid
@@ -179,6 +180,25 @@ def oauth_callback(request):
 
 
 # ── サーバーサイド検索 ────────────────────────────────
+# Gmail は送信と転送を区別しない（どちらも SENT）ため、件名の先頭で見分ける。
+# 件名から「Fwd:」を消して転送したものは送信扱いになる
+_FORWARD_SUBJECT = re.compile(r'^\s*(fwd?|fw|転送)\s*[:：]', re.IGNORECASE)
+
+
+def _is_forward(m):
+    return bool(_FORWARD_SUBJECT.match(m.get('subject') or ''))
+
+
+def _has_label(m, label):
+    """画面の絞り込み条件。SENT は転送を除く送信（返信を含む）、FWD は転送だけ"""
+    labels = m.get('labels', [])
+    if label == 'SENT':
+        return 'SENT' in labels and not _is_forward(m)
+    if label == 'FWD':
+        return 'SENT' in labels and _is_forward(m)
+    return label in labels
+
+
 @login_required
 def search(request):
     query  = request.GET.get('q', '').strip().lower()
@@ -193,11 +213,10 @@ def search(request):
     mails = _load_mails()
 
     if label:
-        # カンマ区切りで複数指定可。すべてのラベルが付いたメールだけ（AND）
+        # カンマ区切りで複数指定可。すべての条件に当てはまるメールだけ（AND）
         # 例: label=INBOX,Label_123 → 受信トレイ かつ そのラベル
         required = [l for l in label.split(',') if l]
-        mails = [m for m in mails
-                 if all(l in m.get('labels', []) for l in required)]
+        mails = [m for m in mails if all(_has_label(m, l) for l in required)]
     if sender:
         mails = [m for m in mails if sender in m.get('from', '').lower()]
     if unread:
