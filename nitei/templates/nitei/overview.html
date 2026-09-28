@@ -4,7 +4,7 @@
 {% block title %}全員一覧{% endblock %}
 
 {% block extra_head %}
-<link rel="stylesheet" href="{% static 'nitei/css/overview.css' %}">
+<link rel="stylesheet" href="{% static 'nitei/css/overview.css' %}?v=20260928">
 <style>
   #page-wrapper { padding: 0; overflow-x: hidden; }
 </style>
@@ -28,6 +28,7 @@
     <span id="period-label"></span>
     <button id="btn-next">▶</button>
     <button id="btn-today">今日</button>
+    <button id="btn-print" title="表示中の月をA3横で印刷・PDF保存">🖨 印刷</button>
   </div>
   <span id="ov-status"></span>
 </div>
@@ -44,5 +45,6 @@
 
 {% block extra_js %}
 <script src="{% static 'nitei/js/periods.js' %}"></script>
-<script src="{% static 'nitei/js/overview.js' %}"></script>
+<script src="{% static 'nitei/js/overview_data.js' %}?v=20260928"></script>
+<script src="{% static 'nitei/js/overview.js' %}?v=20260928"></script>
 {% endblock %}

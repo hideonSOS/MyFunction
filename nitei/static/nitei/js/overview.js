@@ -1,8 +1,7 @@
 ﻿// PERSONS はテンプレート側で定義済み
 //
 // 全員一覧は「カレンダー月」単位で表示する（勤務表ページの28日/14日/月サイクルとは別）。
-// 保存データは位置キー（sheet/section/day）なので、periods.js の
-// niteiPositionForDate() で日付から保存位置を逆引きして拾う。
+// 月単位のデータ取得・範囲・開催判定は overview_data.js（印刷ページと共通）
 const OV_DOW = ['日', '月', '火', '水', '木', '金', '土'];
 
 let ovYear   = 0;   // 表示中の年
@@ -11,99 +10,22 @@ let ovTitles = [];
 
 const TODAY = new Date(); TODAY.setHours(0, 0, 0, 0);
 
-// 勤務表がカバーしている範囲の月（ここより外へはナビゲートさせない）
-const OV_FIRST = { y: NITEI_RANGE.start.getFullYear(), m: NITEI_RANGE.start.getMonth() };
-const OV_LAST  = { y: NITEI_RANGE.end.getFullYear(),   m: NITEI_RANGE.end.getMonth()   };
-
-// ── ユーティリティ ────────────────────────────────
-
-/** 年月を通し番号にして比較しやすくする */
-function ovSerial(y, m) { return y * 12 + m; }
-
-function ovClampToRange(y, m) {
-  const s   = ovSerial(y, m);
-  const min = ovSerial(OV_FIRST.y, OV_FIRST.m);
-  const max = ovSerial(OV_LAST.y,  OV_LAST.m);
-  const v   = Math.max(min, Math.min(max, s));
-  return { y: Math.floor(v / 12), m: v % 12 };
-}
-
 function ovSetMonthFromToday() {
   const c = ovClampToRange(TODAY.getFullYear(), TODAY.getMonth());
   ovYear = c.y; ovMonth = c.m;
 }
 
-/** 表示中の月の日付一覧 */
-function ovMonthDays() {
-  const last = new Date(ovYear, ovMonth + 1, 0).getDate();
-  const days = [];
-  for (let i = 1; i <= last; i++) days.push(new Date(ovYear, ovMonth, i));
-  return days;
-}
-
 function getEventInfo(date) {
-  const d = new Date(date); d.setHours(0, 0, 0, 0);
-  for (const t of ovTitles) {
-    const from = new Date(t.date_from.replace(/\//g, '-')); from.setHours(0, 0, 0, 0);
-    const to   = new Date(t.date_to.replace(/\//g, '-'));   to.setHours(0, 0, 0, 0);
-    if (d >= from && d <= to) return { color: t.venue === '箕面' ? 'green' : 'blue', venue: t.venue };
-  }
-  return null;
-}
-
-function getEventColor(date) {
-  const info = getEventInfo(date);
-  return info ? info.color : '';
+  return ovEventInfo(date, ovTitles);
 }
 
 // ── データ取得＆描画 ──────────────────────────────
 
 async function loadAndRender() {
   document.getElementById('ov-status').textContent = '読み込み中...';
-
-  const days      = ovMonthDays();
-  const positions = days.map(d => niteiPositionForDate(d));
-
-  // この月が触れる (sheet, section) の組み合わせだけを取得する。
-  // 月は勤務表の区切りをまたぐので、1〜3 組になることが多い。
-  const needed = [];
-  const seen   = {};
-  positions.forEach(p => {
-    if (!p) return;
-    const id = `${p.sheet}_${p.section}`;
-    if (!seen[id]) { seen[id] = true; needed.push(p); }
-  });
-
-  const results = await Promise.all(
-    needed.map(p =>
-      fetch(`/nitei/api/overview/?sheet_index=${p.sheet}&section_index=${p.section}`)
-        .then(r => r.json())
-        .then(json => ({ id: `${p.sheet}_${p.section}`, json }))
-    )
-  );
-
-  const bySection = {};
-  results.forEach(r => { bySection[r.id] = r.json.data; });
-  if (results.length) ovTitles = results[0].json.titles;
-
-  // 日付ごとに、その日の保存位置から値を引いて日付インデックスへ詰め替える
-  const data = {};
-  Object.keys(PERSONS).forEach(person => {
-    const pdata = {};
-    positions.forEach((p, i) => {
-      if (!p) return;
-      const src = (bySection[`${p.sheet}_${p.section}`] || {})[person] || {};
-      const ev  = src[`e_${p.day}`];
-      const w0  = src[`w_${p.day}_0`];
-      const w1  = src[`w_${p.day}_1`];
-      if (ev !== undefined) pdata[`e_${i}`]   = ev;
-      if (w0 !== undefined) pdata[`w_${i}_0`] = w0;
-      if (w1 !== undefined) pdata[`w_${i}_1`] = w1;
-    });
-    data[person] = pdata;
-  });
-
-  render(data, days, positions);
+  const month = await ovFetchMonth(ovYear, ovMonth);
+  ovTitles = month.titles;
+  render(month.data, month.days, month.positions);
   document.getElementById('ov-status').textContent = '✓';
 }
 
@@ -219,6 +141,10 @@ function ovShiftMonth(delta) {
 document.getElementById('btn-prev').onclick  = () => ovShiftMonth(-1);
 document.getElementById('btn-next').onclick  = () => ovShiftMonth(1);
 document.getElementById('btn-today').onclick = () => { ovSetMonthFromToday(); loadAndRender(); };
+document.getElementById('btn-print').onclick = () => {
+  const ym = `${ovYear}-${String(ovMonth + 1).padStart(2, '0')}`;
+  window.open(`/nitei/overview/print/?month=${ym}`, '_blank');
+};
 
 // ── 初期表示 ──────────────────────────────────────
 ovSetMonthFromToday();

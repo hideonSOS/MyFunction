@@ -92,6 +92,15 @@ def overview(request):
     })
 
 
+@nitei_login_required
+def overview_print(request):
+    """全員一覧の印刷ページ（?month=YYYY-MM の1か月分をA3横1枚に。ブラウザ印刷でPDF化）"""
+    return render(request, 'nitei/overview_print.html', {
+        'persons_json': json.dumps(PERSONS, ensure_ascii=False),
+        'month_param':  request.GET.get('month', ''),
+    })
+
+
 def api_overview(request):
     if not (request.user.is_authenticated or request.session.get(NITEI_SESSION_KEY)):
         return JsonResponse({'error': 'unauthorized'}, status=403)

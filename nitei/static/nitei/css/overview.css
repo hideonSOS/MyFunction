@@ -72,6 +72,9 @@ body {
 #btn-today { color: #ffe066; border-color: #ffe06644; }
 #btn-today:hover { background: #1a1600; border-color: #ffe066; }
 
+#btn-print { color: #39ff14; border-color: #39ff1455; }
+#btn-print:hover { background: #0e2410; border-color: #39ff14; }
+
 #ov-status {
   font-size: 11px;
   color: #7fffd4;
