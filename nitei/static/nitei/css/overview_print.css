@@ -137,6 +137,7 @@ body {
 /* 勤務コードと時刻の間は少し空けて読みやすく */
 .op-code { font-size: calc(9pt * var(--k)); font-weight: bold; margin-bottom: calc(1mm * var(--k)); }
 .op-code.kyu { color: #b35900; }
+.op-code.shitei { color: #d00000; }   /* 指定公休（変更の効かない休日） */
 .op-time { font-size: calc(8.5pt * var(--k)); font-family: 'Consolas', 'Courier New', monospace; }
 .op-time.bot { color: #444; }
 

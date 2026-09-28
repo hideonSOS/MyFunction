@@ -209,6 +209,7 @@ body {
 }
 .c-ev  { color: #ffffff; }
 .c-kyu { color: #ff9900; }
+.c-shitei { color: #ff3b3b; }   /* 指定公休（変更の効かない休日） */
 
 .ov-time {
   font-size: 11px;

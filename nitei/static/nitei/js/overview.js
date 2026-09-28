@@ -106,7 +106,7 @@ function render(data, days, positions) {
       const eventCode = pdata[`e_${i}`] || '';
       const timeTop   = pdata[`w_${i}_0`] || '';
       const timeBot   = pdata[`w_${i}_1`] || '';
-      const isKyu     = eventCode === '公休' || eventCode === '有給';   // 休み（同じ色で表示）
+      const isKyu     = ['公休', '指定公休', '有給'].includes(eventCode);   // 休み（同じ背景色で表示）
 
       const td = document.createElement('td');
       td.className = 'ov-cell'
@@ -117,7 +117,8 @@ function render(data, days, positions) {
         + (positions[i] ? '' : ' ov-nodata');   // 勤務表の対象期間外
 
       let html = '';
-      if (eventCode) html += `<div class="ov-code ${isKyu ? 'c-kyu' : 'c-ev'}">${eventCode}</div>`;
+      const codeCls   = eventCode === '指定公休' ? 'c-shitei' : isKyu ? 'c-kyu' : 'c-ev';
+      if (eventCode) html += `<div class="ov-code ${codeCls}">${eventCode}</div>`;
       if (timeTop)   html += `<div class="ov-time ov-top">↑&thinsp;${timeTop}</div>`;
       if (timeBot)   html += `<div class="ov-time ov-bot">↓&thinsp;${timeBot}</div>`;
 

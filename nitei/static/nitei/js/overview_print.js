@@ -106,13 +106,13 @@
         const code = pdata[`e_${i}`] || '';
         const top  = pdata[`w_${i}_0`] || '';
         const bot  = pdata[`w_${i}_1`] || '';
-        const kyu  = code === '公休' || code === '有給';   // 休み（同じ色で表示）
+        const kyu  = ['公休', '指定公休', '有給'].includes(code);   // 休み（同じ背景色で表示）
         const td = el('td', 'op-cell'
           + (!positions[i] ? ' nodata'
              : kyu ? ' kyu'
              : info[i] ? ' ' + info[i].color
              : dow === 6 ? ' sat' : dow === 0 ? ' sun' : ''));
-        if (code) td.appendChild(line('op-code' + (kyu ? ' kyu' : ''), code));
+        if (code) td.appendChild(line('op-code' + (code === '指定公休' ? ' shitei' : kyu ? ' kyu' : ''), code));
         if (top)  td.appendChild(line('op-time top', '↑' + top));
         if (bot)  td.appendChild(line('op-time bot', '↓' + bot));
         tr.appendChild(td);

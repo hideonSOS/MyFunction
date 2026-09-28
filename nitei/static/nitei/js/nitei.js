@@ -88,10 +88,14 @@ async function clearSheet(sheetIndex, workCells, eventCells, updateSum) {
   updateSum();
 }
 
+// 公休数に数える区分（指定公休＝変更の効かない休日。公休の一部として数える）
+const HOLIDAY_CODES = ['公休', '指定公休'];
+
 function applyEventColor(cell) {
   const t = cell.textContent;
   if (['公開FM', 'FM臨時', '本社'].includes(t)) cell.style.color = '#ffffff';
   else if (t === '公休')              cell.style.color = '#ff9900';
+  else if (t === '指定公休')          cell.style.color = '#ff3b3b';
   else if (t === '有給')              cell.style.color = '#ffe066';
   else                                cell.style.color = '';
 }
@@ -238,7 +242,7 @@ function createSection(dateList, workCells, sumCells, eventCells, updateSum, she
     [tr1, tr2, tr3, tr4][i].appendChild(td);
   });
 
-  const EVENT_ORDER = ['', '公開FM', 'FM臨時', '本社', '公休', '有給'];
+  const EVENT_ORDER = ['', '公開FM', 'FM臨時', '本社', '公休', '指定公休', '有給'];
 
   dateList.forEach((date, localIndex) => {
     const dayIndex = localIndex + dayOffset;
@@ -337,7 +341,7 @@ function buildSheets() {
     sumTable.appendChild(sumRow);
 
     const updateSum = (ec => () => {
-      sumCell.textContent = ec.filter(c => c.textContent === '公休').length;
+      sumCell.textContent = ec.filter(c => HOLIDAY_CODES.includes(c.textContent)).length;
     })(eventCells);
 
     // セクション単位で1テーブル。スマホだけ7日前後で折り返す
