@@ -400,6 +400,63 @@ td.col-mark:hover .mark-empty { color: var(--yellow); }
   margin: 0 4px;
 }
 .chip-loading { font-size: 11px; color: var(--text-dim); }
+
+.mail-back-btn { display: none; }
+
+/* ── スマホ: 一覧と本文を1画面ずつ切り替える（メールを開くと本文が全画面、← 一覧 で戻る） ── */
+@media (max-width: 767px) {
+  #page-wrapper, .layout { height: 100dvh; }   /* アドレスバー分で下が切れないように */
+  .m-header { height: 46px; padding: 0 12px 0 60px; gap: 10px; }   /* 左上のメニューボタンを避ける */
+  .header-logo { font-size: .85em; }
+  .header-sub { display: none; }
+
+  .body-cols { display: block; position: relative; }
+  .col-list, .col-detail { width: 100%; height: 100%; border-right: none; }
+  .col-detail { display: none; }
+  body.mail-detail-open .col-list   { display: none; }
+  body.mail-detail-open .col-detail { display: flex; }
+
+  .panel-title { padding: 6px 12px; }
+  /* 上段: フォルダボタン／下段: 検索・SYNC・件数 */
+  .toolbar { padding: 8px 10px; gap: 6px; }
+  .toolbar .btn { padding: 6px 10px; }
+  .toolbar input[type=text] { flex: 1 1 120px; width: auto; min-width: 0; font-size: 16px; }   /* 16px未満だとiPhoneが入力時に拡大する */
+  #label-select { display: none; }   /* ラベルは下のチップで選ぶ */
+  .count-badge { margin-left: 0; }
+
+  /* 絞り込みチップは1行の横スクロールに（縦に場所を取らない） */
+  .chip-bar { flex-wrap: nowrap; overflow-x: auto; padding: 0 10px 8px; scrollbar-width: none; }
+  .chip-bar::-webkit-scrollbar { display: none; }
+  .chip-bar .chip, .chip-sep { flex-shrink: 0; }
+  #label-chips { display: contents; }
+  .chip-label { width: auto; padding: 2px 12px; }
+
+  /* 一覧: 差出人と件名を2段にして幅を確保 */
+  thead { display: none; }
+  #mail-tbody tr { display: grid; grid-template-columns: 30px 1fr auto; grid-template-rows: auto auto;
+                   border-bottom: 1px solid #0d1e30; }
+  #mail-tbody td { border-bottom: none; padding: 3px 8px 0 0; }
+  #mail-tbody td.col-mark    { grid-row: 1 / span 2; align-self: center; width: auto; padding: 0 0 0 6px; font-size: 1.1em; }
+  #mail-tbody td.col-from    { grid-column: 2; grid-row: 1; width: auto; padding-top: 9px; font-size: .86em; }
+  #mail-tbody td.col-date    { grid-column: 3; grid-row: 1; width: auto; padding-top: 10px; }
+  #mail-tbody td.col-subject { grid-column: 2 / span 2; grid-row: 2; max-width: none; padding-bottom: 9px; font-size: .82em; color: var(--text-dim); }
+  #mail-tbody td.no-data { grid-column: 1 / -1; }
+  tr.selected td:first-child { border-left: none; }
+
+  /* 本文 */
+  .detail-head { padding: 12px 14px; }
+  .detail-subject, .detail-date { font-size: 1.1em; }
+  .detail-date { margin-top: 6px; }
+  .field-list { padding: 10px 14px; }
+  .att-section, .body-section { margin-left: 12px; margin-right: 12px; }
+  .body-box { font-size: .9em; padding: 10px 12px; }
+  .mail-back-btn { display: inline-block; margin-right: auto; }
+  .col-detail .toolbar { justify-content: space-between !important; }
+
+  .sync-status { padding: 6px 12px; }
+  .log-section { padding: 0 12px 10px; }
+  .log-box { max-height: 160px; }
+}
 </style>
 {% endblock %}
 
@@ -485,6 +542,7 @@ td.col-mark:hover .mark-empty { color: var(--yellow); }
       <div class="panel">
         <div class="panel-title">▸ Mail Detail</div>
         <div class="toolbar" style="justify-content:flex-end;">
+          <button class="btn btn-cyan mail-back-btn" onclick="closeMailDetail()">← 一覧</button>
           <button class="btn btn-orange" onclick="openCompose()">✉ 送 信</button>
         </div>
       </div>
@@ -771,6 +829,7 @@ function selectMail(tr) {
   document.getElementById('detail-date').textContent    = fmtDate(tr.dataset.date);
   currentMailId = tr.dataset.id;
   renderMarkBar();
+  openMailDetailMobile();
   document.getElementById('field-list').innerHTML = html;
   document.getElementById('detail-empty').style.display   = 'none';
   document.getElementById('detail-content').style.display = 'block';
@@ -1062,6 +1121,35 @@ function renderRows(mails) {
   applyFromColors();
   renderMarkCells();
 }
+
+// ── スマホ表示: 一覧 ⇔ 本文 の画面切り替え ─────────────
+var MOBILE_MQ = window.matchMedia('(max-width: 767px)');
+
+function openMailDetailMobile() {
+  if (!MOBILE_MQ.matches || document.body.classList.contains('mail-detail-open')) return;
+  document.body.classList.add('mail-detail-open');
+  history.pushState({ mailDetail: true }, '');   // 端末の「戻る」で一覧へ戻れるように
+}
+
+function closeMailDetail() {
+  if (history.state && history.state.mailDetail) history.back();   // popstate で閉じる
+  else document.body.classList.remove('mail-detail-open');
+}
+
+window.addEventListener('popstate', function() {
+  document.body.classList.remove('mail-detail-open');
+});
+
+// SYNCの進行状況・ログは本来本文側の列にあるが、スマホでは一覧側の下に置く（一覧表示中も見えるように）
+function placeSyncArea() {
+  var dest = MOBILE_MQ.matches ? document.querySelector('.col-list') : document.querySelector('.col-detail');
+  ['.sync-status', '#progress-wrap', '#log-section'].forEach(function(sel) {
+    dest.appendChild(document.querySelector(sel));
+  });
+  if (!MOBILE_MQ.matches) document.body.classList.remove('mail-detail-open');
+}
+placeSyncArea();
+MOBILE_MQ.addEventListener('change', placeSyncArea);
 
 // ── 独自マーク（★重要 など。このサイト内だけの印） ─────
 var MARKS       = [];   // [{id, name, symbol, color, count}]（並び順。先頭が一覧でワンクリックのマーク）
