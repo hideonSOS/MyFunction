@@ -106,7 +106,7 @@
         const code = pdata[`e_${i}`] || '';
         const top  = pdata[`w_${i}_0`] || '';
         const bot  = pdata[`w_${i}_1`] || '';
-        const kyu  = code === '公休';
+        const kyu  = code === '公休' || code === '有給';   // 休み（同じ色で表示）
         const td = el('td', 'op-cell'
           + (!positions[i] ? ' nodata'
              : kyu ? ' kyu'

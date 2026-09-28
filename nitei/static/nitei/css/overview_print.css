@@ -128,7 +128,7 @@ body {
 .op-cell.sun   { background: #fff3f4 !important; }
 .op-cell.blue  { background: #e3ecfd !important; }   /* 開催日（都市） */
 .op-cell.green { background: #e2f5e7 !important; }   /* 開催日（箕面） */
-.op-cell.kyu   { background: #ececec !important; }   /* 公休 */
+.op-cell.kyu   { background: #ececec !important; }   /* 公休・有給 */
 .op-cell.nodata {
   background: repeating-linear-gradient(45deg, #fff, #fff 1.2mm, #eee 1.2mm, #eee 2.4mm) !important;
 }

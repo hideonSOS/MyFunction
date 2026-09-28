@@ -106,7 +106,7 @@ function render(data, days, positions) {
       const eventCode = pdata[`e_${i}`] || '';
       const timeTop   = pdata[`w_${i}_0`] || '';
       const timeBot   = pdata[`w_${i}_1`] || '';
-      const isKyu     = eventCode === '公休';
+      const isKyu     = eventCode === '公休' || eventCode === '有給';   // 休み（同じ色で表示）
 
       const td = document.createElement('td');
       td.className = 'ov-cell'
