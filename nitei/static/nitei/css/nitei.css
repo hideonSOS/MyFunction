@@ -122,6 +122,21 @@ button:hover {
   box-shadow: 0 0 8px rgba(0, 229, 255, 0.4);
 }
 
+/* 勤務表見出しの印刷ボタン */
+h2 .sheet-print-btn {
+  margin-left: 12px;
+  padding: 2px 10px;
+  font-size: 12px;
+  letter-spacing: 0;
+  text-shadow: none;
+  vertical-align: middle;
+  color: #39ff14;
+  border-color: #39ff1488;
+  width: auto;          /* スマホ用の全幅ボタン指定を打ち消す */
+  display: inline-block;
+}
+h2 .sheet-print-btn:hover { background: #0e2410; box-shadow: 0 0 8px #39ff1455; }
+
 #toolbar {
   margin-bottom: 16px;
   display: flex;

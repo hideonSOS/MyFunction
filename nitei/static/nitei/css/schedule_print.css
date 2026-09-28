@@ -1,0 +1,140 @@
+/* 勤務表 印刷ページ（1人・勤務表1枚分を横長1枚に）。画面プレビューも紙と同じ白地で見せる。
+   用紙サイズは #sp-page-size の @page と body.paper-* を JS で切り替える */
+
+* { box-sizing: border-box; }
+
+/* 印刷可能範囲（用紙 − 余白8mm×2）と文字の倍率 */
+body.paper-a4 { --pw: 281mm; --ph: 194mm; --k: 1;   --labelw: 15mm; }
+body.paper-a3 { --pw: 404mm; --ph: 281mm; --k: 1.4; --labelw: 21mm; }
+
+body {
+  margin: 0;
+  background: #e8e8e8;
+  font-family: 'Yu Gothic', 'Meiryo', sans-serif;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+  --headh: calc(16mm * var(--k));   /* タイトル行 */
+  --gap:   calc(6mm * var(--k));    /* 前半・後半の表の間 */
+  --nsec:  2;                       /* 表の段数（JSが設定） */
+  --maxdays: 16;                    /* 1段の最大日数（JSが設定） */
+}
+
+/* ── 画面のみのツールバー ───────────────────── */
+.sp-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  background: #223;
+  color: #fff;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  flex-wrap: wrap;
+}
+.sp-title { font-weight: bold; margin-right: 8px; }
+#sp-sheet { font-weight: bold; min-width: 170px; text-align: center; }
+.sp-hint  { font-size: 12px; opacity: 0.8; }
+.sp-spacer { flex: 1; }
+.sp-toolbar button, .sp-toolbar select {
+  padding: 6px 14px;
+  font-size: 14px;
+  border: 1px solid #667;
+  border-radius: 4px;
+  background: #334;
+  color: #fff;
+  cursor: pointer;
+}
+.sp-toolbar button:hover { background: #445; }
+.sp-toolbar button:disabled { opacity: .35; cursor: default; }
+#sp-print { background: #1a6b3c; border-color: #2a8b52; font-weight: bold; }
+#sp-print:hover { background: #218548; }
+
+/* ── 用紙（勤務表1枚 = 1枚） ───────────────── */
+.sp-page {
+  background: #fff;
+  width: var(--pw);
+  height: var(--ph);
+  margin: 12px auto;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.25);
+  overflow: hidden;
+  color: #000;
+}
+
+.sp-head {
+  height: var(--headh);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 1mm;
+}
+.sp-head-title { font-size: calc(15pt * var(--k)); font-weight: bold; letter-spacing: 1px; }
+.sp-head-title .sp-name { font-size: calc(18pt * var(--k)); margin-right: calc(4mm * var(--k)); }
+.sp-head-right { display: flex; align-items: center; gap: calc(4mm * var(--k)); }
+.sp-legend { font-size: calc(7.5pt * var(--k)); color: #555; text-align: right; line-height: 1.5; }
+.sp-sum {
+  border: 0.5mm solid #000;
+  padding: calc(1mm * var(--k)) calc(3mm * var(--k));
+  font-size: calc(11pt * var(--k));
+  white-space: nowrap;
+}
+.sp-sum b { font-size: calc(15pt * var(--k)); margin-left: calc(2mm * var(--k)); }
+
+/* ── 表（前半・後半を縦に並べる。列幅は段をまたいでそろえる） ── */
+.sp-table {
+  border-collapse: collapse;
+  table-layout: fixed;
+  width: calc(var(--labelw) + (var(--pw) - var(--labelw)) * var(--n) / var(--maxdays));
+  margin-bottom: var(--gap);
+}
+.sp-table:last-child { margin-bottom: 0; }
+.sp-col-label { width: var(--labelw); }
+
+.sp-table td {
+  border: 0.3mm solid #666;
+  text-align: center;
+  vertical-align: middle;
+  overflow: hidden;
+  white-space: nowrap;
+  padding: 0 0.5mm;
+  /* 用紙の残りを段数×4行で等分（上限あり。4mm は罫線ぶんの余裕） */
+  height: min(calc((var(--ph) - var(--headh) - var(--gap) * (var(--nsec) - 1) - 4mm) / (4 * var(--nsec))),
+              calc(16mm * var(--k)));
+}
+.sp-label {
+  font-size: calc(9pt * var(--k));
+  font-weight: bold;
+  background: #f0f0f0;
+  letter-spacing: 1px;
+}
+
+/* 日付行 */
+.sp-date { font-size: calc(8pt * var(--k)); line-height: 1.25; background: #f7f7f7; }
+.sp-date b { font-size: calc(12pt * var(--k)); }
+.sp-date.sat { color: #0050c8; background: #e6effc; }
+.sp-date.sun { color: #c8001e; background: #fce8ea; }
+.sp-row-date td { border-bottom: 0.5mm solid #000; }
+
+/* 開催行（区分）。開催日は都市=青 / 箕面=緑の薄い色 */
+.sp-ev { font-size: calc(10pt * var(--k)); font-weight: bold; }
+.sp-ev.blue  { background: #e3ecfd; }
+.sp-ev.green { background: #e2f5e7; }
+
+/* 公休・指定公休・有給はその日の列ごと灰色 */
+.sp-cell.kyu { background: #ececec !important; }
+.sp-ev.kyu    { color: #b35900; }
+.sp-ev.shitei { color: #d00000; }   /* 指定公休（変更の効かない休日） */
+
+/* 上番・下番の時刻 */
+.sp-time { font-size: calc(12pt * var(--k)); font-family: 'Consolas', 'Courier New', monospace; }
+.sp-row-shimo .sp-time { color: #333; }
+
+/* 幅に収まらない文字は横方向だけ縮める（倍率は JS が実測して設定） */
+.sp-fit { display: inline-block; white-space: nowrap; transform-origin: left center; }
+
+/* ── 印刷時 ─────────────────────────────────── */
+@media print {
+  body { background: #fff; }
+  .sp-toolbar { display: none !important; }
+  .sp-page { margin: 0; box-shadow: none; }
+}

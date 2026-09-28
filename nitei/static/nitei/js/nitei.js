@@ -320,6 +320,13 @@ function buildSheets() {
 
     const title = document.createElement('h2');
     title.textContent = `${def.label}  ${niteiRangeLabel(def)}（${def.days.length}日）`;
+    // この勤務表だけを紙用レイアウト（A4横）で印刷・PDF保存
+    const printBtn = document.createElement('button');
+    printBtn.className   = 'sheet-print-btn';
+    printBtn.textContent = '🖨 PDF';
+    printBtn.title       = 'この勤務表を印刷・PDF保存';
+    printBtn.onclick = () => window.open(`/nitei/print/?person=${PERSON}&sheet=${i}`, '_blank');
+    title.appendChild(printBtn);
     sheet.appendChild(title);
 
     const workCells  = [];

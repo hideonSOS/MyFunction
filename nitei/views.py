@@ -93,6 +93,19 @@ def overview(request):
 
 
 @nitei_login_required
+def schedule_print(request):
+    """個人の勤務表の印刷ページ（?person=a&sheet=N の勤務表1枚分を横長1枚に。ブラウザ印刷でPDF化）"""
+    person = request.GET.get('person', '')
+    if person not in PERSONS:
+        return redirect('nitei:top')
+    return render(request, 'nitei/schedule_print.html', {
+        'person':      person,
+        'person_name': PERSONS[person],
+        'sheet_param': request.GET.get('sheet', ''),
+    })
+
+
+@nitei_login_required
 def overview_print(request):
     """全員一覧の印刷ページ（?month=YYYY-MM の1か月分をA3横1枚に。ブラウザ印刷でPDF化）"""
     return render(request, 'nitei/overview_print.html', {
