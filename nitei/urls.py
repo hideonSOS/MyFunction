@@ -19,6 +19,7 @@ urlpatterns = [
     path('j/',                  views.schedule, {'person': 'j'},  name='schedule_j'),
     path('k/',                  views.schedule, {'person': 'k'},  name='schedule_k'),
     path('l/',                  views.schedule, {'person': 'l'},  name='schedule_l'),
+    path('m/',                  views.schedule, {'person': 'm'},  name='schedule_m'),
     path('haichi/',               views.haichi,                     name='haichi'),
     path('haichi/print/',         views.haichi_print,               name='haichi_print'),
     path('api/layout/',           views.api_layout,                 name='api_layout'),
