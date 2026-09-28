@@ -192,8 +192,8 @@
 
   // ── 並び順（手動 / ソート表示） ─────────────
   // sortKey=null が手動順（サーバーの sort_order）。ソートは表示だけを並べ替え、
-  // 「この並びを保存」かドラッグ操作で手動順として確定する
-  let sortKey = null;          // null | 'importance' | 'progress' | 'updated_ts'
+  // 「この並びを保存」かドラッグ操作で手動順として確定する。初期表示は重要度の高い順
+  let sortKey = 'importance';  // null | 'importance' | 'progress' | 'updated_ts'
   let sortDir = -1;            // -1=降順 / 1=昇順
 
   function sortedView(list) {
