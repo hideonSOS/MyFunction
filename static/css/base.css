@@ -224,6 +224,28 @@ body.sidebar-closed #page-wrapper {
   margin-left: 0;
 }
 
+/* ── スマホ: サイドバーは既定で閉じ、ハンバーガーのタップで上に重ねて開く ── */
+@media (max-width: 767px) {
+  #sidebar { transform: translateX(-100%); }
+  #page-wrapper { margin-left: 0; }
+  body.sidebar-open #sidebar {
+    transform: none;
+    box-shadow: 0 0 30px #000000cc;
+  }
+  /* 開いている間は本文を暗くする（タップで閉じる） */
+  body.sidebar-open::before {
+    content: '';
+    position: fixed; inset: 0;
+    background: #00000088;
+    z-index: 150;
+  }
+  /* スマホでは「開いている時」に × 表示 */
+  body.sidebar-closed #hamburger span { transform: none; opacity: 1; }
+  body.sidebar-open #hamburger span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+  body.sidebar-open #hamburger span:nth-child(2) { opacity: 0; }
+  body.sidebar-open #hamburger span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+}
+
 /* ── blink ─────────────────────────────────── */
 .blink { animation: blink 1.2s step-end infinite; }
 @keyframes blink { 50% { opacity: 0; } }

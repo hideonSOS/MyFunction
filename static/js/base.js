@@ -1,9 +1,24 @@
 /* ── ハンバーガーメニュー ────────── */
+// PC: 既定で開き、タップで閉じる（sidebar-closed）
+// スマホ: 既定で閉じ、タップで本文の上に開く（sidebar-open）。外側・メニュー項目のタップで閉じる
 (function () {
   const btn = document.getElementById('hamburger');
   if (!btn) return;
-  btn.addEventListener('click', function () {
-    document.body.classList.toggle('sidebar-closed');
+  const mobile = window.matchMedia('(max-width: 767px)');
+  btn.addEventListener('click', function (e) {
+    e.stopPropagation();
+    document.body.classList.toggle(mobile.matches ? 'sidebar-open' : 'sidebar-closed');
+  });
+  document.addEventListener('click', function (e) {
+    if (!document.body.classList.contains('sidebar-open')) return;
+    const sb = document.getElementById('sidebar');
+    if (!sb.contains(e.target) || e.target.closest('.sb-item')) {
+      document.body.classList.remove('sidebar-open');
+    }
+  });
+  // 画面幅が変わったら（回転など）スマホ用の開状態は解除
+  mobile.addEventListener('change', function () {
+    document.body.classList.remove('sidebar-open');
   });
 })();
 
