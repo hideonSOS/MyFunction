@@ -133,8 +133,9 @@ body {
   background: repeating-linear-gradient(45deg, #fff, #fff 1.2mm, #eee 1.2mm, #eee 2.4mm) !important;
 }
 
-.op-l { line-height: 1.25; overflow: hidden; }
-.op-code { font-size: calc(9pt * var(--k)); font-weight: bold; }
+.op-l { line-height: 1.5; overflow: hidden; }
+/* 勤務コードと時刻の間は少し空けて読みやすく */
+.op-code { font-size: calc(9pt * var(--k)); font-weight: bold; margin-bottom: calc(1mm * var(--k)); }
 .op-code.kyu { color: #b35900; }
 .op-time { font-size: calc(8.5pt * var(--k)); font-family: 'Consolas', 'Courier New', monospace; }
 .op-time.bot { color: #444; }
