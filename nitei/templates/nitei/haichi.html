@@ -27,6 +27,9 @@
     <span id="hc-status">読み込み中...</span>
     <button class="hc-btn" id="roster-btn" type="button">👥 名簿</button>
     <button class="hc-btn" id="pdf-btn" type="button">🖨 PDF印刷</button>
+    <button class="hc-btn" id="excel-btn" type="button" title="発売開始・締め切りの時刻をExcelから読み込む">📥 時刻Excel読込</button>
+    <a class="hc-btn" id="excel-template" href="/nitei/haichi/excel-template/" title="時刻取り込み用のExcelテンプレートをダウンロード">📄 テンプレート</a>
+    <input type="file" id="excel-input" accept=".xlsx,.xlsm" hidden>
   </div>
 
   <!-- 名簿管理パネル（クリック循環の順序・自動着色の色を編集） -->
@@ -91,5 +94,5 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="{% static 'nitei/js/haichi.js' %}"></script>
+<script src="{% static 'nitei/js/haichi.js' %}?v=20261017"></script>
 {% endblock %}

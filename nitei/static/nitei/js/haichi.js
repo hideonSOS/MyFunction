@@ -5,6 +5,7 @@
   const API_GET   = '/nitei/api/layout/';
   const API_SAVE  = '/nitei/api/layout/save/';
   const API_CLEAR = '/nitei/api/layout/clear/';
+  const API_EXCEL = '/nitei/api/layout/excel-import/';
 
   const WEEKDAYS = ['日', '月', '火', '水', '木', '金', '土'];
 
@@ -629,6 +630,59 @@
       .then(() => load(state.date))
       .catch(() => setStatus('消去失敗', 'error'));
   });
+
+  // ── 発売時刻の Excel 取り込み（テンプレートは「📄 テンプレート」からダウンロード） ──
+  // サーバーが読み取った時刻を表示中の日に反映し、通常の自動保存で保存する。
+  // Excel 側で空欄のセルは、入力済みの時刻をそのまま残す
+  const excelInput = document.getElementById('excel-input');
+
+  document.getElementById('excel-btn').addEventListener('click', () => excelInput.click());
+
+  excelInput.addEventListener('change', () => {
+    const file = excelInput.files[0];
+    excelInput.value = '';   // 同じファイルを続けて選び直せるように
+    if (!file) return;
+    const fd = new FormData();
+    fd.append('file', file);
+    setStatus('Excel読込中...', 'saving');
+    fetch(API_EXCEL, { method: 'POST', body: fd })
+      .then(res => res.json().then(d => (res.ok ? d : Promise.reject(d.error || '読み込みに失敗しました'))))
+      .then(applyExcelTimes)
+      .catch(err => {
+        setStatus('Excel読込失敗', 'error');
+        alert(typeof err === 'string' ? err : '読み込みに失敗しました');
+      });
+  });
+
+  function applyExcelTimes(data) {
+    const found = data.races || {};
+    const nums  = Object.keys(found);
+    const warn  = (data.warnings || []).length
+      ? '\n\n時刻として読めなかったセル（取り込んでいません）:\n' + data.warnings.join('\n') : '';
+    if (!nums.length) {
+      setStatus('', '');
+      alert('取り込める時刻が見つかりませんでした。\nA列=レース（1R〜12R）、B列=発売開始、C列=締め切り の形式か確認してください。' + warn);
+      return;
+    }
+    const changes = nums.some(r => {
+      const cur = state.races[r];
+      if (!cur) return false;
+      return (found[r].start && cur.start && cur.start !== found[r].start) ||
+             (found[r].close && cur.close && cur.close !== found[r].close);
+    });
+    if (changes && !confirm(state.date + ' の入力済みの時刻を Excel の内容で上書きします。よろしいですか？')) {
+      setStatus('', '');
+      return;
+    }
+    nums.forEach(r => {
+      const row = state.races[r] || (state.races[r] = blankRace());
+      if (found[r].start) row.start = found[r].start;
+      if (found[r].close) row.close = found[r].close;
+    });
+    render();
+    scheduleSave();
+    if (warn) alert(nums.length + 'レース分の時刻を取り込みました。' + warn);
+  }
 
   load(dateInput.value);
 })();

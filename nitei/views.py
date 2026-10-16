@@ -2,7 +2,7 @@ import json
 from functools import wraps
 from django.conf import settings
 from django.shortcuts import render, redirect
-from django.http import JsonResponse
+from django.http import HttpResponse, JsonResponse
 from django.views.decorators.http import require_http_methods
 from django.views.decorators.csrf import csrf_exempt
 from datetime import date as date_cls, datetime
@@ -444,6 +444,157 @@ def api_layout_clear(request):
 
     LayoutDay.objects.filter(date=day_date).delete()
     return JsonResponse({'ok': True})
+
+
+# ── 配置図: 発売時刻の Excel 取り込み ─────────────────
+# テンプレートは A列=レース（1R〜12R）/ B列=発売開始 / C列=締め切り。
+# 取り込みは「レース番号が書かれた行」だけを読むので、見出し行や説明行があってもよい
+EXCEL_MAX_BYTES = 2 * 1024 * 1024
+
+
+@nitei_login_required
+def layout_excel_template(request):
+    """発売時刻取り込み用の Excel テンプレート（空欄）をダウンロード"""
+    from io import BytesIO
+    from urllib.parse import quote
+    from openpyxl import Workbook
+    from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = '発売時刻'
+    ws['A1'] = '配置図 発売時刻（時刻は 10:30 のように入力。空欄のセルは取り込みません）'
+    ws['A1'].font = Font(bold=True, size=12)
+
+    thin   = Side(style='thin', color='888888')
+    border = Border(left=thin, right=thin, top=thin, bottom=thin)
+    center = Alignment(horizontal='center', vertical='center')
+
+    for col, title in enumerate(['レース', '発売開始', '締め切り'], start=1):
+        c = ws.cell(row=3, column=col, value=title)
+        c.font = Font(bold=True)
+        c.fill = PatternFill('solid', fgColor='DDE6F0')
+        c.alignment = center
+        c.border = border
+    for r in range(1, LAYOUT_RACE_COUNT + 1):
+        row = 3 + r
+        ws.cell(row=row, column=1, value=f'{r}R').alignment = center
+        for col in (1, 2, 3):
+            c = ws.cell(row=row, column=col)
+            c.border = border
+            c.alignment = center
+            if col > 1:
+                c.number_format = 'hh:mm'
+    ws.column_dimensions['A'].width = 10
+    ws.column_dimensions['B'].width = 14
+    ws.column_dimensions['C'].width = 14
+    ws.freeze_panes = 'A4'
+
+    buf = BytesIO()
+    wb.save(buf)
+    resp = HttpResponse(
+        buf.getvalue(),
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    filename = '配置図_発売時刻テンプレート.xlsx'
+    resp['Content-Disposition'] = (
+        f"attachment; filename=\"haichi_times_template.xlsx\"; filename*=UTF-8''{quote(filename)}")
+    return resp
+
+
+def _excel_race(value):
+    """A列の値をレース番号（1〜12）に。'1R' / '１Ｒ' / 1 などを許容。該当しなければ None"""
+    import re
+    import unicodedata
+    if isinstance(value, bool) or value is None:
+        return None
+    if isinstance(value, (int, float)):
+        n = int(value) if float(value).is_integer() else None
+    else:
+        m = re.fullmatch(r'(\d{1,2})\s*R?', unicodedata.normalize('NFKC', str(value)).strip(), re.I)
+        n = int(m.group(1)) if m else None
+    return n if n is not None and 1 <= n <= LAYOUT_RACE_COUNT else None
+
+
+def _excel_time(value):
+    """セルの値を 'HH:MM' に。空欄は ''、時刻として読めなければ None"""
+    import re
+    import unicodedata
+    from datetime import time as time_cls, timedelta
+
+    def fmt(h, m):
+        return f'{h:02d}:{m:02d}' if 0 <= h <= 23 and 0 <= m <= 59 else None
+
+    def from_clock(t):
+        # Excel の時刻は浮動小数なので 10:29:59.99 のようになる。分に四捨五入する
+        mins = round((t.hour * 3600 + t.minute * 60 + t.second + t.microsecond / 1e6) / 60)
+        return fmt(mins // 60, mins % 60) if mins < 24 * 60 else None
+
+    if value is None or (isinstance(value, str) and not value.strip()):
+        return ''
+    if isinstance(value, datetime):
+        # 時刻書式のセルに 1135 のように数字だけ入れると「1135日後の0:00」になる。
+        # その場合は元の数字を HHMM として読む
+        serial = (value - datetime(1899, 12, 30)).days
+        if serial >= 1 and value.hour == value.minute == value.second == 0:
+            return fmt(serial // 100, serial % 100)
+        return from_clock(value)
+    if isinstance(value, time_cls):
+        return from_clock(value)
+    if isinstance(value, timedelta):
+        mins = round(value.total_seconds() / 60)
+        return fmt(mins // 60, mins % 60)
+    if isinstance(value, (int, float)) and not isinstance(value, bool):
+        if 0 <= value < 1:                       # Excel の時刻（1日=1.0）
+            mins = round(value * 24 * 60)
+            return fmt(mins // 60, mins % 60) if mins < 24 * 60 else None
+        if float(value).is_integer():            # 1030 → 10:30
+            n = int(value)
+            return fmt(n // 100, n % 100)
+        return None
+    s = unicodedata.normalize('NFKC', str(value)).strip()
+    m = (re.fullmatch(r'(\d{1,2}):(\d{1,2})(?::\d{1,2})?', s)
+         or re.fullmatch(r'(\d{1,2})時(\d{1,2})分?', s)
+         or re.fullmatch(r'(\d{1,2})(\d{2})', s))
+    return fmt(int(m.group(1)), int(m.group(2))) if m else None
+
+
+@nitei_login_required
+@csrf_exempt
+@require_http_methods(['POST'])
+def layout_excel_import(request):
+    """Excel から発売開始・締め切りを読み取って返す（保存は画面側が通常の保存で行う）"""
+    from openpyxl import load_workbook
+
+    f = request.FILES.get('file')
+    if f is None:
+        return JsonResponse({'error': 'ファイルが選ばれていません'}, status=400)
+    if f.size > EXCEL_MAX_BYTES:
+        return JsonResponse({'error': 'ファイルが大きすぎます（2MBまで）'}, status=400)
+    try:
+        wb = load_workbook(f, data_only=True, read_only=True)
+    except Exception:
+        return JsonResponse({'error': 'Excelファイル（.xlsx）として読み込めませんでした'}, status=400)
+
+    races, warnings = {}, []
+    try:
+        for row in wb.worksheets[0].iter_rows(max_col=3, values_only=True):
+            race = _excel_race(row[0] if row else None)
+            if race is None:
+                continue
+            times = {}
+            for label, key, raw in (('発売開始', 'start', row[1] if len(row) > 1 else None),
+                                    ('締め切り', 'close', row[2] if len(row) > 2 else None)):
+                t = _excel_time(raw)
+                if t is None:
+                    warnings.append(f'{race}R {label}「{raw}」')
+                elif t:
+                    times[key] = t
+            if times:
+                races[race] = {'start': times.get('start', ''), 'close': times.get('close', '')}
+    finally:
+        wb.close()
+
+    return JsonResponse({'races': races, 'warnings': warnings})
 
 
 # ── 配置図の名簿（クリック循環の順序・自動着色の色） ────
