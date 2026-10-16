@@ -6,6 +6,7 @@
   const API_SAVE  = '/nitei/api/layout/save/';
   const API_CLEAR = '/nitei/api/layout/clear/';
   const API_EXCEL = '/nitei/api/layout/excel-import/';
+  const API_EXCEL_APPLY = '/nitei/api/layout/excel-apply/';
 
   const WEEKDAYS = ['日', '月', '火', '水', '木', '金', '土'];
 
@@ -119,6 +120,7 @@
 
   // ── 保存 ───────────────────────────────────
   let saveTimer = null;
+  let lastSave  = null;   // 直近の保存処理（完了を待つため）
 
   function scheduleSave() {
     setStatus('入力中...', 'saving');
@@ -126,12 +128,13 @@
     saveTimer = setTimeout(save, 600);
   }
 
-  /** 保留中の自動保存があれば即時に走らせる（日付切り替えで入力を捨てないため） */
+  /** 保留中の自動保存があれば即時に走らせる（日付切り替えで入力を捨てないため）。
+      返り値の Promise で、送信中の保存も含めて完了を待てる */
   function flushSave() {
-    if (saveTimer === null) return;
+    if (saveTimer === null) return lastSave || Promise.resolve();
     clearTimeout(saveTimer);
     saveTimer = null;
-    save();
+    return save();
   }
 
   function save() {
@@ -161,7 +164,7 @@
       colors:  colors,
     };
 
-    fetch(API_SAVE, {
+    lastSave = fetch(API_SAVE, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
@@ -169,6 +172,7 @@
       .then(res => res.ok ? res.json() : Promise.reject(res.status))
       .then(() => setStatus('保存しました', 'saved'))
       .catch(() => setStatus('保存失敗', 'error'));
+    return lastSave;
   }
 
   // ── 描画 ───────────────────────────────────
@@ -463,7 +467,7 @@
     dateInput.value = isoDate;
     updateWeekday();
 
-    fetch(API_GET + '?date=' + encodeURIComponent(isoDate))
+    return fetch(API_GET + '?date=' + encodeURIComponent(isoDate))
       .then(res => res.ok ? res.json() : Promise.reject(res.status))
       .then(data => {
         if (seq !== loadSeq) return;
@@ -713,63 +717,65 @@
       .catch(() => setStatus('消去失敗', 'error'));
   });
 
-  // ── 発売時刻の Excel 取り込み（テンプレートは「📄 テンプレート」からダウンロード） ──
-  // サーバーが読み取った時刻を表示中の日に反映し、通常の自動保存で保存する。
-  // Excel 側で空欄のセルは、入力済みの時刻をそのまま残す
+  // ── 発売時刻の Excel 取り込み（最大7日分。テンプレートは「📄 テンプレート」からダウンロード） ──
+  // サーバーが読み取った内容（日付ごとの時刻）を確認ダイアログで見せてから、まとめて保存する。
+  // Excel 側で空欄のセルは、入力済みの時刻をそのまま残す。配置（氏名）や列名には触れない
   const excelInput = document.getElementById('excel-input');
 
   document.getElementById('excel-btn').addEventListener('click', () => excelInput.click());
 
-  excelInput.addEventListener('change', () => {
+  async function excelPost(url, init) {
+    const res = await fetch(url, Object.assign({ method: 'POST' }, init));
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || '読み込みに失敗しました');
+    return data;
+  }
+
+  function mdLabel(iso) {
+    const d = new Date(iso + 'T00:00:00');
+    return (d.getMonth() + 1) + '/' + d.getDate() + '（' + WEEKDAYS[d.getDay()] + '）';
+  }
+
+  excelInput.addEventListener('change', async () => {
     const file = excelInput.files[0];
     excelInput.value = '';   // 同じファイルを続けて選び直せるように
     if (!file) return;
     const fd = new FormData();
     fd.append('file', file);
+    fd.append('base_date', state.date);   // 1日目の日付が空欄なら、表示中の日を1日目にする
     setStatus('Excel読込中...', 'saving');
-    fetch(API_EXCEL, { method: 'POST', body: fd })
-      .then(res => res.json().then(d => (res.ok ? d : Promise.reject(d.error || '読み込みに失敗しました'))))
-      .then(applyExcelTimes)
-      .catch(err => {
-        setStatus('Excel読込失敗', 'error');
-        alert(typeof err === 'string' ? err : '読み込みに失敗しました');
-      });
+    try {
+      const data = await excelPost(API_EXCEL, { body: fd });
+      await applyExcelDays(data);
+    } catch (e) {
+      setStatus('Excel読込失敗', 'error');
+      alert(e.message);
+    }
   });
 
-  function applyExcelTimes(data) {
-    const found = data.races || {};
-    const nums  = Object.keys(found);
-    const warn  = (data.warnings || []).length
-      ? '\n\n時刻として読めなかったセル（取り込んでいません）:\n' + data.warnings.join('\n') : '';
-    if (!nums.length) {
+  async function applyExcelDays(data) {
+    const days = data.days || [];
+    const warn = (data.warnings || []).length
+      ? '\n\n時刻として読めなかったセル（取り込みません）:\n' + data.warnings.join('\n') : '';
+    if (!days.length) {
       setStatus('', '');
-      alert('取り込める時刻が見つかりませんでした。\nA列=レース（1R〜12R）、B列=発売開始、C列=締め切り の形式か確認してください。' + warn);
+      alert('取り込める時刻が見つかりませんでした。\n「説明」シートの形式（1日 = 2列、左=発売開始・右=締め切り）か確認してください。' + warn);
       return;
     }
-    if (data.date && data.date !== state.date &&
-        !confirm('Excel の対象日は ' + data.date + ' ですが、表示中の日付は ' + state.date + ' です。\n' +
-                 'このまま ' + state.date + ' の配置図に取り込みますか？')) {
-      setStatus('', '');
-      return;
-    }
-    const changes = nums.some(r => {
-      const cur = state.races[r];
-      if (!cur) return false;
-      return (found[r].start && cur.start && cur.start !== found[r].start) ||
-             (found[r].close && cur.close && cur.close !== found[r].close);
+    const lines = days.map(x => '・' + x.day + '日目 ' + mdLabel(x.date) + '　' + Object.keys(x.races).length + 'レース');
+    const msg = days.length + '日分の発売時刻を取り込みます。\n\n' + lines.join('\n')
+      + (data.overwrite ? '\n\n入力済みの時刻のうち ' + data.overwrite + ' か所が Excel の内容で上書きされます。' : '')
+      + warn + '\n\nよろしいですか？';
+    if (!confirm(msg)) { setStatus('', ''); return; }
+
+    await flushSave();   // 表示中の日の未保存の入力を先に書き込む（取り込み後に古い内容で上書きしないため）
+    setStatus('Excel取込を保存中...', 'saving');
+    await excelPost(API_EXCEL_APPLY, {
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ days }),
     });
-    if (changes && !confirm(state.date + ' の入力済みの時刻を Excel の内容で上書きします。よろしいですか？')) {
-      setStatus('', '');
-      return;
-    }
-    nums.forEach(r => {
-      const row = state.races[r] || (state.races[r] = blankRace());
-      if (found[r].start) row.start = found[r].start;
-      if (found[r].close) row.close = found[r].close;
-    });
-    render();
-    scheduleSave();
-    if (warn) alert(nums.length + 'レース分の時刻を取り込みました。' + warn);
+    await load(state.date);   // 表示中の日も取り込み対象なら最新の内容で描き直す
+    setStatus(days.length + '日分の時刻を取り込みました', 'saved');
   }
 
   renderStampBar();

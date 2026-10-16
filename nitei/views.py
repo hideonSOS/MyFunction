@@ -453,31 +453,52 @@ def api_layout_clear(request):
 
 # ── 配置図: 発売時刻の Excel 取り込み ─────────────────
 # テンプレートは、人やAIが元資料（PDF・別のExcel等）から書き写すことを前提に、
-# 入力セル（黄色）・行とレースの対応・書式・してはいけないことを「説明」シートに明記する。
-# 取り込みは「発売時刻」シートの「A列にレース番号がある行」と「対象日」の行だけを読む
+# 入力セル（黄色）・行と列の対応・書式・してはいけないことを「説明」シートに明記する。
+# 1シリーズ（最大7日）をまとめて入力できるよう、1日目〜7日目を横に並べる（1日 = 2列）。
+# 取り込みは「発売時刻」シートの「日付」の行と「A列にレース番号がある行」だけを読む
 EXCEL_MAX_BYTES  = 2 * 1024 * 1024
 EXCEL_SHEET      = '発売時刻'
-EXCEL_FIRST_ROW  = 6          # 1R の行（レース番号 + 5）
-EXCEL_DATE_LABEL = '対象日'
+EXCEL_DAYS       = 7
+EXCEL_DATE_ROW   = 5          # 各日の日付の行
+EXCEL_FIRST_ROW  = 7          # 1R の行（行番号 = レース番号 + 6）
+EXCEL_DATE_LABELS = ('日付', '対象日')   # 対象日 = 1日分だった旧テンプレートの見出し
+
+
+def _excel_day_cols(day):
+    """day日目（1始まり）の 発売開始・締め切り の列番号（B,C / D,E / … / N,O）"""
+    return 2 * day, 2 * day + 1
+
 
 EXCEL_GUIDE = [
     ('このファイルの用途',
-     '業務ツール「日程 > 配置図」の「📥 時刻Excel読込」で読み込み、画面に表示中の日付の'
-     '各レースの「発売開始」と「締め切り」の時刻を一括で入力するためのファイルです。'
+     '業務ツール「日程 > 配置図」の「📥 時刻Excel読込」で読み込み、各レースの「発売開始」と'
+     '「締め切り」の時刻を、最大7日分（1シリーズ）まとめて入力するためのファイルです。'
      '人またはAIが、出走表などの元資料（PDF・Excel・画像など）から時刻を書き写して使います。'),
     ('入力するセル',
      'シート「発売時刻」の黄色のセルだけです。\n'
-     '・B6〜B17：1R〜12R の発売開始\n'
-     '・C6〜C17：1R〜12R の締め切り\n'
-     '・B3：対象日（任意）\n'
+     '・5行目：各日の日付（1日目は B5、2日目は D5 … 7日目は N5）\n'
+     '・7〜18行目：1R〜12R の時刻（1日目は B列=発売開始・C列=締め切り、2日目は D列・E列 …）\n'
      'これ以外のセルには書き込まないでください。'),
+    ('列と日の対応',
+     '1日 = 2列です。左の列が発売開始、右の列が締め切り。\n'
+     '1日目 = B列・C列、2日目 = D列・E列、3日目 = F列・G列、4日目 = H列・I列、'
+     '5日目 = J列・K列、6日目 = L列・M列、7日目 = N列・O列。\n'
+     '4行目に「1日目」〜「7日目」、6行目に「発売開始」「締め切り」の見出しがあります。'),
     ('行とレースの対応',
-     '6行目=1R、7行目=2R、8行目=3R … 17行目=12R（行番号 = レース番号 + 5）。\n'
-     'A列にレース番号（1R〜12R）が入っているので、同じ行の B列・C列 に書きます。'),
-    ('発売開始（B列）',
+     '7行目=1R、8行目=2R、9行目=3R … 18行目=12R（行番号 = レース番号 + 6）。\n'
+     'A列にレース番号（1R〜12R）が入っているので、同じ行に書きます。'),
+    ('日付（5行目）',
+     '1日目の日付（B5）に、シリーズ初日の日付を書きます（例：2026/10/17）。\n'
+     '2日目以降（D5・F5 …）は「前の日の翌日」が自動で入る計算式になっています。'
+     '開催日が連続していない場合だけ、その日の日付を上書きしてください。\n'
+     'B5 が空欄のときは、画面で表示中の日付が1日目になります。'),
+    ('日数が7日より少ない場合',
+     '使わない日の列は、時刻を空欄のままにしてください（日付は残っていても構いません）。'
+     '時刻が1つも入っていない日は取り込まれません。'),
+    ('発売開始（各日の左の列）',
      'そのレースの投票券の発売が始まる時刻。\n'
      '元資料での呼び名の例：「発売開始」「発売開始時刻」「発売開始予定」。'),
-    ('締め切り（C列）',
+    ('締め切り（各日の右の列）',
      'そのレースの投票の締め切り時刻。\n'
      '元資料での呼び名の例：「締切」「締切予定時刻」「投票締切」「発売締切」「締切時刻」。\n'
      '「発走時刻」「スタート時刻」「展示時刻」は締め切りとは別の時刻なので入れないでください。'
@@ -486,110 +507,111 @@ EXCEL_GUIDE = [
      '24時間表記の「時:分」（例：10:30、20:45）。Excelの時刻値でも、文字列 "10:30" でも構いません。\n'
      '秒は不要です。「午前／午後」「AM／PM」は使わないでください。'),
     ('日をまたぐ場合',
-     'ナイター等で締め切りが翌日の0時台になる場合も、日付を付けずに 0:15 のように書いてください。'
-     '発売時間（D列）は日またぎを考慮して自動計算されます。'),
+     'ナイター等で締め切りが翌日の0時台になる場合も、日付を付けずに 0:15 のように書いてください。'),
     ('分からない・無いレース',
      '空欄のままにしてください（推測で埋めない）。空欄のセルは取り込まれず、画面に入力済みの時刻がそのまま残ります。'
      '12レースより少ない開催日は、残りの行を空欄にします。'),
-    ('対象日（B3）',
-     '元資料の開催日を日付で書きます（例：2026/10/17）。任意です。'
-     '書いておくと、画面で表示中の日付と違うときに読み込み前に確認が出ます。'),
     ('変更しないもの',
-     'シート名「発売時刻」、A列のレース番号、5行目の見出し、行と列の位置。'
-     '行や列の挿入・削除、セルの結合はしないでください。'),
-    ('D列・E列',
-     'D列「発売時間」は計算式なので書き込み不要です（取り込まれません）。'
-     'E列「メモ」は自由記入欄で、取り込まれません（資料の出典などを書いておけます）。'),
+     'シート名「発売時刻」、A列のレース番号、4行目と6行目の見出し、行と列の位置。'
+     '行や列の挿入・削除、セルの結合・結合解除はしないでください。'),
     ('保存形式',
      '.xlsx のまま保存してください（CSV・PDF・画像では読み込めません）。ファイル名は自由です。'),
     ('記入例',
-     '1R の発売開始が 10:05、締め切りが 10:28 なら → B6 に 10:05、C6 に 10:28。\n'
-     '2R の発売開始が 10:33、締め切りが 10:56 なら → B7 に 10:33、C7 に 10:56。'),
+     '初日が 2026/10/17 で、1日目の1Rが 発売開始 10:05・締め切り 10:28 なら → B5 に 2026/10/17、B7 に 10:05、C7 に 10:28。\n'
+     '2日目の1Rが 発売開始 10:00・締め切り 10:25 なら → D7 に 10:00、E7 に 10:25（D5 は自動で 2026/10/18）。'),
     ('仕上げの確認',
-     '① B3 と B6〜C17 以外に書き込んでいない\n'
-     '② 時刻はすべて「時:分」の形になっている\n'
-     '③ 各行で 発売開始 → 締め切り の順になっている（日またぎを除く）\n'
-     '④ レース番号が進むほど時刻も遅くなっている\n'
-     '⑤ 資料から読み取れなかった値は空欄のままにした'),
+     '① 黄色のセル以外に書き込んでいない\n'
+     '② 1日目の日付（B5）を書いた。開催日が連続しない日は、その日の日付を上書きした\n'
+     '③ 時刻はすべて「時:分」の形になっている\n'
+     '④ 各日の左の列が発売開始、右の列が締め切りになっている（逆にしていない）\n'
+     '⑤ レース番号が進むほど時刻も遅くなっている\n'
+     '⑥ 資料から読み取れなかった値は空欄のままにした'),
 ]
 
 
 @nitei_login_required
 def layout_excel_template(request):
-    """発売時刻取り込み用の Excel テンプレートをダウンロード（入力シート＋説明シート）"""
+    """発売時刻取り込み用の Excel テンプレート（最大7日分の入力シート＋説明シート）"""
     from io import BytesIO
     from urllib.parse import quote
     from openpyxl import Workbook
     from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
+    from openpyxl.utils import get_column_letter
     from openpyxl.worksheet.datavalidation import DataValidation
 
     thin   = Side(style='thin', color='888888')
+    thick  = Side(style='medium', color='333333')
     border = Border(left=thin, right=thin, top=thin, bottom=thin)
-    center = Alignment(horizontal='center', vertical='center')
+    center = Alignment(horizontal='center', vertical='center', wrap_text=True)
     wrap   = Alignment(wrap_text=True, vertical='top')
     head   = PatternFill('solid', fgColor='DDE6F0')
     entry  = PatternFill('solid', fgColor='FFF2A8')   # 入力セル（黄色）
+    auto   = PatternFill('solid', fgColor='FFF9D6')   # 自動入力（上書き可）
     fixed  = PatternFill('solid', fgColor='EEEEEE')   # 変更しないセル
-    last   = EXCEL_FIRST_ROW + LAYOUT_RACE_COUNT - 1
+    last_row = EXCEL_FIRST_ROW + LAYOUT_RACE_COUNT - 1
+    last_col = get_column_letter(_excel_day_cols(EXCEL_DAYS)[1])
 
     wb = Workbook()
     ws = wb.active
     ws.title = EXCEL_SHEET
 
-    ws['A1'] = '配置図 発売時刻 取り込みシート'
+    ws['A1'] = '配置図 発売時刻 取り込みシート（最大7日分）'
     ws['A1'].font = Font(bold=True, size=14)
-    ws['A2'] = (f'入力するのは黄色のセルだけです（B3 と B{EXCEL_FIRST_ROW}:C{last}）。'
-                '書き方のルールは「説明」シートを参照してください。')
+    ws['A2'] = ('入力するのは黄色のセルだけです（5行目の日付と、7〜18行目の時刻）。'
+                '1日 = 2列（左=発売開始・右=締め切り）。書き方のルールは「説明」シートを参照してください。')
     ws['A2'].font = Font(color='C00000', bold=True)
-    ws.merge_cells('A2:E2')
+    ws['A2'].alignment = Alignment(wrap_text=True, vertical='center')
+    ws.merge_cells(f'A2:{last_col}2')
+    ws.row_dimensions[2].height = 32
 
-    ws['A3'] = EXCEL_DATE_LABEL
-    ws['A3'].font = Font(bold=True)
-    ws['A3'].fill = fixed
-    ws['A3'].alignment = center
-    ws['A3'].border = border
-    ws['B3'].fill = entry
-    ws['B3'].border = border
-    ws['B3'].number_format = 'yyyy/mm/dd'
-    ws['B3'].alignment = center
-    ws['C3'] = '← 任意。元資料の開催日（例 2026/10/17）。画面の日付と違うと読み込み時に確認が出ます'
-    ws['C3'].font = Font(size=9, color='555555')
-    ws.merge_cells('C3:E3')
+    for label_row, label in ((4, ''), (EXCEL_DATE_ROW, '日付'), (EXCEL_DATE_ROW + 1, 'レース')):
+        c = ws.cell(row=label_row, column=1, value=label or None)
+        c.font, c.fill, c.alignment, c.border = Font(bold=True), (head if label else fixed), center, border
 
-    for col, title in enumerate(['レース', '発売開始', '締め切り', '発売時間（自動計算）', 'メモ（取り込まれない）'], start=1):
-        c = ws.cell(row=EXCEL_FIRST_ROW - 1, column=col, value=title)
-        c.font = Font(bold=True)
-        c.fill = head
-        c.alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
-        c.border = border
-
-    times_dv = DataValidation(
+    dv_time = DataValidation(
         type='time', operator='between', formula1='0', formula2='0.999305555555556',
         allow_blank=True, showErrorMessage=True,
         errorTitle='時刻の形式', error='24時間表記の「時:分」（例 10:30）で入力してください')
-    ws.add_data_validation(times_dv)
+    ws.add_data_validation(dv_time)
+
+    for day in range(1, EXCEL_DAYS + 1):
+        sc, cc = _excel_day_cols(day)
+        sl, cl = get_column_letter(sc), get_column_letter(cc)
+        # 4行目: 「n日目」
+        ws.cell(row=4, column=sc, value=f'{day}日目')
+        ws.merge_cells(start_row=4, start_column=sc, end_row=4, end_column=cc)
+        # 5行目: 日付（1日目は入力、2日目以降は前日+1の計算式。上書き可）
+        d = ws.cell(row=EXCEL_DATE_ROW, column=sc)
+        if day > 1:
+            prev = get_column_letter(_excel_day_cols(day - 1)[0])
+            d.value = f'=IF({prev}{EXCEL_DATE_ROW}="","",{prev}{EXCEL_DATE_ROW}+1)'
+        d.number_format = 'yyyy/mm/dd(aaa)'
+        ws.merge_cells(start_row=EXCEL_DATE_ROW, start_column=sc, end_row=EXCEL_DATE_ROW, end_column=cc)
+        # 6行目: 見出し
+        ws.cell(row=EXCEL_DATE_ROW + 1, column=sc, value='発売開始')
+        ws.cell(row=EXCEL_DATE_ROW + 1, column=cc, value='締め切り')
+        for col in (sc, cc):
+            for row, fill in ((4, head), (EXCEL_DATE_ROW, entry if day == 1 else auto),
+                              (EXCEL_DATE_ROW + 1, head)):
+                c = ws.cell(row=row, column=col)
+                c.fill, c.alignment, c.border = fill, center, border
+                if row != EXCEL_DATE_ROW:
+                    c.font = Font(bold=True)
+            # 時刻の入力セル
+            for row in range(EXCEL_FIRST_ROW, last_row + 1):
+                c = ws.cell(row=row, column=col)
+                c.fill, c.alignment, c.number_format = entry, center, 'hh:mm'
+                c.border = Border(left=thick if col == sc else thin, right=thick if col == cc else thin,
+                                  top=thin, bottom=thin)
+        dv_time.add(f'{sl}{EXCEL_FIRST_ROW}:{cl}{last_row}')
+        ws.column_dimensions[sl].width = 9.5
+        ws.column_dimensions[cl].width = 9.5
 
     for r in range(1, LAYOUT_RACE_COUNT + 1):
-        row = EXCEL_FIRST_ROW + r - 1
-        a = ws.cell(row=row, column=1, value=f'{r}R')
-        a.fill, a.font = fixed, Font(bold=True)
-        for col in range(1, 6):
-            c = ws.cell(row=row, column=col)
-            c.border = border
-            c.alignment = center
-        for col in (2, 3):
-            c = ws.cell(row=row, column=col)
-            c.fill = entry
-            c.number_format = 'hh:mm'
-        d = ws.cell(row=row, column=4, value=f'=IF(OR(B{row}="",C{row}=""),"",MOD(C{row}-B{row},1))')
-        d.number_format = 'hh:mm'
-        d.fill = fixed
-    times_dv.add(f'B{EXCEL_FIRST_ROW}:C{last}')
-
-    for col, width in zip('ABCDE', (10, 14, 14, 16, 30)):
-        ws.column_dimensions[col].width = width
-    ws.row_dimensions[EXCEL_FIRST_ROW - 1].height = 30
-    ws.freeze_panes = f'A{EXCEL_FIRST_ROW}'
+        a = ws.cell(row=EXCEL_FIRST_ROW + r - 1, column=1, value=f'{r}R')
+        a.fill, a.font, a.alignment, a.border = fixed, Font(bold=True), center, border
+    ws.column_dimensions['A'].width = 8
+    ws.freeze_panes = f'B{EXCEL_FIRST_ROW}'
 
     guide = wb.create_sheet('説明')
     guide['A1'] = '「発売時刻」シートの書き方（このファイルを編集する人・AI向け）'
@@ -603,8 +625,8 @@ def layout_excel_template(request):
         b = guide.cell(row=i, column=2, value=text)
         b.border, b.alignment = border, wrap
         guide.row_dimensions[i].height = 15 * (text.count('\n') + 1 + len(text) // 55)
-    guide.column_dimensions['A'].width = 22
-    guide.column_dimensions['B'].width = 90
+    guide.column_dimensions['A'].width = 24
+    guide.column_dimensions['B'].width = 95
 
     buf = BytesIO()
     wb.save(buf)
@@ -696,7 +718,9 @@ def _excel_date(value):
 @csrf_exempt
 @require_http_methods(['POST'])
 def layout_excel_import(request):
-    """Excel から発売開始・締め切り（と対象日）を読み取って返す（保存は画面側が通常の保存で行う）"""
+    """Excel から最大7日分の発売開始・締め切りを読み取り、取り込み内容の確認用に返す（保存はしない）。
+    日付が空欄の日は「前の日の翌日」、1日目も空欄なら画面で表示中の日付（base_date）を使う"""
+    from datetime import timedelta
     from openpyxl import load_workbook
 
     f = request.FILES.get('file')
@@ -704,37 +728,117 @@ def layout_excel_import(request):
         return JsonResponse({'error': 'ファイルが選ばれていません'}, status=400)
     if f.size > EXCEL_MAX_BYTES:
         return JsonResponse({'error': 'ファイルが大きすぎます（2MBまで）'}, status=400)
+    base = _parse_date(request.POST.get('base_date'))
+    if base is None:
+        return JsonResponse({'error': 'invalid base_date'}, status=400)
     try:
         wb = load_workbook(f, data_only=True, read_only=True)
     except Exception:
         return JsonResponse({'error': 'Excelファイル（.xlsx）として読み込めませんでした'}, status=400)
 
-    races, warnings, target_date = {}, [], ''
+    max_col = _excel_day_cols(EXCEL_DAYS)[1]
+    date_cells = {}                                  # day -> 'YYYY-MM-DD'（書かれていた日だけ）
+    found = {d: {} for d in range(1, EXCEL_DAYS + 1)}  # day -> race -> {start, close}
+    warnings = []
+    n_days = EXCEL_DAYS   # 旧テンプレート（1日分・D列に発売時間の計算式）は1日目だけ読む
     try:
         ws = wb[EXCEL_SHEET] if EXCEL_SHEET in wb.sheetnames else wb.worksheets[0]
-        for row in ws.iter_rows(max_col=3, values_only=True):
+        for row in ws.iter_rows(max_col=max_col, values_only=True):
             if not row:
                 continue
-            if isinstance(row[0], str) and row[0].strip() == EXCEL_DATE_LABEL:
-                target_date = _excel_date(row[1] if len(row) > 1 else None)
+            cell = lambda col: row[col - 1] if len(row) >= col else None   # noqa: E731
+            if isinstance(row[0], str) and row[0].strip() in EXCEL_DATE_LABELS:
+                if row[0].strip() == '対象日':
+                    n_days = 1
+                for day in range(1, n_days + 1):
+                    v = _excel_date(cell(_excel_day_cols(day)[0]))
+                    if v:
+                        date_cells[day] = v
                 continue
             race = _excel_race(row[0])
             if race is None:
                 continue
-            times = {}
-            for label, key, raw in (('発売開始', 'start', row[1] if len(row) > 1 else None),
-                                    ('締め切り', 'close', row[2] if len(row) > 2 else None)):
-                t = _excel_time(raw)
-                if t is None:
-                    warnings.append(f'{race}R {label}「{raw}」')
-                elif t:
-                    times[key] = t
-            if times:
-                races[race] = {'start': times.get('start', ''), 'close': times.get('close', '')}
+            for day in range(1, n_days + 1):
+                sc, cc = _excel_day_cols(day)
+                times = {}
+                for label, key, raw in (('発売開始', 'start', cell(sc)), ('締め切り', 'close', cell(cc))):
+                    t = _excel_time(raw)
+                    if t is None:
+                        warnings.append(f'{day}日目 {race}R {label}「{raw}」')
+                    elif t:
+                        times[key] = t
+                if times:
+                    found[day][race] = {'start': times.get('start', ''), 'close': times.get('close', '')}
     finally:
         wb.close()
 
-    return JsonResponse({'races': races, 'warnings': warnings, 'date': target_date})
+    # 各日の日付を決める（書かれていればそれ、無ければ前の日の翌日）
+    days, prev = [], None
+    for day in range(1, EXCEL_DAYS + 1):
+        if day in date_cells:
+            d = datetime.strptime(date_cells[day], '%Y-%m-%d').date()
+        else:
+            d = base if prev is None else prev + timedelta(days=1)
+        prev = d
+        if found[day]:
+            days.append({'day': day, 'date': d.strftime('%Y-%m-%d'),
+                         'races': {str(r): v for r, v in sorted(found[day].items())}})
+
+    dates = [x['date'] for x in days]
+    if len(set(dates)) != len(dates):
+        return JsonResponse({'error': '同じ日付が2回以上あります。5行目の日付を確認してください'}, status=400)
+
+    # 上書きになる（入力済みで値が変わる）時刻の数
+    overwrite = 0
+    existing = {(r.day.date.strftime('%Y-%m-%d'), r.race): r
+                for r in LayoutRace.objects.filter(day__date__in=dates).select_related('day')}
+    for x in days:
+        for race, v in x['races'].items():
+            cur = existing.get((x['date'], int(race)))
+            if cur is None:
+                continue
+            overwrite += sum(1 for new, old in ((v['start'], cur.start_time), (v['close'], cur.close_time))
+                             if new and old and new != old)
+
+    return JsonResponse({'days': days, 'warnings': warnings, 'overwrite': overwrite})
+
+
+@nitei_login_required
+@csrf_exempt
+@require_http_methods(['POST'])
+def layout_excel_apply(request):
+    """確認済みの取り込み内容を保存する。payload: {days: [{date, races: {race: {start, close}}}]}
+    空欄の時刻は既存の値を残し、配置（氏名）・列名・レース番号の着色には触れない"""
+    try:
+        body = json.loads(request.body)
+        days = body['days'][:EXCEL_DAYS]
+    except (KeyError, TypeError, json.JSONDecodeError):
+        return JsonResponse({'error': 'invalid'}, status=400)
+
+    saved = []
+    for x in days:
+        d = _parse_date(x.get('date') if isinstance(x, dict) else None)
+        if d is None:
+            continue
+        day, _ = LayoutDay.objects.get_or_create(date=d, defaults={'headers': LAYOUT_DEFAULT_HEADERS})
+        for race, v in (x.get('races') or {}).items():
+            try:
+                race = int(race)
+            except (TypeError, ValueError):
+                continue
+            if not 1 <= race <= LAYOUT_RACE_COUNT or not isinstance(v, dict):
+                continue
+            start, close = _clean_time(v.get('start')), _clean_time(v.get('close'))
+            if not start and not close:
+                continue
+            row, _ = LayoutRace.objects.get_or_create(day=day, race=race)
+            if start:
+                row.start_time = start
+            if close:
+                row.close_time = close
+            row.save()
+        saved.append(d.strftime('%Y-%m-%d'))
+    return JsonResponse({'ok': True, 'dates': saved})
 
 
 # ── 勤務表の区分（公開FM・公休など。クリック順・色・公休数の数え方） ──

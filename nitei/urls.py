@@ -26,6 +26,7 @@ urlpatterns = [
     path('api/layout/save/',      views.api_layout_save,            name='api_layout_save'),
     path('api/layout/clear/',     views.api_layout_clear,           name='api_layout_clear'),
     path('api/layout/excel-import/', views.layout_excel_import,     name='layout_excel_import'),
+    path('api/layout/excel-apply/', views.layout_excel_apply,       name='layout_excel_apply'),
     path('haichi/excel-template/', views.layout_excel_template,     name='layout_excel_template'),
     path('api/codes/',            views.api_codes,                  name='api_codes'),
     path('api/codes/save/',       views.api_code_save,              name='api_code_save'),
