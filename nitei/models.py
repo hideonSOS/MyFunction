@@ -18,7 +18,11 @@ PERSON_CHOICES = [
     ('f', '芳松'),
 ]
 
-PERSONS = {k: v for k, v in PERSON_CHOICES}
+# 退社した人。保存済みの予定データは残したまま、画面（トップ・全員一覧・勤務表・PDF）には出さない。
+# 復帰した場合はここから外せば元どおり表示される
+RETIRED_PERSONS = {'g'}   # 表木
+
+PERSONS = {k: v for k, v in PERSON_CHOICES if k not in RETIRED_PERSONS}
 
 
 # 配置図（1日単位）の既定レイアウト
