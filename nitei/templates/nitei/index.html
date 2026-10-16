@@ -4,7 +4,7 @@
 {% block title %}日程 - {{ person_name }}{% endblock %}
 
 {% block extra_head %}
-<link rel="stylesheet" href="{% static 'nitei/css/nitei.css' %}?v=20260928b">
+<link rel="stylesheet" href="{% static 'nitei/css/nitei.css' %}?v=20261017">
 {% if person != 'a' %}
 <style>
   #hamburger    { display: none !important; }
@@ -18,6 +18,7 @@
 <div id="toolbar">
   <span id="person-badge">{{ person_name }}</span>
   <span id="status">読み込み中...</span>
+  <button type="button" id="code-btn" class="code-btn" title="公開FM・公休などの区分を追加・変更">🏷 区分の編集</button>
   {% if not user.is_authenticated %}
   <a class="nitei-logout-btn" href="{% url 'nitei:logout' %}">ログアウト</a>
   {% endif %}
@@ -33,14 +34,29 @@
   <a class="person-tab nav-overview" href="/nitei/overview/">全員一覧</a>
 </div>
 
+<!-- 区分の編集パネル（全員共通。配置図の「名簿」と同じ操作感） -->
+<div id="code-panel" class="cd-panel" hidden>
+  <div class="cd-title">区分の編集（全員共通。上から順に、開催行のセルをクリックしたときに切り替わります）</div>
+  <div id="code-list" class="cd-list"></div>
+  <div class="cd-add-row" id="code-add-row"></div>
+  <div class="cd-note">
+    種類：「休み（公休数に数える）」は公休数に数えます。休みの区分は全員一覧と印刷で灰色になります。<br>
+    区分名を変えると、入力済みの勤務表（全員・全期間）も新しい名前に置き換わります。削除しても入力済みの文字は残ります。
+  </div>
+  <div class="cd-actions"><button type="button" id="code-close">閉じる</button></div>
+</div>
+
 <div id="container"></div>
 
 <script>
   const PERSON = "{{ person }}";
+  let EVENT_CODES = {{ codes_json|safe }};
 </script>
 {% endblock %}
 
 {% block extra_js %}
 <script src="{% static 'nitei/js/periods.js' %}"></script>
-<script src="{% static 'nitei/js/nitei.js' %}?v=20260928b"></script>
+<script src="{% static 'nitei/js/event_codes.js' %}?v=20261017"></script>
+<script src="{% static 'nitei/js/nitei.js' %}?v=20261017"></script>
+<script src="{% static 'nitei/js/event_codes_editor.js' %}?v=20261017"></script>
 {% endblock %}

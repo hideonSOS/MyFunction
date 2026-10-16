@@ -40,11 +40,13 @@
   </table>
 </div>
 
-<script>const PERSONS = {{ persons_json|safe }};</script>
+<script>const PERSONS = {{ persons_json|safe }};
+let EVENT_CODES = {{ codes_json|safe }};</script>
 {% endblock %}
 
 {% block extra_js %}
 <script src="{% static 'nitei/js/periods.js' %}"></script>
 <script src="{% static 'nitei/js/overview_data.js' %}?v=20260928"></script>
-<script src="{% static 'nitei/js/overview.js' %}?v=20260928c"></script>
+<script src="{% static 'nitei/js/event_codes.js' %}?v=20261017"></script>
+<script src="{% static 'nitei/js/overview.js' %}?v=20261017"></script>
 {% endblock %}

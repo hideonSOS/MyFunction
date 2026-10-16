@@ -10,6 +10,7 @@ from .models import (
     Title, WorkEntry, EventEntry, PERSONS,
     LayoutDay, LayoutRace, LayoutCell, LayoutMember,
     LAYOUT_RACE_COUNT, LAYOUT_COL_COUNT, LAYOUT_DEFAULT_HEADERS, LAYOUT_COLOR_KEYS,
+    EventCode, EVENT_CODE_KINDS, EVENT_CODE_COLORS,
 )
 
 NITEI_SESSION_KEY = 'nitei_authed'
@@ -89,6 +90,7 @@ def haichi_print(request):
 def overview(request):
     return render(request, 'nitei/overview.html', {
         'persons_json': json.dumps(PERSONS, ensure_ascii=False),
+        'codes_json':   _codes_json(),
     })
 
 
@@ -102,6 +104,7 @@ def schedule_print(request):
         'person':      person,
         'person_name': PERSONS[person],
         'sheet_param': request.GET.get('sheet', ''),
+        'codes_json':  _codes_json(),
     })
 
 
@@ -110,6 +113,7 @@ def overview_print(request):
     """全員一覧の印刷ページ（?month=YYYY-MM の1か月分をA3横1枚に。ブラウザ印刷でPDF化）"""
     return render(request, 'nitei/overview_print.html', {
         'persons_json': json.dumps(PERSONS, ensure_ascii=False),
+        'codes_json':   _codes_json(),
         'month_param':  request.GET.get('month', ''),
     })
 
@@ -154,6 +158,7 @@ def schedule(request, person):
         'person':      person,
         'person_name': PERSONS[person],
         'persons':     PERSONS,
+        'codes_json':  _codes_json(),
     })
 
 
@@ -730,6 +735,108 @@ def layout_excel_import(request):
         wb.close()
 
     return JsonResponse({'races': races, 'warnings': warnings, 'date': target_date})
+
+
+# ── 勤務表の区分（公開FM・公休など。クリック順・色・公休数の数え方） ──
+
+def _codes_list():
+    return [{'id': c.id, 'name': c.name, 'color': c.color, 'kind': c.kind, 'order': c.order}
+            for c in EventCode.objects.all()]
+
+
+def _codes_json():
+    return json.dumps(_codes_list(), ensure_ascii=False)
+
+
+def _codes_response():
+    return JsonResponse({'codes': _codes_list()})
+
+
+@nitei_login_required
+def api_codes(request):
+    return _codes_response()
+
+
+@nitei_login_required
+@csrf_exempt
+@require_http_methods(['POST'])
+def api_code_save(request):
+    """区分の追加 or 更新（id あり=更新）。payload: {id?, name?, color?, kind?}
+    改名時は、入力済みの勤務表（全員・全期間）の区分名も追従して書き換える"""
+    try:
+        body = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'invalid json'}, status=400)
+
+    name  = str(body.get('name') or '').strip()
+    color = str(body.get('color') or '').strip()
+    kind  = str(body.get('kind') or '').strip()
+    if len(name) > 10:
+        return JsonResponse({'error': '区分名は10文字以内にしてください'}, status=400)
+
+    code_id = body.get('id')
+    if code_id:
+        c = EventCode.objects.filter(id=code_id).first()
+        if not c:
+            return JsonResponse({'error': 'not found'}, status=404)
+        if name and name != c.name:
+            if EventCode.objects.filter(name=name).exclude(id=c.id).exists():
+                return JsonResponse({'error': f'「{name}」は登録済みです'}, status=400)
+            EventEntry.objects.filter(time_text=c.name).update(time_text=name)
+            c.name = name
+        if color in EVENT_CODE_COLORS:
+            c.color = color
+        if kind in EVENT_CODE_KINDS:
+            c.kind = kind
+        c.save()
+        return _codes_response()
+
+    if not name:
+        return JsonResponse({'error': '区分名を入力してください'}, status=400)
+    if EventCode.objects.filter(name=name).exists():
+        return JsonResponse({'error': f'「{name}」は登録済みです'}, status=400)
+    last = EventCode.objects.order_by('-order').first()
+    EventCode.objects.create(
+        name=name,
+        color=color if color in EVENT_CODE_COLORS else 'white',
+        kind=kind if kind in EVENT_CODE_KINDS else 'work',
+        order=(last.order + 1) if last else 0)
+    return _codes_response()
+
+
+@nitei_login_required
+@csrf_exempt
+@require_http_methods(['POST'])
+def api_code_delete(request):
+    """区分を削除。入力済みの文字は残す（履歴保全。色・公休数の集計・切り替え候補からは外れる）"""
+    try:
+        body = json.loads(request.body)
+        code_id = int(body['id'])
+    except (KeyError, ValueError, json.JSONDecodeError):
+        return JsonResponse({'error': 'invalid'}, status=400)
+    EventCode.objects.filter(id=code_id).delete()
+    return _codes_response()
+
+
+@nitei_login_required
+@csrf_exempt
+@require_http_methods(['POST'])
+def api_code_reorder(request):
+    """区分の並び順（=クリックで切り替わる順序）を更新。payload: {ids: [...]}"""
+    try:
+        body = json.loads(request.body)
+        ids = [int(x) for x in body['ids']]
+    except (KeyError, TypeError, ValueError, json.JSONDecodeError):
+        return JsonResponse({'error': 'invalid'}, status=400)
+    owned = {c.id: c for c in EventCode.objects.filter(id__in=ids)}
+    order = 0
+    for cid in ids:
+        c = owned.get(cid)
+        if c:
+            c.order = order
+            c.save(update_fields=['order'])
+            order += 1
+    return _codes_response()
 
 
 # ── 配置図の名簿（クリック循環の順序・自動着色の色） ────

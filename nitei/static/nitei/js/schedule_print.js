@@ -8,9 +8,7 @@
     a4: '@page { size: A4 landscape; margin: 8mm; }',
     a3: '@page { size: A3 landscape; margin: 8mm; }',
   };
-  // 公休数に数える区分（勤務表画面と同じ）と、灰色で示す休みの区分
-  const HOLIDAY_CODES = ['公休', '指定公休'];
-  const REST_CODES    = ['公休', '指定公休', '有給'];
+  // 区分の色・公休数の数え方・休みの判定は event_codes.js（勤務表画面と共通）
 
   const page = document.getElementById('sp-page');
 
@@ -77,7 +75,7 @@
     // 公休数（勤務表画面と同じ数え方）
     let holidays = 0;
     def.sections.forEach((sec, secIdx) => sec.forEach((d, day) => {
-      if (HOLIDAY_CODES.includes(events[`e_${si}_${secIdx}_${day}`])) holidays++;
+      if (isHolidayCode(events[`e_${si}_${secIdx}_${day}`])) holidays++;
     }));
 
     // タイトル
@@ -119,7 +117,7 @@
         const code  = events[`e_${si}_${secIdx}_${day}`] || '';
         const top   = schedule[`w_${si}_${secIdx}_${day}_0`] || '';
         const bot   = schedule[`w_${si}_${secIdx}_${day}_1`] || '';
-        const rest  = REST_CODES.includes(code);
+        const rest  = isRestCode(code);
         const color = eventColor(date);
 
         const tdDate = el('td', 'sp-date' + (dow === 6 ? ' sat' : dow === 0 ? ' sun' : ''));
@@ -128,8 +126,8 @@
 
         const tdEv = el('td', 'sp-ev sp-cell'
           + (color ? ' ' + color : '')
-          + (rest ? ' kyu' : '')
-          + (code === '指定公休' ? ' shitei' : ''));
+          + (rest ? ' kyu' : ''));
+        if (code) tdEv.style.color = codeColor(code, 'print') || '#000000';
         if (code) tdEv.appendChild(fitSpan(code));
         rows[1].appendChild(tdEv);
 

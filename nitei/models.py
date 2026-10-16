@@ -143,3 +143,24 @@ class LayoutMember(models.Model):
     def __str__(self):
         return f'{self.name}({self.color})'
 
+
+# 勤務表の「開催」行に入れる区分（公開FM・公休など）。勤務表画面の「区分」パネルから編集できる。
+# 種類: work=勤務 / holiday=休み（公休数に数える）/ rest=休み（公休数に数えない）
+EVENT_CODE_KINDS  = ['work', 'holiday', 'rest']
+# 文字色のキー。実際の色（画面用・印刷用）は event_codes.js の CODE_PALETTE で定義する
+EVENT_CODE_COLORS = ['white', 'orange', 'red', 'yellow', 'cyan', 'green', 'pink', 'purple']
+
+
+class EventCode(models.Model):
+    """勤務表の区分。並び順がセルのクリックで切り替わる順序になる。
+    入力済みのデータ（EventEntry.time_text）は区分名の文字列で保存されている"""
+    name  = models.CharField(max_length=10, unique=True)
+    color = models.CharField(max_length=10, default='white')
+    kind  = models.CharField(max_length=10, default='work')
+    order = models.IntegerField(default=0)
+
+    class Meta:
+        ordering = ['order', 'id']
+
+    def __str__(self):
+        return f'{self.name}({self.kind})'

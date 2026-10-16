@@ -88,17 +88,13 @@ async function clearSheet(sheetIndex, workCells, eventCells, updateSum) {
   updateSum();
 }
 
-// 公休数に数える区分（指定公休＝変更の効かない休日。公休の一部として数える）
-const HOLIDAY_CODES = ['公休', '指定公休'];
-
+// 区分の色・公休数の数え方・クリック順は event_codes.js（「区分」パネルで編集）
 function applyEventColor(cell) {
-  const t = cell.textContent;
-  if (['公開FM', 'FM臨時', '本社'].includes(t)) cell.style.color = '#ffffff';
-  else if (t === '公休')              cell.style.color = '#ff9900';
-  else if (t === '指定公休')          cell.style.color = '#ff3b3b';
-  else if (t === '有給')              cell.style.color = '#ffe066';
-  else                                cell.style.color = '';
+  cell.style.color = codeColor(cell.textContent);
 }
+
+// 各勤務表の公休数を数え直す関数（区分の種類を変えたときに全表を更新するため）
+const SUM_UPDATERS = [];
 
 function applyTimeColor(cell) {
   cell.style.color = cell.textContent ? '#ffe066' : '';
@@ -242,8 +238,6 @@ function createSection(dateList, workCells, sumCells, eventCells, updateSum, she
     [tr1, tr2, tr3, tr4][i].appendChild(td);
   });
 
-  const EVENT_ORDER = ['', '公開FM', 'FM臨時', '本社', '公休', '指定公休', '有給'];
-
   dateList.forEach((date, localIndex) => {
     const dayIndex = localIndex + dayOffset;
     const m   = date.getMonth() + 1;
@@ -268,8 +262,9 @@ function createSection(dateList, workCells, sumCells, eventCells, updateSum, she
     applyEventColor(tdEvent);
 
     tdEvent.onclick = function () {
-      const idx = EVENT_ORDER.indexOf(tdEvent.textContent);
-      tdEvent.textContent = EVENT_ORDER[(idx + 1) % EVENT_ORDER.length];
+      const order = eventCodeOrder();
+      const idx = order.indexOf(tdEvent.textContent);   // 一覧に無い（削除済み）区分は次で先頭へ
+      tdEvent.textContent = order[(idx + 1) % order.length];
       saveEventTime(eventKey, tdEvent.textContent);
       applyEventColor(tdEvent);
       updateSum();
@@ -348,8 +343,9 @@ function buildSheets() {
     sumTable.appendChild(sumRow);
 
     const updateSum = (ec => () => {
-      sumCell.textContent = ec.filter(c => HOLIDAY_CODES.includes(c.textContent)).length;
+      sumCell.textContent = ec.filter(c => isHolidayCode(c.textContent)).length;
     })(eventCells);
+    SUM_UPDATERS.push(updateSum);
 
     // セクション単位で1テーブル。スマホだけ7日前後で折り返す
     // （15日を 7+7+1 のように余らせず、5+5+5 のように均等割りする）
