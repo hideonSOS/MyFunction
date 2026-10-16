@@ -664,6 +664,12 @@
       alert('取り込める時刻が見つかりませんでした。\nA列=レース（1R〜12R）、B列=発売開始、C列=締め切り の形式か確認してください。' + warn);
       return;
     }
+    if (data.date && data.date !== state.date &&
+        !confirm('Excel の対象日は ' + data.date + ' ですが、表示中の日付は ' + state.date + ' です。\n' +
+                 'このまま ' + state.date + ' の配置図に取り込みますか？')) {
+      setStatus('', '');
+      return;
+    }
     const changes = nums.some(r => {
       const cur = state.races[r];
       if (!cur) return false;

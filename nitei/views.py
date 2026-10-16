@@ -447,48 +447,159 @@ def api_layout_clear(request):
 
 
 # ── 配置図: 発売時刻の Excel 取り込み ─────────────────
-# テンプレートは A列=レース（1R〜12R）/ B列=発売開始 / C列=締め切り。
-# 取り込みは「レース番号が書かれた行」だけを読むので、見出し行や説明行があってもよい
-EXCEL_MAX_BYTES = 2 * 1024 * 1024
+# テンプレートは、人やAIが元資料（PDF・別のExcel等）から書き写すことを前提に、
+# 入力セル（黄色）・行とレースの対応・書式・してはいけないことを「説明」シートに明記する。
+# 取り込みは「発売時刻」シートの「A列にレース番号がある行」と「対象日」の行だけを読む
+EXCEL_MAX_BYTES  = 2 * 1024 * 1024
+EXCEL_SHEET      = '発売時刻'
+EXCEL_FIRST_ROW  = 6          # 1R の行（レース番号 + 5）
+EXCEL_DATE_LABEL = '対象日'
+
+EXCEL_GUIDE = [
+    ('このファイルの用途',
+     '業務ツール「日程 > 配置図」の「📥 時刻Excel読込」で読み込み、画面に表示中の日付の'
+     '各レースの「発売開始」と「締め切り」の時刻を一括で入力するためのファイルです。'
+     '人またはAIが、出走表などの元資料（PDF・Excel・画像など）から時刻を書き写して使います。'),
+    ('入力するセル',
+     'シート「発売時刻」の黄色のセルだけです。\n'
+     '・B6〜B17：1R〜12R の発売開始\n'
+     '・C6〜C17：1R〜12R の締め切り\n'
+     '・B3：対象日（任意）\n'
+     'これ以外のセルには書き込まないでください。'),
+    ('行とレースの対応',
+     '6行目=1R、7行目=2R、8行目=3R … 17行目=12R（行番号 = レース番号 + 5）。\n'
+     'A列にレース番号（1R〜12R）が入っているので、同じ行の B列・C列 に書きます。'),
+    ('発売開始（B列）',
+     'そのレースの投票券の発売が始まる時刻。\n'
+     '元資料での呼び名の例：「発売開始」「発売開始時刻」「発売開始予定」。'),
+    ('締め切り（C列）',
+     'そのレースの投票の締め切り時刻。\n'
+     '元資料での呼び名の例：「締切」「締切予定時刻」「投票締切」「発売締切」「締切時刻」。\n'
+     '「発走時刻」「スタート時刻」「展示時刻」は締め切りとは別の時刻なので入れないでください。'
+     '締め切りが資料に無い場合は、推測で埋めず空欄にしてください。'),
+    ('時刻の書き方',
+     '24時間表記の「時:分」（例：10:30、20:45）。Excelの時刻値でも、文字列 "10:30" でも構いません。\n'
+     '秒は不要です。「午前／午後」「AM／PM」は使わないでください。'),
+    ('日をまたぐ場合',
+     'ナイター等で締め切りが翌日の0時台になる場合も、日付を付けずに 0:15 のように書いてください。'
+     '発売時間（D列）は日またぎを考慮して自動計算されます。'),
+    ('分からない・無いレース',
+     '空欄のままにしてください（推測で埋めない）。空欄のセルは取り込まれず、画面に入力済みの時刻がそのまま残ります。'
+     '12レースより少ない開催日は、残りの行を空欄にします。'),
+    ('対象日（B3）',
+     '元資料の開催日を日付で書きます（例：2026/10/17）。任意です。'
+     '書いておくと、画面で表示中の日付と違うときに読み込み前に確認が出ます。'),
+    ('変更しないもの',
+     'シート名「発売時刻」、A列のレース番号、5行目の見出し、行と列の位置。'
+     '行や列の挿入・削除、セルの結合はしないでください。'),
+    ('D列・E列',
+     'D列「発売時間」は計算式なので書き込み不要です（取り込まれません）。'
+     'E列「メモ」は自由記入欄で、取り込まれません（資料の出典などを書いておけます）。'),
+    ('保存形式',
+     '.xlsx のまま保存してください（CSV・PDF・画像では読み込めません）。ファイル名は自由です。'),
+    ('記入例',
+     '1R の発売開始が 10:05、締め切りが 10:28 なら → B6 に 10:05、C6 に 10:28。\n'
+     '2R の発売開始が 10:33、締め切りが 10:56 なら → B7 に 10:33、C7 に 10:56。'),
+    ('仕上げの確認',
+     '① B3 と B6〜C17 以外に書き込んでいない\n'
+     '② 時刻はすべて「時:分」の形になっている\n'
+     '③ 各行で 発売開始 → 締め切り の順になっている（日またぎを除く）\n'
+     '④ レース番号が進むほど時刻も遅くなっている\n'
+     '⑤ 資料から読み取れなかった値は空欄のままにした'),
+]
 
 
 @nitei_login_required
 def layout_excel_template(request):
-    """発売時刻取り込み用の Excel テンプレート（空欄）をダウンロード"""
+    """発売時刻取り込み用の Excel テンプレートをダウンロード（入力シート＋説明シート）"""
     from io import BytesIO
     from urllib.parse import quote
     from openpyxl import Workbook
     from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
-
-    wb = Workbook()
-    ws = wb.active
-    ws.title = '発売時刻'
-    ws['A1'] = '配置図 発売時刻（時刻は 10:30 のように入力。空欄のセルは取り込みません）'
-    ws['A1'].font = Font(bold=True, size=12)
+    from openpyxl.worksheet.datavalidation import DataValidation
 
     thin   = Side(style='thin', color='888888')
     border = Border(left=thin, right=thin, top=thin, bottom=thin)
     center = Alignment(horizontal='center', vertical='center')
+    wrap   = Alignment(wrap_text=True, vertical='top')
+    head   = PatternFill('solid', fgColor='DDE6F0')
+    entry  = PatternFill('solid', fgColor='FFF2A8')   # 入力セル（黄色）
+    fixed  = PatternFill('solid', fgColor='EEEEEE')   # 変更しないセル
+    last   = EXCEL_FIRST_ROW + LAYOUT_RACE_COUNT - 1
 
-    for col, title in enumerate(['レース', '発売開始', '締め切り'], start=1):
-        c = ws.cell(row=3, column=col, value=title)
+    wb = Workbook()
+    ws = wb.active
+    ws.title = EXCEL_SHEET
+
+    ws['A1'] = '配置図 発売時刻 取り込みシート'
+    ws['A1'].font = Font(bold=True, size=14)
+    ws['A2'] = (f'入力するのは黄色のセルだけです（B3 と B{EXCEL_FIRST_ROW}:C{last}）。'
+                '書き方のルールは「説明」シートを参照してください。')
+    ws['A2'].font = Font(color='C00000', bold=True)
+    ws.merge_cells('A2:E2')
+
+    ws['A3'] = EXCEL_DATE_LABEL
+    ws['A3'].font = Font(bold=True)
+    ws['A3'].fill = fixed
+    ws['A3'].alignment = center
+    ws['A3'].border = border
+    ws['B3'].fill = entry
+    ws['B3'].border = border
+    ws['B3'].number_format = 'yyyy/mm/dd'
+    ws['B3'].alignment = center
+    ws['C3'] = '← 任意。元資料の開催日（例 2026/10/17）。画面の日付と違うと読み込み時に確認が出ます'
+    ws['C3'].font = Font(size=9, color='555555')
+    ws.merge_cells('C3:E3')
+
+    for col, title in enumerate(['レース', '発売開始', '締め切り', '発売時間（自動計算）', 'メモ（取り込まれない）'], start=1):
+        c = ws.cell(row=EXCEL_FIRST_ROW - 1, column=col, value=title)
         c.font = Font(bold=True)
-        c.fill = PatternFill('solid', fgColor='DDE6F0')
-        c.alignment = center
+        c.fill = head
+        c.alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
         c.border = border
+
+    times_dv = DataValidation(
+        type='time', operator='between', formula1='0', formula2='0.999305555555556',
+        allow_blank=True, showErrorMessage=True,
+        errorTitle='時刻の形式', error='24時間表記の「時:分」（例 10:30）で入力してください')
+    ws.add_data_validation(times_dv)
+
     for r in range(1, LAYOUT_RACE_COUNT + 1):
-        row = 3 + r
-        ws.cell(row=row, column=1, value=f'{r}R').alignment = center
-        for col in (1, 2, 3):
+        row = EXCEL_FIRST_ROW + r - 1
+        a = ws.cell(row=row, column=1, value=f'{r}R')
+        a.fill, a.font = fixed, Font(bold=True)
+        for col in range(1, 6):
             c = ws.cell(row=row, column=col)
             c.border = border
             c.alignment = center
-            if col > 1:
-                c.number_format = 'hh:mm'
-    ws.column_dimensions['A'].width = 10
-    ws.column_dimensions['B'].width = 14
-    ws.column_dimensions['C'].width = 14
-    ws.freeze_panes = 'A4'
+        for col in (2, 3):
+            c = ws.cell(row=row, column=col)
+            c.fill = entry
+            c.number_format = 'hh:mm'
+        d = ws.cell(row=row, column=4, value=f'=IF(OR(B{row}="",C{row}=""),"",MOD(C{row}-B{row},1))')
+        d.number_format = 'hh:mm'
+        d.fill = fixed
+    times_dv.add(f'B{EXCEL_FIRST_ROW}:C{last}')
+
+    for col, width in zip('ABCDE', (10, 14, 14, 16, 30)):
+        ws.column_dimensions[col].width = width
+    ws.row_dimensions[EXCEL_FIRST_ROW - 1].height = 30
+    ws.freeze_panes = f'A{EXCEL_FIRST_ROW}'
+
+    guide = wb.create_sheet('説明')
+    guide['A1'] = '「発売時刻」シートの書き方（このファイルを編集する人・AI向け）'
+    guide['A1'].font = Font(bold=True, size=13)
+    for col, title in enumerate(['項目', '内容'], start=1):
+        c = guide.cell(row=3, column=col, value=title)
+        c.font, c.fill, c.border, c.alignment = Font(bold=True), head, border, center
+    for i, (item, text) in enumerate(EXCEL_GUIDE, start=4):
+        a = guide.cell(row=i, column=1, value=item)
+        a.font, a.border, a.alignment = Font(bold=True), border, wrap
+        b = guide.cell(row=i, column=2, value=text)
+        b.border, b.alignment = border, wrap
+        guide.row_dimensions[i].height = 15 * (text.count('\n') + 1 + len(text) // 55)
+    guide.column_dimensions['A'].width = 22
+    guide.column_dimensions['B'].width = 90
 
     buf = BytesIO()
     wb.save(buf)
@@ -558,11 +669,29 @@ def _excel_time(value):
     return fmt(int(m.group(1)), int(m.group(2))) if m else None
 
 
+def _excel_date(value):
+    """対象日のセルを 'YYYY-MM-DD' に。空欄・読めない場合は ''"""
+    import re
+    import unicodedata
+    from datetime import date as date_only
+    if isinstance(value, (datetime, date_only)):
+        return value.strftime('%Y-%m-%d')
+    if isinstance(value, str):
+        m = re.fullmatch(r'(\d{4})[/\-.年](\d{1,2})[/\-.月](\d{1,2})日?',
+                         unicodedata.normalize('NFKC', value).strip())
+        if m:
+            try:
+                return date_only(int(m.group(1)), int(m.group(2)), int(m.group(3))).strftime('%Y-%m-%d')
+            except ValueError:
+                return ''
+    return ''
+
+
 @nitei_login_required
 @csrf_exempt
 @require_http_methods(['POST'])
 def layout_excel_import(request):
-    """Excel から発売開始・締め切りを読み取って返す（保存は画面側が通常の保存で行う）"""
+    """Excel から発売開始・締め切り（と対象日）を読み取って返す（保存は画面側が通常の保存で行う）"""
     from openpyxl import load_workbook
 
     f = request.FILES.get('file')
@@ -575,10 +704,16 @@ def layout_excel_import(request):
     except Exception:
         return JsonResponse({'error': 'Excelファイル（.xlsx）として読み込めませんでした'}, status=400)
 
-    races, warnings = {}, []
+    races, warnings, target_date = {}, [], ''
     try:
-        for row in wb.worksheets[0].iter_rows(max_col=3, values_only=True):
-            race = _excel_race(row[0] if row else None)
+        ws = wb[EXCEL_SHEET] if EXCEL_SHEET in wb.sheetnames else wb.worksheets[0]
+        for row in ws.iter_rows(max_col=3, values_only=True):
+            if not row:
+                continue
+            if isinstance(row[0], str) and row[0].strip() == EXCEL_DATE_LABEL:
+                target_date = _excel_date(row[1] if len(row) > 1 else None)
+                continue
+            race = _excel_race(row[0])
             if race is None:
                 continue
             times = {}
@@ -594,7 +729,7 @@ def layout_excel_import(request):
     finally:
         wb.close()
 
-    return JsonResponse({'races': races, 'warnings': warnings})
+    return JsonResponse({'races': races, 'warnings': warnings, 'date': target_date})
 
 
 # ── 配置図の名簿（クリック循環の順序・自動着色の色） ────
