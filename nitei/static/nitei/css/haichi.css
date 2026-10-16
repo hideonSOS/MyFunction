@@ -443,7 +443,7 @@
   @page { size: A4 portrait; margin: 12mm; }
 
   #hamburger, #sidebar, .hc-toolbar, .hc-note,
-  .hc-dangerzone, .hc-pdf-panel,
+  .hc-dangerzone, .hc-pdf-panel, .hc-stamp-bar,
   .hc-chip, #hc-palette { display: none !important; }
   #page-wrapper { margin-left: 0 !important; padding: 0 !important; color: #000; }
 
@@ -540,6 +540,51 @@
 }
 .hc-pdf-actions .hc-primary { color: #00ff88; border-color: #00ff8855; }
 .hc-pdf-actions .hc-primary:hover { background: #06301a; border-color: #00ff88; }
+
+/* ── スタンプ入力バー ───────────────────────── */
+.hc-stamp-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 10px;
+}
+.hc-stamp-label {
+  font-size: 11px;
+  letter-spacing: 1px;
+  color: #00e5ff99;
+  margin-right: 2px;
+}
+.hc-stamp-chip {
+  padding: 3px 12px;
+  border: 1px solid #ffffff2a;
+  border-radius: 12px;
+  background: rgba(var(--tint, 120, 130, 140), 0.30);
+  color: #eaf6ff;
+  font-size: 13px;
+  letter-spacing: 2px;
+  cursor: pointer;
+  transition: all 0.12s;
+}
+.hc-stamp-chip:hover { border-color: #fff; }
+.hc-stamp-chip.active {
+  border: 2px solid #fff;
+  box-shadow: 0 0 8px #00e5ff;
+  font-weight: bold;
+  padding: 2px 11px;   /* border増分を吸収して大きさを揃える */
+}
+.hc-stamp-eraser {
+  background: #1a2333;
+  color: #ff8080;
+  border-color: #ff006e44;
+  letter-spacing: 1px;
+}
+.hc-stamp-hint {
+  font-size: 10px;
+  color: #00e5ff66;
+  letter-spacing: 1px;
+  margin-left: 4px;
+}
 
 /* ── 名簿管理パネル ─────────────────────────── */
 .hc-roster-list { margin-bottom: 12px; }

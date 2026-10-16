@@ -393,8 +393,18 @@
     td.dataset.key = key;
   }
 
-  /** クリックで次の氏名へ（末尾の次は空＝クリアに戻る） */
+  /** セルクリック。スタンプ選択中はその氏名を1クリックで配置、
+      未選択なら従来どおり次の氏名へ順送り（末尾の次は空） */
   function cycleCell(td, key) {
+    if (stampSel !== null) {
+      const name = (stampSel === ERASER) ? '' : stampSel;
+      const cur = state.cells[key] || '';
+      if (cur === name) return;   // 変化なし
+      if (name) state.cells[key] = name; else delete state.cells[key];
+      renderCellName(td, key);
+      scheduleSave();
+      return;
+    }
     const cur = state.cells[key] || '';
     let idx = NAMES.indexOf(cur);
     if (idx < 0) idx = 0;   // 一覧にない旧データは次クリックで先頭へ
@@ -402,6 +412,39 @@
     if (next) state.cells[key] = next; else delete state.cells[key];
     renderCellName(td, key);
     scheduleSave();
+  }
+
+  // ── スタンプ入力（人を選んでからセルを塗る） ────
+  const ERASER = '__eraser__';
+  let stampSel = null;   // null=順送りモード / 氏名 / ERASER
+
+  function setStamp(v) {
+    stampSel = (stampSel === v) ? null : v;   // 同じチップで解除
+    renderStampBar();
+  }
+
+  function renderStampBar() {
+    // 名簿から消えた人が選択中なら解除しておく
+    if (stampSel && stampSel !== ERASER && !NAME_COLOR[stampSel]) stampSel = null;
+
+    const bar = document.getElementById('stamp-bar');
+    bar.innerHTML = '';
+    bar.appendChild(el('span', 'hc-stamp-label', 'スタンプ:'));
+    members.forEach(m => {
+      const chip = el('button', 'hc-stamp-chip tint-' + m.color, m.name);
+      chip.type = 'button';
+      chip.classList.toggle('active', stampSel === m.name);
+      chip.addEventListener('click', () => setStamp(m.name));
+      bar.appendChild(chip);
+    });
+    const eraser = el('button', 'hc-stamp-chip hc-stamp-eraser', '消しゴム');
+    eraser.type = 'button';
+    eraser.classList.toggle('active', stampSel === ERASER);
+    eraser.addEventListener('click', () => setStamp(ERASER));
+    bar.appendChild(eraser);
+    bar.appendChild(el('span', 'hc-stamp-hint',
+      stampSel ? 'セルをクリックで配置 / もう一度チップを押すと解除'
+               : '人を選ぶと1クリック配置。未選択はクリックで順送り'));
   }
 
   function refreshDuration(race) {
@@ -459,6 +502,44 @@
          String(d.getDate()).padStart(2, '0'));
   });
 
+  // ── 前日コピー（前日の配置を丸ごと取り込み、差分だけ直す運用） ──
+  document.getElementById('copy-btn').addEventListener('click', async () => {
+    const src = shiftDate(state.date, -1);
+    let data;
+    try {
+      const res = await fetch(API_GET + '?date=' + encodeURIComponent(src));
+      if (!res.ok) throw new Error();
+      data = await res.json();
+    } catch (e) {
+      alert('前日（' + src + '）の読み込みに失敗しました');
+      return;
+    }
+    const hasContent = (data.races || []).length > 0 ||
+                       Object.keys(data.cells || {}).length > 0;
+    if (!hasContent) {
+      alert('前日（' + src + '）に配置がありません');
+      return;
+    }
+    if (!confirm(state.date + ' の内容を、前日 ' + src + ' の配置で上書きします。よろしいですか？')) return;
+
+    state.headers = (data.headers && data.headers.length)
+      ? data.headers.slice() : DEFAULT_HEADERS.slice();
+    state.races = {};
+    for (let r = 1; r <= RACE_COUNT; r++) state.races[r] = blankRace();
+    (data.races || []).forEach(item => {
+      state.races[item.race] = {
+        start:     item.start || '',
+        close:     item.close || '',
+        highlight: !!item.highlight,
+      };
+    });
+    state.cells  = Object.assign({}, data.cells  || {});
+    state.colors = Object.assign({}, data.colors || {});
+    render();
+    save();   // 即保存
+    setStatus('前日の配置をコピーしました', 'saved');
+  });
+
   // ── 名簿管理パネル（追加・改名・色変更・並び替え・削除） ──
   const rosterPanel = document.getElementById('roster-panel');
 
@@ -473,10 +554,11 @@
     return data;
   }
 
-  // サーバー応答の名簿を反映し、パネルと盤面（表示中セルの色）を描き直す
+  // サーバー応答の名簿を反映し、パネル・スタンプバー・盤面を描き直す
   function rosterUpdated(data) {
     applyRoster(data.members);
     renderRosterPanel();
+    renderStampBar();
     render();
   }
 
@@ -690,5 +772,6 @@
     if (warn) alert(nums.length + 'レース分の時刻を取り込みました。' + warn);
   }
 
+  renderStampBar();
   load(dateInput.value);
 })();
